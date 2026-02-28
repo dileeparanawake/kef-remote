@@ -21,7 +21,7 @@ The codebase is structured as a Swift package with two targets:
 - **Language:** Swift
 - **Runtime:** Native macOS (minimum macOS 13 / Ventura)
 - **Build system:** Swift Package Manager
-- **Testing:** `swift test --disable-sandbox` with XCTest
+- **Testing:** `swift test --disable-sandbox` with Swift Testing framework
 - **Networking:** Network.framework (NWConnection with TCP_NODELAY)
 - **SSID detection:** CoreWLAN
 - **Hotkeys:** KeyboardShortcuts (Sindre Sorhus, MIT) for power/quit;
@@ -75,16 +75,30 @@ on learning style.
 
 ## Current Status
 
-### Done
+### Done (Tasks 1-14)
 - All-Swift design approved (single-process macOS app)
 - Architecture decisions documented
 - Swift package initialized with KEFRemoteCore library and test targets
-- Implementation plan created
+- KEF command encoding/decoding (GET/SET byte commands)
+- Volume byte codec (0-100 unmuted, 128-228 muted)
+- Source byte bitfield codec (power, inverse, standby, input)
+- SpeakerConnection protocol + MockSpeakerConnection for testing
+- SpeakerController: volume, mute, power, input, standby, status ops
+- AppConfig model with JSON persistence
+- TCPSpeakerConnection using Network.framework
+- SSDP speaker discovery with response parsing
+- 68 tests passing across 6 suites
 
-### Next
-- Implement core protocol layer (command encoding, volume/source codecs)
-- Build SpeakerConnection protocol and mock for testing
-- Implement SpeakerController with TDD
+### Next (Tasks 15-23: macOS app phase)
+- App target scaffolding (background agent with SwiftUI)
+- HUD overlay (NSPanel-based floating volume/status display)
+- Media key interception (CGEvent tap with modifier)
+- Power hotkeys (KeyboardShortcuts library)
+- Wake/sleep lifecycle hooks
+- SSID-based network monitoring
+- Settings window (SwiftUI)
+- Integration wiring
+- Documentation update
 
 ### Context
 - Design doc: `resources/docs/plans/2026-02-28-kef-remote-design.md`
