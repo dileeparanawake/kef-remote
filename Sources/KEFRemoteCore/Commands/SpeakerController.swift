@@ -1,5 +1,22 @@
 import Foundation
 
+/// Full status snapshot of the speaker.
+public struct SpeakerStatus: Equatable {
+    public let volume: VolumeState
+    public let isPoweredOn: Bool
+    public let isInversed: Bool
+    public let input: InputSource
+    public let standby: StandbyMode
+
+    public init(volume: VolumeState, isPoweredOn: Bool, isInversed: Bool, input: InputSource, standby: StandbyMode) {
+        self.volume = volume
+        self.isPoweredOn = isPoweredOn
+        self.isInversed = isInversed
+        self.input = input
+        self.standby = standby
+    }
+}
+
 /// High-level interface for controlling a KEF speaker.
 ///
 /// All operations go through a `SpeakerConnection`, which abstracts
@@ -102,6 +119,51 @@ public class SpeakerController {
 
         let modified = source.with(isPoweredOn: false)
         _ = try await connection.send(KEFCommand.setSource(modified.encode()))
+    }
+
+    // MARK: - Input
+
+    /// Read the current input source.
+    public func getInput() async throws -> InputSource {
+        let source = try await readSourceByte()
+        return source.input
+    }
+
+    /// Set the input source. Preserves power, standby, and inverse settings.
+    public func setInput(_ input: InputSource) async throws {
+        let source = try await readSourceByte()
+        let modified = source.with(input: input)
+        _ = try await connection.send(KEFCommand.setSource(modified.encode()))
+    }
+
+    // MARK: - Standby
+
+    /// Read the current standby timeout mode.
+    public func getStandby() async throws -> StandbyMode {
+        let source = try await readSourceByte()
+        return source.standby
+    }
+
+    /// Set the standby timeout mode. Preserves other source byte fields.
+    public func setStandby(_ mode: StandbyMode) async throws {
+        let source = try await readSourceByte()
+        let modified = source.with(standby: mode)
+        _ = try await connection.send(KEFCommand.setSource(modified.encode()))
+    }
+
+    // MARK: - Status
+
+    /// Read the full speaker status (volume, mute, power, input, standby).
+    public func getStatus() async throws -> SpeakerStatus {
+        let volume = try await getVolume()
+        let source = try await readSourceByte()
+        return SpeakerStatus(
+            volume: volume,
+            isPoweredOn: source.isPoweredOn,
+            isInversed: source.isInversed,
+            input: source.input,
+            standby: source.standby
+        )
     }
 
     // MARK: - Private helpers
