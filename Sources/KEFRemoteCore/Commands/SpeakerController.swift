@@ -46,4 +46,29 @@ public class SpeakerController {
         let byte = VolumeCoding.encode(level: newLevel, isMuted: current.isMuted)
         _ = try await connection.send(KEFCommand.setVolume(byte))
     }
+
+    // MARK: - Mute
+
+    /// Mute the speaker. No-op if already muted.
+    public func mute() async throws {
+        let current = try await getVolume()
+        guard !current.isMuted else { return }
+        let byte = VolumeCoding.encode(level: current.level, isMuted: true)
+        _ = try await connection.send(KEFCommand.setVolume(byte))
+    }
+
+    /// Unmute the speaker. No-op if already unmuted.
+    public func unmute() async throws {
+        let current = try await getVolume()
+        guard current.isMuted else { return }
+        let byte = VolumeCoding.encode(level: current.level, isMuted: false)
+        _ = try await connection.send(KEFCommand.setVolume(byte))
+    }
+
+    /// Toggle mute state. If muted, unmute. If unmuted, mute.
+    public func toggleMute() async throws {
+        let current = try await getVolume()
+        let byte = VolumeCoding.encode(level: current.level, isMuted: !current.isMuted)
+        _ = try await connection.send(KEFCommand.setVolume(byte))
+    }
 }
