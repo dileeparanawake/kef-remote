@@ -71,4 +71,47 @@ public class SpeakerController {
         let byte = VolumeCoding.encode(level: current.level, isMuted: !current.isMuted)
         _ = try await connection.send(KEFCommand.setVolume(byte))
     }
+
+    // MARK: - Power
+
+    /// Power on the speaker. Reads the source byte and sets the power bit.
+    /// Preserves all other source byte fields (input, standby, inverse).
+    public func powerOn() async throws {
+        let source = try await readSourceByte()
+        let modified = source.with(isPoweredOn: true)
+        _ = try await connection.send(KEFCommand.setSource(modified.encode()))
+    }
+
+    /// Power off the speaker.
+    ///
+    /// **Standby crash workaround:** If the speaker's standby is set to
+    /// 20 minutes, we switch it to 60 minutes first. All KEF speakers
+    /// crash their control server when powered off with 20-minute standby.
+    ///
+    /// Reference: Perl `kefctl` lines 222-229.
+    public func powerOff() async throws {
+        var source = try await readSourceByte()
+
+        // Workaround: 20-minute standby crashes the speaker on power-off.
+        // Switch to 60 minutes first, then power off.
+        if source.standby == .twentyMinutes {
+            let standbyFix = source.with(standby: .sixtyMinutes)
+            _ = try await connection.send(KEFCommand.setSource(standbyFix.encode()))
+            source = standbyFix
+        }
+
+        let modified = source.with(isPoweredOn: false)
+        _ = try await connection.send(KEFCommand.setSource(modified.encode()))
+    }
+
+    // MARK: - Private helpers
+
+    /// Read and decode the current source byte from the speaker.
+    private func readSourceByte() async throws -> SourceByte {
+        let response = try await connection.send(KEFCommand.getSource())
+        guard let byte = KEFCommand.parseResponse(response) else {
+            throw KEFError.invalidResponse
+        }
+        return SourceByte(byte: byte)
+    }
 }
