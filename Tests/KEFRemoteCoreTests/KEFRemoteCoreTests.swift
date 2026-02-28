@@ -1,8 +1,6 @@
-import XCTest
+import Testing
 @testable import KEFRemoteCore
 
-final class KEFRemoteCoreTests: XCTestCase {
-    func testPlaceholder() {
-        XCTAssertTrue(true)
-    }
+@Test func placeholder() {
+    #expect(true)
 }
