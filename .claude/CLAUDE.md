@@ -31,6 +31,7 @@ The codebase is structured as a Swift package with two targets:
 
 - `Package.swift` — Swift package manifest (two targets)
 - `Sources/KEFRemoteCore/` — Core library (protocol, commands, controller)
+- `Sources/KEFRemote/` — macOS app (UI, hotkeys, lifecycle, integration)
 - `Tests/KEFRemoteCoreTests/` — Unit tests for core library
 - `resources/docs/plans/` — Design documents (git-ignored)
 - `resources/docs/decisions/` — Architecture decision records (git-ignored)
@@ -75,10 +76,9 @@ on learning style.
 
 ## Current Status
 
-### Done (Tasks 1-14)
-- All-Swift design approved (single-process macOS app)
-- Architecture decisions documented
-- Swift package initialized with KEFRemoteCore library and test targets
+### Implementation Complete (Tasks 1-23)
+
+**Core library (KEFRemoteCore):**
 - KEF command encoding/decoding (GET/SET byte commands)
 - Volume byte codec (0-100 unmuted, 128-228 muted)
 - Source byte bitfield codec (power, inverse, standby, input)
@@ -89,16 +89,19 @@ on learning style.
 - SSDP speaker discovery with response parsing
 - 68 tests passing across 6 suites
 
-### Next (Tasks 15-23: macOS app phase)
-- App target scaffolding (background agent with SwiftUI)
-- HUD overlay (NSPanel-based floating volume/status display)
-- Media key interception (CGEvent tap with modifier)
-- Power hotkeys (KeyboardShortcuts library)
-- Wake/sleep lifecycle hooks
-- SSID-based network monitoring
-- Settings window (SwiftUI)
-- Integration wiring
-- Documentation update
+**macOS app (KEFRemote):**
+- Background agent shell (no dock icon, SwiftUI + AppDelegate)
+- HUD overlay (NSPanel floating display with fade animations)
+- Media key interception (CGEvent tap with Shift modifier)
+- Power hotkeys (Cmd+Shift+O/P/Q via KeyboardShortcuts)
+- Wake/sleep lifecycle hooks with delayed power-off
+- SSID-based network monitoring (active/dormant state)
+- SwiftUI settings window (tabbed, all config options)
+- Full integration wiring in AppDelegate
+
+### Next
+- Manual hardware verification against real KEF speaker
+- User testing and refinement
 
 ### Context
 - Design doc: `resources/docs/plans/2026-02-28-kef-remote-design.md`
