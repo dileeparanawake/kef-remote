@@ -120,7 +120,10 @@ final class HUDOverlay {
             context.duration = animationDuration
             panel.animator().alphaValue = 0
         }, completionHandler: {
-            panel.orderOut(nil)
+            // Only order out if no new show was triggered during the fade.
+            if panel.alphaValue == 0 {
+                panel.orderOut(nil)
+            }
         })
     }
 
@@ -301,7 +304,7 @@ private struct HUDContentView: View {
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .fill(.primary)
                     .frame(
-                        width: geometry.size.width * CGFloat(level) / 100,
+                        width: geometry.size.width * CGFloat(min(max(level, 0), 100)) / 100,
                         height: 8
                     )
             }
