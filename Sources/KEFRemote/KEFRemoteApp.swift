@@ -6,16 +6,18 @@ import SwiftUI
 /// It uses an `AppDelegate` to manage lifecycle events including
 /// single-instance detection and activation policy.
 ///
-/// The `Settings` scene is a placeholder for the settings window
-/// that will be added in a later task. It is not visible on launch.
+/// The `Settings` scene hosts the ``SettingsView``, which provides
+/// configuration for speaker connection, hotkeys, audio defaults,
+/// lifecycle behaviour, network awareness, and app preferences.
+/// The settings window opens when the app is re-launched while
+/// already running (see ``AppDelegate/applicationShouldHandleReopen(_:hasVisibleWindows:)``).
 @main
 struct KEFRemoteApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
         Settings {
-            Text("KEF Remote Settings")
-                .frame(width: 300, height: 200)
+            SettingsView()
         }
     }
 }
