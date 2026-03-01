@@ -177,7 +177,7 @@ final class MediaKeyInterceptor {
     /// - Returns: `true` if the process is trusted for Accessibility.
     static func checkAccessibility(prompt: Bool = false) -> Bool {
         let options = [
-            kAXTrustedCheckOptionPrompt.takeRetainedValue() as String: prompt
+            kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: prompt
         ] as CFDictionary
         return AXIsProcessTrustedWithOptions(options)
     }
