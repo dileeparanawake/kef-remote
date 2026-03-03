@@ -19,7 +19,7 @@ The codebase is structured as a Swift package with two targets:
 ## Tech Stack
 
 - **Language:** Swift
-- **Runtime:** Native macOS (minimum macOS 13 / Ventura)
+- **Runtime:** Native macOS (minimum macOS 14 / Sonoma)
 - **Build system:** Swift Package Manager
 - **Testing:** `swift test --disable-sandbox` with Swift Testing framework
 - **Networking:** Network.framework (NWConnection with TCP_NODELAY)
