@@ -4,7 +4,7 @@ resources/
 .DS_Store
 .build/
 .swiftpm/
-*.xcodeproj
-*.xcworkspace
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
 DerivedData/
 
