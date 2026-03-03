@@ -77,13 +77,16 @@ public class TCPSpeakerConnection: SpeakerConnection {
 
         // Wait for connection to be ready
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            conn.stateUpdateHandler = { state in
+            conn.stateUpdateHandler = { [weak conn] state in
                 switch state {
                 case .ready:
+                    conn?.stateUpdateHandler = nil
                     continuation.resume()
                 case .failed(let error):
+                    conn?.stateUpdateHandler = nil
                     continuation.resume(throwing: KEFError.connectionFailed(error.localizedDescription))
                 case .cancelled:
+                    conn?.stateUpdateHandler = nil
                     continuation.resume(throwing: KEFError.notConnected)
                 default:
                     break
