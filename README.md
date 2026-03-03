@@ -18,7 +18,7 @@ A native macOS background app for controlling KEF wireless speakers
 
 ## Requirements
 
-- macOS 13 (Ventura) or later
+- macOS 14 (Sonoma) or later
 - Accessibility permission (for media key interception)
 - KEF LS50 Wireless or LSX speaker on the same network
 

@@ -7,7 +7,7 @@ import SwiftUI
 /// Manages the settings state, loading and saving to AppConfig on disk.
 ///
 /// Uses `ObservableObject` with `@Published` for SwiftUI change tracking
-/// (compatible with macOS 13+). The view model loads config from
+/// (compatible with macOS 14+). The view model loads config from
 /// `~/.kef-remote/config.json` on init and saves back on every change
 /// via the view's `onChange` modifier.
 ///
