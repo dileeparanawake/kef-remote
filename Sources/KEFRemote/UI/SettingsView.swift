@@ -93,7 +93,7 @@ struct SettingsView: View {
                 }
         }
         .frame(width: 450, height: 350)
-        .onChange(of: viewModel.config) { _ in
+        .onChange(of: viewModel.config) {
             viewModel.save()
         }
     }

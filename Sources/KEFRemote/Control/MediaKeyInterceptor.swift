@@ -81,7 +81,7 @@ final class MediaKeyInterceptor {
     /// Defaults to Shift. When this modifier is held and a media key
     /// is pressed, the event is consumed (not passed to the system)
     /// and ``onMediaKey`` is called.
-    var modifier: CGEventFlags = .maskShift
+    var modifier: CGEventFlags = .maskControl
 
     /// The Mach port for the CGEvent tap.
     fileprivate var eventTap: CFMachPort?

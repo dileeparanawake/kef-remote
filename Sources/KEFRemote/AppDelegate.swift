@@ -70,6 +70,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             activate()
         }
 
+        // The network state may have been evaluated during setup (before
+        // the onStateChange callback was connected). Ensure we activate
+        // if already on the home network.
+        if networkMonitor.state == .active && !isActive {
+            activate()
+        }
+
         logger.info("KEF Remote launched")
     }
 
@@ -111,7 +118,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the key "mediaKeyModifier" as one of: "shift", "control", "option",
     /// "command". We map that to the corresponding CGEventFlags value.
     private func applyMediaKeyModifier() {
-        let stored = UserDefaults.standard.string(forKey: "mediaKeyModifier") ?? "shift"
+        let stored = UserDefaults.standard.string(forKey: "mediaKeyModifier") ?? "control"
         switch stored {
         case "control":
             mediaKeys.modifier = .maskControl

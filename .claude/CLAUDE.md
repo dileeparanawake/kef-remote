@@ -20,18 +20,30 @@ The codebase is structured as a Swift package with two targets:
 
 - **Language:** Swift
 - **Runtime:** Native macOS (minimum macOS 14 / Sonoma)
-- **Build system:** Swift Package Manager
+- **Build system:** Swift Package Manager + Xcode project
 - **Testing:** `swift test --disable-sandbox` with Swift Testing framework
 - **Networking:** Network.framework (NWConnection with TCP_NODELAY)
 - **SSID detection:** CoreWLAN
 - **Hotkeys:** KeyboardShortcuts (Sindre Sorhus, MIT) for power/quit;
-  CGEvent tap for intercepting volume/mute media keys with modifier
+  CGEvent tap for intercepting volume/mute media keys with Control modifier
+
+## Building and Running
+
+- **Build and run:** `open KEFRemote.xcodeproj` then Cmd+B / Cmd+R
+- **Do NOT use `xed .`** when the xcodeproj exists (opens SPM package
+  instead of the Xcode project)
+- **Edit code:** Cursor + Claude CLI (not Xcode)
+- **Run tests:** `swift test --disable-sandbox` (SPM, unchanged)
+- **Signing:** Automatic, personal development team, sandbox disabled
 
 ## Project Structure
 
 - `Package.swift` — Swift package manifest (two targets)
+- `KEFRemote.xcodeproj/` — Xcode project for bundling, signing, running
 - `Sources/KEFRemoteCore/` — Core library (protocol, commands, controller)
 - `Sources/KEFRemote/` — macOS app (UI, hotkeys, lifecycle, integration)
+- `Sources/KEFRemote/Info.plist` — App metadata (bundle ID, LSUIElement)
+- `Sources/KEFRemote/KEFRemote.entitlements` — Permission declarations
 - `Tests/KEFRemoteCoreTests/` — Unit tests for core library
 - `resources/docs/plans/` — Design documents (git-ignored)
 - `resources/docs/decisions/` — Architecture decision records (git-ignored)
@@ -92,21 +104,39 @@ on learning style.
 **macOS app (KEFRemote):**
 - Background agent shell (no dock icon, SwiftUI + AppDelegate)
 - HUD overlay (NSPanel floating display with fade animations)
-- Media key interception (CGEvent tap with Shift modifier)
+- Media key interception (CGEvent tap with Control modifier)
 - Power hotkeys (Cmd+Shift+O/P/Q via KeyboardShortcuts)
 - Wake/sleep lifecycle hooks with delayed power-off
 - SSID-based network monitoring (active/dormant state)
 - SwiftUI settings window (tabbed, all config options)
 - Full integration wiring in AppDelegate
 
+### Xcode Project Setup (chore/xcode-setup branch)
+- KEFRemote.xcodeproj with proper bundling, signing, entitlements
+- Info.plist (LSUIElement, bundle ID, deployment target)
+- KEFRemote.entitlements (get-task-allow for debugging)
+- App builds and runs, speaker communication confirmed
+
+### Known Issues
+- TCP command serialisation: concurrent volume commands interleave on
+  the wire, causing flaky HUD and incorrect volume values
+- Config decoding: UInt8 enums need string-based Codable for readable
+  config files
+- SSID always nil: needs Location Services permission on macOS 14+
+- See: `resources/docs/plans/2026-03-03-config-and-runtime-fixes.md`
+
 ### Next
-- Manual hardware verification against real KEF speaker
-- User testing and refinement
+- Fix TCP command serialisation (highest impact)
+- Add string-based Codable for config enums
+- Add Location Services for SSID detection
+- Add missing test coverage
 
 ### Context
 - Design doc: `resources/docs/plans/2026-02-28-kef-remote-design.md`
 - Decisions: `resources/docs/decisions/2026-02-28-design-decisions.md`
 - Implementation plan: `resources/docs/plans/2026-02-28-kef-remote-implementation.md`
+- Xcode setup: `resources/docs/plans/2026-03-03-xcode-project-setup.md`
+- Follow-up: `resources/docs/plans/2026-03-03-config-and-runtime-fixes.md`
 
 ## Git Workflow
 

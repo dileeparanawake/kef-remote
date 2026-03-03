@@ -21,7 +21,8 @@ let package = Package(
                 "KEFRemoteCore",
                 .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
             ],
-            path: "Sources/KEFRemote"
+            path: "Sources/KEFRemote",
+            exclude: ["Info.plist", "KEFRemote.entitlements"]
         ),
         .testTarget(
             name: "KEFRemoteCoreTests",
