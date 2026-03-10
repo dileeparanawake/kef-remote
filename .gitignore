@@ -1,10 +1,13 @@
 
 resources/
-.claude/
+
 .DS_Store
 .build/
 .swiftpm/
 *.xcodeproj/xcuserdata/
 *.xcworkspace/xcuserdata/
 DerivedData/
+
+.claude/settings.local.json
+.claude/projects/
 
