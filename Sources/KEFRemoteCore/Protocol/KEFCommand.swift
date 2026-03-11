@@ -73,4 +73,29 @@ enum KEFCommand {
     static func isSetAck(_ data: Data) -> Bool {
         data == Data([0x52, 0x11, 0xFF])
     }
+
+    // MARK: - Response validation
+
+    /// Validate the header of a 5-byte GET response.
+    ///
+    /// Expected shape: `[0x52, register, 0x81, value, checksum]`
+    /// - `data[0]` must be `0x52`
+    /// - `data[1]` must match the queried `register`
+    /// - `data[2]` must be `0x81`
+    ///
+    /// Throws `KEFError.invalidResponse` if any check fails.
+    static func validateGetResponse(_ data: Data, register: UInt8) throws {
+        guard data.count == getResponseSize else { throw KEFError.invalidResponse }
+        guard data[0] == 0x52, data[1] == register, data[2] == 0x81 else {
+            throw KEFError.invalidResponse
+        }
+    }
+
+    /// Validate a 3-byte SET acknowledgement.
+    ///
+    /// Must be exactly `[0x52, 0x11, 0xFF]`.
+    /// Throws `KEFError.invalidResponse` if the ack is malformed.
+    static func validateSetResponse(_ data: Data) throws {
+        guard isSetAck(data) else { throw KEFError.invalidResponse }
+    }
 }

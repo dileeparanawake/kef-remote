@@ -43,3 +43,13 @@ public enum KEFLogLevel {
 /// log stream --predicate 'subsystem == "com.kef-remote"' --level debug
 /// ```
 public typealias KEFLogHandler = (KEFLogLevel, String) -> Void
+
+// MARK: - Internal helpers
+
+extension Data {
+    /// Formats bytes as space-separated uppercase hex pairs.
+    /// e.g. Data([0x47, 0x25, 0x80]) → "47 25 80"
+    var hexString: String {
+        map { String(format: "%02X", $0) }.joined(separator: " ")
+    }
+}
