@@ -26,9 +26,11 @@ public struct SpeakerStatus: Equatable {
 /// await response).
 public class SpeakerController {
     private let connection: SpeakerConnection
+    private let log: KEFLogHandler
 
-    public init(connection: SpeakerConnection) {
+    public init(connection: SpeakerConnection, log: @escaping KEFLogHandler = { _, _ in }) {
         self.connection = connection
+        self.log = log
     }
 
     // MARK: - Volume

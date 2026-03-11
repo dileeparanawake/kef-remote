@@ -19,6 +19,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         category: "AppDelegate"
     )
 
+    /// Logger for speaker communication — protocol and operations.
+    /// Receives events from SpeakerController and TCPSpeakerConnection.
+    /// CLI: log stream --predicate 'subsystem == "com.kef-remote"' --level debug
+    private let speakerLogger = Logger(
+        subsystem: "com.kef-remote",
+        category: "speaker"
+    )
+
+    /// Shared log handler passed to SpeakerController and TCPSpeakerConnection.
+    /// Routes KEFLogLevel to the appropriate os_log level.
+    /// privacy: .public required — without it, messages appear as <private> in log stream.
+    private lazy var speakerLogHandler: KEFLogHandler = { [weak self] level, message in
+        guard let self else { return }
+        switch level {
+        case .debug: self.speakerLogger.debug("\(message, privacy: .public)")
+        case .info:  self.speakerLogger.info("\(message, privacy: .public)")
+        case .error: self.speakerLogger.error("\(message, privacy: .public)")
+        }
+    }
+
     // MARK: - Components
 
     private var controller: SpeakerController?
@@ -182,10 +202,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let conn = TCPSpeakerConnection(host: ip)
+        let conn = TCPSpeakerConnection(host: ip, log: speakerLogHandler)
         self.connection = conn
-        self.controller = SpeakerController(connection: conn)
-        logger.info("Connected to speaker at \(ip)")
+        self.controller = SpeakerController(connection: conn, log: speakerLogHandler)
+        logger.info("Speaker configured at \(ip) — connection opens on first command")
     }
 
     /// Disconnect from the speaker and clear the controller.

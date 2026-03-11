@@ -11,10 +11,12 @@ public class TCPSpeakerConnection: SpeakerConnection {
     private var connection: NWConnection?
     private let host: String
     private let port: UInt16
+    private let log: KEFLogHandler
 
-    public init(host: String, port: UInt16 = 50001) {
+    public init(host: String, port: UInt16 = 50001, log: @escaping KEFLogHandler = { _, _ in }) {
         self.host = host
         self.port = port
+        self.log = log
     }
 
     /// Send a command and wait for the response.
@@ -54,6 +56,7 @@ public class TCPSpeakerConnection: SpeakerConnection {
     public func disconnect() {
         connection?.cancel()
         connection = nil
+        log(.info, "TCP: disconnected from \(host):\(port)")
     }
 
     // MARK: - Private
@@ -75,18 +78,23 @@ public class TCPSpeakerConnection: SpeakerConnection {
             using: params
         )
 
+        log(.info, "TCP: connecting to \(host):\(port)")
+
         // Wait for connection to be ready
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            conn.stateUpdateHandler = { [weak conn] state in
+            conn.stateUpdateHandler = { [weak conn, weak self] state in
                 switch state {
                 case .ready:
                     conn?.stateUpdateHandler = nil
+                    self?.log(.info, "TCP: connected to \(self?.host ?? ""):\(self?.port ?? 0)")
                     continuation.resume()
                 case .failed(let error):
                     conn?.stateUpdateHandler = nil
+                    self?.log(.error, "TCP: connection failed — \(error.localizedDescription)")
                     continuation.resume(throwing: KEFError.connectionFailed(error.localizedDescription))
                 case .cancelled:
                     conn?.stateUpdateHandler = nil
+                    self?.log(.error, "TCP: connection cancelled")
                     continuation.resume(throwing: KEFError.notConnected)
                 default:
                     break
