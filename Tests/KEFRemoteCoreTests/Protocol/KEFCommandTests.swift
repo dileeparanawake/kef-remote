@@ -39,7 +39,7 @@ import Testing
 // MARK: - Response parsing extracts byte 4 (index 3)
 
 @Test func testParseResponseReturnsPayloadByte() {
-    let response = Data([0x52, 0x25, 0x81, 0x46])
+    let response = Data([0x52, 0x25, 0x81, 0x46, 0x49])
     #expect(KEFCommand.parseResponse(response) == 0x46)
 }
 

@@ -15,8 +15,8 @@ struct SpeakerControllerMuteTests {
 
     @Test func testMuteAdds128ToCurrentVolume() async throws {
         mock.responses = [
-            Data([0x52, 0x25, 0x81, 70]),   // GET: unmuted at 70
-            Data([0x52, 0x25, 0x81, 198]),  // SET response
+            Data([0x52, 0x25, 0x81, 70, 0x00]),  // GET: unmuted at 70
+            Data([0x52, 0x11, 0xFF]),              // SET response
         ]
         try await controller.mute()
         #expect(mock.sentCommands[1] == KEFCommand.setVolume(198))
@@ -24,7 +24,7 @@ struct SpeakerControllerMuteTests {
 
     @Test func testMuteDoesNothingIfAlreadyMuted() async throws {
         mock.responses = [
-            Data([0x52, 0x25, 0x81, 198]),  // GET: already muted at 70
+            Data([0x52, 0x25, 0x81, 198, 0x00]),  // GET: already muted at 70
         ]
         try await controller.mute()
         #expect(mock.sentCommands.count == 1)  // Only GET, no SET
@@ -34,8 +34,8 @@ struct SpeakerControllerMuteTests {
 
     @Test func testUnmuteSubtracts128() async throws {
         mock.responses = [
-            Data([0x52, 0x25, 0x81, 198]),  // GET: muted at 70
-            Data([0x52, 0x25, 0x81, 70]),   // SET response
+            Data([0x52, 0x25, 0x81, 198, 0x00]),  // GET: muted at 70
+            Data([0x52, 0x11, 0xFF]),               // SET response
         ]
         try await controller.unmute()
         #expect(mock.sentCommands[1] == KEFCommand.setVolume(70))
@@ -43,7 +43,7 @@ struct SpeakerControllerMuteTests {
 
     @Test func testUnmuteDoesNothingIfNotMuted() async throws {
         mock.responses = [
-            Data([0x52, 0x25, 0x81, 70]),  // GET: not muted
+            Data([0x52, 0x25, 0x81, 70, 0x00]),  // GET: not muted
         ]
         try await controller.unmute()
         #expect(mock.sentCommands.count == 1)
@@ -53,8 +53,8 @@ struct SpeakerControllerMuteTests {
 
     @Test func testToggleMuteMutesWhenUnmuted() async throws {
         mock.responses = [
-            Data([0x52, 0x25, 0x81, 70]),
-            Data([0x52, 0x25, 0x81, 198]),
+            Data([0x52, 0x25, 0x81, 70, 0x00]),
+            Data([0x52, 0x11, 0xFF]),
         ]
         try await controller.toggleMute()
         #expect(mock.sentCommands[1] == KEFCommand.setVolume(198))
@@ -62,8 +62,8 @@ struct SpeakerControllerMuteTests {
 
     @Test func testToggleMuteUnmutesWhenMuted() async throws {
         mock.responses = [
-            Data([0x52, 0x25, 0x81, 198]),
-            Data([0x52, 0x25, 0x81, 70]),
+            Data([0x52, 0x25, 0x81, 198, 0x00]),
+            Data([0x52, 0x11, 0xFF]),
         ]
         try await controller.toggleMute()
         #expect(mock.sentCommands[1] == KEFCommand.setVolume(70))
@@ -72,8 +72,8 @@ struct SpeakerControllerMuteTests {
     @Test func testToggleMuteHandlesZeroVolumeMuted() async throws {
         // Edge case: volume 0 + muted = byte 128
         mock.responses = [
-            Data([0x52, 0x25, 0x81, 128]),
-            Data([0x52, 0x25, 0x81, 0]),
+            Data([0x52, 0x25, 0x81, 128, 0x00]),
+            Data([0x52, 0x11, 0xFF]),
         ]
         try await controller.toggleMute()
         #expect(mock.sentCommands[1] == KEFCommand.setVolume(0))

@@ -63,9 +63,9 @@ enum KEFCommand {
     // MARK: - Response parsing
 
     /// Extract the payload byte from a 5-byte GET response.
-    /// Returns `nil` if the response is too short (e.g. a 3-byte SET ack).
+    /// Returns `nil` if the response is not a full GET response (e.g. a 3-byte SET ack).
     static func parseResponse(_ data: Data) -> UInt8? {
-        guard data.count >= 4 else { return nil }
+        guard data.count >= 5 else { return nil }
         return data[3]
     }
 
