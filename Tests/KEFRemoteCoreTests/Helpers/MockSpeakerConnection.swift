@@ -12,7 +12,7 @@ final class MockSpeakerConnection: SpeakerConnection {
     /// If set, `send()` throws this error instead of returning a response.
     var errorToThrow: KEFError?
 
-    func send(_ data: Data) async throws -> Data {
+    func send(_ data: Data, expectResponseBytes: Int) async throws -> Data {
         sentCommands.append(data)
         if let error = errorToThrow {
             throw error

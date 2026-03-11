@@ -35,7 +35,7 @@ public class SpeakerController {
 
     /// Read the current volume level and mute state from the speaker.
     public func getVolume() async throws -> VolumeState {
-        let response = try await connection.send(KEFCommand.getVolume())
+        let response = try await connection.send(KEFCommand.getVolume(), expectResponseBytes: KEFCommand.getResponseSize)
         guard let byte = KEFCommand.parseResponse(response) else {
             throw KEFError.invalidResponse
         }
@@ -45,7 +45,7 @@ public class SpeakerController {
     /// Set the volume to an absolute level (0-100). Clamped.
     public func setVolume(_ level: Int) async throws {
         let byte = VolumeCoding.encode(level: level, isMuted: false)
-        _ = try await connection.send(KEFCommand.setVolume(byte))
+        _ = try await connection.send(KEFCommand.setVolume(byte), expectResponseBytes: KEFCommand.setResponseSize)
     }
 
     /// Raise the volume by `amount` percent. Preserves mute state.
@@ -53,7 +53,7 @@ public class SpeakerController {
         let current = try await getVolume()
         let newLevel = min(current.level + amount, 100)
         let byte = VolumeCoding.encode(level: newLevel, isMuted: current.isMuted)
-        _ = try await connection.send(KEFCommand.setVolume(byte))
+        _ = try await connection.send(KEFCommand.setVolume(byte), expectResponseBytes: KEFCommand.setResponseSize)
     }
 
     /// Lower the volume by `amount` percent. Preserves mute state.
@@ -61,7 +61,7 @@ public class SpeakerController {
         let current = try await getVolume()
         let newLevel = max(current.level - amount, 0)
         let byte = VolumeCoding.encode(level: newLevel, isMuted: current.isMuted)
-        _ = try await connection.send(KEFCommand.setVolume(byte))
+        _ = try await connection.send(KEFCommand.setVolume(byte), expectResponseBytes: KEFCommand.setResponseSize)
     }
 
     // MARK: - Mute
@@ -71,7 +71,7 @@ public class SpeakerController {
         let current = try await getVolume()
         guard !current.isMuted else { return }
         let byte = VolumeCoding.encode(level: current.level, isMuted: true)
-        _ = try await connection.send(KEFCommand.setVolume(byte))
+        _ = try await connection.send(KEFCommand.setVolume(byte), expectResponseBytes: KEFCommand.setResponseSize)
     }
 
     /// Unmute the speaker. No-op if already unmuted.
@@ -79,14 +79,14 @@ public class SpeakerController {
         let current = try await getVolume()
         guard current.isMuted else { return }
         let byte = VolumeCoding.encode(level: current.level, isMuted: false)
-        _ = try await connection.send(KEFCommand.setVolume(byte))
+        _ = try await connection.send(KEFCommand.setVolume(byte), expectResponseBytes: KEFCommand.setResponseSize)
     }
 
     /// Toggle mute state. If muted, unmute. If unmuted, mute.
     public func toggleMute() async throws {
         let current = try await getVolume()
         let byte = VolumeCoding.encode(level: current.level, isMuted: !current.isMuted)
-        _ = try await connection.send(KEFCommand.setVolume(byte))
+        _ = try await connection.send(KEFCommand.setVolume(byte), expectResponseBytes: KEFCommand.setResponseSize)
     }
 
     // MARK: - Power
@@ -96,7 +96,7 @@ public class SpeakerController {
     public func powerOn() async throws {
         let source = try await readSourceByte()
         let modified = source.with(isPoweredOn: true)
-        _ = try await connection.send(KEFCommand.setSource(modified.encode()))
+        _ = try await connection.send(KEFCommand.setSource(modified.encode()), expectResponseBytes: KEFCommand.setResponseSize)
     }
 
     /// Power off the speaker.
@@ -113,12 +113,12 @@ public class SpeakerController {
         // Switch to 60 minutes first, then power off.
         if source.standby == .twentyMinutes {
             let standbyFix = source.with(standby: .sixtyMinutes)
-            _ = try await connection.send(KEFCommand.setSource(standbyFix.encode()))
+            _ = try await connection.send(KEFCommand.setSource(standbyFix.encode()), expectResponseBytes: KEFCommand.setResponseSize)
             source = standbyFix
         }
 
         let modified = source.with(isPoweredOn: false)
-        _ = try await connection.send(KEFCommand.setSource(modified.encode()))
+        _ = try await connection.send(KEFCommand.setSource(modified.encode()), expectResponseBytes: KEFCommand.setResponseSize)
     }
 
     // MARK: - Input
@@ -133,7 +133,7 @@ public class SpeakerController {
     public func setInput(_ input: InputSource) async throws {
         let source = try await readSourceByte()
         let modified = source.with(input: input)
-        _ = try await connection.send(KEFCommand.setSource(modified.encode()))
+        _ = try await connection.send(KEFCommand.setSource(modified.encode()), expectResponseBytes: KEFCommand.setResponseSize)
     }
 
     // MARK: - Standby
@@ -148,7 +148,7 @@ public class SpeakerController {
     public func setStandby(_ mode: StandbyMode) async throws {
         let source = try await readSourceByte()
         let modified = source.with(standby: mode)
-        _ = try await connection.send(KEFCommand.setSource(modified.encode()))
+        _ = try await connection.send(KEFCommand.setSource(modified.encode()), expectResponseBytes: KEFCommand.setResponseSize)
     }
 
     // MARK: - Status
@@ -170,7 +170,7 @@ public class SpeakerController {
 
     /// Read and decode the current source byte from the speaker.
     private func readSourceByte() async throws -> SourceByte {
-        let response = try await connection.send(KEFCommand.getSource())
+        let response = try await connection.send(KEFCommand.getSource(), expectResponseBytes: KEFCommand.getResponseSize)
         guard let byte = KEFCommand.parseResponse(response) else {
             throw KEFError.invalidResponse
         }

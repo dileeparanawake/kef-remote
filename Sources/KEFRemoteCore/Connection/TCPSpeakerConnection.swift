@@ -22,7 +22,7 @@ public class TCPSpeakerConnection: SpeakerConnection {
     /// Opens a connection if not already connected. Sets TCP_NODELAY
     /// to disable Nagle's algorithm (send bytes immediately, don't
     /// wait to batch them — critical for 3-4 byte commands).
-    public func send(_ data: Data) async throws -> Data {
+    public func send(_ data: Data, expectResponseBytes: Int) async throws -> Data {
         let conn = try await getConnection()
 
         // Send the command
@@ -36,9 +36,9 @@ public class TCPSpeakerConnection: SpeakerConnection {
             })
         }
 
-        // Receive the response (expect 4 bytes)
+        // Receive the response (read exactly the expected number of bytes)
         return try await withCheckedThrowingContinuation { continuation in
-            conn.receive(minimumIncompleteLength: 4, maximumLength: 1024) { content, _, _, error in
+            conn.receive(minimumIncompleteLength: expectResponseBytes, maximumLength: expectResponseBytes) { content, _, _, error in
                 if let error {
                     continuation.resume(throwing: KEFError.connectionFailed(error.localizedDescription))
                 } else if let content {

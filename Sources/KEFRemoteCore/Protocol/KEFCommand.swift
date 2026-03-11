@@ -8,7 +8,10 @@ import Foundation
 /// - **GET** (read a value): 3 bytes — `[0x47, register, 0x80]`
 /// - **SET** (write a value): 4 bytes — `[0x53, register, 0x81, value]`
 ///
-/// The speaker responds with 4 bytes. The payload is always in byte 4 (index 3).
+/// Responses differ by command type:
+/// - **GET response:** 5 bytes — `[0x52, register, 0x81, value, checksum]`.
+///   The payload is in byte 4 (index 3).
+/// - **SET response:** 3 bytes — always `[0x52, 0x11, 0xFF]` (acknowledgement).
 ///
 /// Only two registers are used for core speaker control:
 /// - `0x25` — Volume (0–100 unmuted, 128–228 muted)
@@ -16,6 +19,14 @@ import Foundation
 ///
 /// Reference: Perl `kefctl` by Sebastian Riedel, lines 21–22.
 enum KEFCommand {
+
+    // MARK: - Response sizes
+
+    /// A GET response from the speaker is 5 bytes.
+    static let getResponseSize = 5
+
+    /// A SET acknowledgement from the speaker is 3 bytes.
+    static let setResponseSize = 3
 
     // MARK: - Register addresses
 
@@ -51,10 +62,15 @@ enum KEFCommand {
 
     // MARK: - Response parsing
 
-    /// Extract the payload byte from a 4-byte speaker response.
-    /// Returns `nil` if the response is too short.
+    /// Extract the payload byte from a 5-byte GET response.
+    /// Returns `nil` if the response is too short (e.g. a 3-byte SET ack).
     static func parseResponse(_ data: Data) -> UInt8? {
         guard data.count >= 4 else { return nil }
         return data[3]
+    }
+
+    /// Check whether the response is a SET acknowledgement (`52 11 FF`).
+    static func isSetAck(_ data: Data) -> Bool {
+        data == Data([0x52, 0x11, 0xFF])
     }
 }
