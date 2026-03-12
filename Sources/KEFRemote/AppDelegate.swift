@@ -417,11 +417,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// to reconnect after 2 seconds. If the speaker has changed IP, a
     /// future enhancement could trigger re-discovery here.
     private func handleCommandError() {
+        logger.info("Command error — disconnecting and reconnecting in 2s")
         disconnectSpeaker()
 
         // Try to reconnect after a brief delay.
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             guard let self, self.isActive else { return }
+            self.logger.info("Reconnecting to speaker")
             self.connectToSpeaker()
         }
     }

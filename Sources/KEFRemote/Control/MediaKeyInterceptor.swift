@@ -245,7 +245,7 @@ final class MediaKeyInterceptor {
             }
 
             if let action = action {
-                logger.debug("Intercepted media key: \(String(describing: action))")
+                logger.info("key: \(String(describing: action), privacy: .public)")
                 onMediaKey?(action)
             }
         }
