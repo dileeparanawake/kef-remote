@@ -16,5 +16,10 @@ public enum KEFError: Error, Equatable {
 /// the app uses `TCPSpeakerConnection` (Network.framework).
 public protocol SpeakerConnection {
     /// Send a command and wait for the response.
-    func send(_ data: Data) async throws -> Data
+    ///
+    /// - Parameters:
+    ///   - data: The raw command bytes to send.
+    ///   - expectResponseBytes: Exact number of bytes to read from the response.
+    ///     GET responses are 5 bytes; SET responses are 3 bytes.
+    func send(_ data: Data, expectResponseBytes: Int) async throws -> Data
 }

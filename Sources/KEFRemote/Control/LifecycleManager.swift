@@ -88,7 +88,7 @@ final class LifecycleManager {
     /// subsequently-delivered timer callback is ignored.
     private var sleepTimerPending = false
 
-    private let logger = Logger(
+    private let logger = AppLogger(
         subsystem: "com.kef-remote",
         category: "LifecycleManager"
     )
@@ -152,25 +152,25 @@ final class LifecycleManager {
 
     @objc private func handleWillSleep(_ notification: Notification) {
         guard isEnabled else { return }
-        logger.debug("Received willSleepNotification")
+        logger.info("System sleep notification received")
         startSleepTimer()
     }
 
     @objc private func handleScreensSleep(_ notification: Notification) {
         guard isEnabled else { return }
-        logger.debug("Received screensDidSleepNotification")
+        logger.info("Screen sleep notification received")
         startSleepTimer()
     }
 
     @objc private func handleDidWake(_ notification: Notification) {
         guard isEnabled else { return }
-        logger.debug("Received didWakeNotification")
+        logger.info("System wake notification received")
         cancelSleepAndPowerOn()
     }
 
     @objc private func handleScreensWake(_ notification: Notification) {
         guard isEnabled else { return }
-        logger.debug("Received screensDidWakeNotification")
+        logger.info("Screen wake notification received")
         cancelSleepAndPowerOn()
     }
 
@@ -186,9 +186,7 @@ final class LifecycleManager {
         cancelSleepTimer()
 
         sleepTimerPending = true
-        logger.info(
-            "Sleep detected, starting \(self.powerOffDelay, privacy: .public)s power-off timer"
-        )
+        logger.info("Sleep detected, starting \(self.powerOffDelay)s power-off timer")
 
         sleepTimer = Timer.scheduledTimer(
             withTimeInterval: powerOffDelay,

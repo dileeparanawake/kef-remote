@@ -14,10 +14,29 @@ import os
 /// 6. Re-launch opens the settings window
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
-    private let logger = Logger(
+    private let logger = AppLogger(
         subsystem: "com.kef-remote",
         category: "AppDelegate"
     )
+
+    /// Logger for speaker communication — protocol and operations.
+    /// Receives events from SpeakerController and TCPSpeakerConnection.
+    /// CLI: log stream --predicate 'subsystem == "com.kef-remote"' --level debug
+    private let speakerLogger = AppLogger(
+        subsystem: "com.kef-remote",
+        category: "speaker"
+    )
+
+    /// Shared log handler passed to SpeakerController and TCPSpeakerConnection.
+    /// Routes KEFLogLevel to AppLogger, which outputs to both os_log and stderr.
+    private lazy var speakerLogHandler: KEFLogHandler = { [weak self] level, message in
+        guard let self else { return }
+        switch level {
+        case .debug: self.speakerLogger.debug(message)
+        case .info:  self.speakerLogger.info(message)
+        case .error: self.speakerLogger.error(message)
+        }
+    }
 
     // MARK: - Components
 
@@ -39,6 +58,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - App lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Diagnostic: NSLog always reaches logd regardless of os_log configuration.
+        // If this appears in Console.app but Logger entries don't, os_log is broken
+        // for this process. If this also doesn't appear, the code path is not running.
+        NSLog("[KEFRemote] applicationDidFinishLaunching — NSLog smoke test")
+
         // Run as a background agent: no dock icon, no menu bar.
         NSApp.setActivationPolicy(.accessory)
 
@@ -182,10 +206,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let conn = TCPSpeakerConnection(host: ip)
+        let conn = TCPSpeakerConnection(host: ip, log: speakerLogHandler)
         self.connection = conn
-        self.controller = SpeakerController(connection: conn)
-        logger.info("Connected to speaker at \(ip)")
+        self.controller = SpeakerController(connection: conn, log: speakerLogHandler)
+        logger.info("Speaker configured at \(ip) — connection opens on first command")
     }
 
     /// Disconnect from the speaker and clear the controller.
@@ -397,11 +421,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// to reconnect after 2 seconds. If the speaker has changed IP, a
     /// future enhancement could trigger re-discovery here.
     private func handleCommandError() {
+        logger.info("Command error — disconnecting and reconnecting in 2s")
         disconnectSpeaker()
 
         // Try to reconnect after a brief delay.
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             guard let self, self.isActive else { return }
+            self.logger.info("Reconnecting to speaker")
             self.connectToSpeaker()
         }
     }

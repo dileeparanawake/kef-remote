@@ -9,11 +9,15 @@ final class MockSpeakerConnection: SpeakerConnection {
     /// Every command sent via `send()` is recorded here.
     private(set) var sentCommands: [Data] = []
 
+    /// The `expectResponseBytes` value passed with each `send()` call.
+    private(set) var sentExpectedSizes: [Int] = []
+
     /// If set, `send()` throws this error instead of returning a response.
     var errorToThrow: KEFError?
 
-    func send(_ data: Data) async throws -> Data {
+    func send(_ data: Data, expectResponseBytes: Int) async throws -> Data {
         sentCommands.append(data)
+        sentExpectedSizes.append(expectResponseBytes)
         if let error = errorToThrow {
             throw error
         }

@@ -11,10 +11,12 @@ public class TCPSpeakerConnection: SpeakerConnection {
     private var connection: NWConnection?
     private let host: String
     private let port: UInt16
+    private let log: KEFLogHandler
 
-    public init(host: String, port: UInt16 = 50001) {
+    public init(host: String, port: UInt16 = 50001, log: @escaping KEFLogHandler = { _, _ in }) {
         self.host = host
         self.port = port
+        self.log = log
     }
 
     /// Send a command and wait for the response.
@@ -22,7 +24,7 @@ public class TCPSpeakerConnection: SpeakerConnection {
     /// Opens a connection if not already connected. Sets TCP_NODELAY
     /// to disable Nagle's algorithm (send bytes immediately, don't
     /// wait to batch them — critical for 3-4 byte commands).
-    public func send(_ data: Data) async throws -> Data {
+    public func send(_ data: Data, expectResponseBytes: Int) async throws -> Data {
         let conn = try await getConnection()
 
         // Send the command
@@ -36,9 +38,9 @@ public class TCPSpeakerConnection: SpeakerConnection {
             })
         }
 
-        // Receive the response (expect 4 bytes)
+        // Receive the response (read exactly the expected number of bytes)
         return try await withCheckedThrowingContinuation { continuation in
-            conn.receive(minimumIncompleteLength: 4, maximumLength: 1024) { content, _, _, error in
+            conn.receive(minimumIncompleteLength: expectResponseBytes, maximumLength: expectResponseBytes) { content, _, _, error in
                 if let error {
                     continuation.resume(throwing: KEFError.connectionFailed(error.localizedDescription))
                 } else if let content {
@@ -54,6 +56,7 @@ public class TCPSpeakerConnection: SpeakerConnection {
     public func disconnect() {
         connection?.cancel()
         connection = nil
+        log(.info, "TCP: disconnected from \(host):\(port)")
     }
 
     // MARK: - Private
@@ -75,18 +78,23 @@ public class TCPSpeakerConnection: SpeakerConnection {
             using: params
         )
 
+        log(.info, "TCP: connecting to \(host):\(port)")
+
         // Wait for connection to be ready
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            conn.stateUpdateHandler = { [weak conn] state in
+            conn.stateUpdateHandler = { [weak conn, weak self] state in
                 switch state {
                 case .ready:
                     conn?.stateUpdateHandler = nil
+                    self?.log(.info, "TCP: connected to \(self?.host ?? ""):\(self?.port ?? 0)")
                     continuation.resume()
                 case .failed(let error):
                     conn?.stateUpdateHandler = nil
+                    self?.log(.error, "TCP: connection failed — \(error.localizedDescription)")
                     continuation.resume(throwing: KEFError.connectionFailed(error.localizedDescription))
                 case .cancelled:
                     conn?.stateUpdateHandler = nil
+                    self?.log(.error, "TCP: connection cancelled")
                     continuation.resume(throwing: KEFError.notConnected)
                 default:
                     break

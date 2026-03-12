@@ -16,8 +16,8 @@ struct SpeakerControllerPowerTests {
     @Test func testPowerOnSetsPowerBitToZero() async throws {
         let currentSource = SourceByte(isPoweredOn: false, isInversed: false, standby: .sixtyMinutes, input: .optical)
         mock.responses = [
-            Data([0x52, 0x30, 0x81, currentSource.encode()]),  // GET source
-            Data([0x52, 0x30, 0x81, 0x1B]),                    // SET response
+            Data([0x52, 0x30, 0x81, currentSource.encode(), 0x00]),  // GET source
+            Data([0x52, 0x11, 0xFF]),                                // SET response
         ]
         try await controller.powerOn()
         let expectedSet = SourceByte(isPoweredOn: true, isInversed: false, standby: .sixtyMinutes, input: .optical)
@@ -27,8 +27,8 @@ struct SpeakerControllerPowerTests {
     @Test func testPowerOnPreservesExistingInputAndStandby() async throws {
         let currentSource = SourceByte(isPoweredOn: false, isInversed: true, standby: .never, input: .usb)
         mock.responses = [
-            Data([0x52, 0x30, 0x81, currentSource.encode()]),
-            Data([0x52, 0x30, 0x81, 0x00]),
+            Data([0x52, 0x30, 0x81, currentSource.encode(), 0x00]),
+            Data([0x52, 0x11, 0xFF]),
         ]
         try await controller.powerOn()
         let expected = currentSource.with(isPoweredOn: true)
@@ -40,8 +40,8 @@ struct SpeakerControllerPowerTests {
     @Test func testPowerOffSetsPowerBitToOne() async throws {
         let currentSource = SourceByte(isPoweredOn: true, isInversed: false, standby: .sixtyMinutes, input: .optical)
         mock.responses = [
-            Data([0x52, 0x30, 0x81, currentSource.encode()]),
-            Data([0x52, 0x30, 0x81, 0x00]),
+            Data([0x52, 0x30, 0x81, currentSource.encode(), 0x00]),
+            Data([0x52, 0x11, 0xFF]),
         ]
         try await controller.powerOff()
         let expected = currentSource.with(isPoweredOn: false)
@@ -53,9 +53,9 @@ struct SpeakerControllerPowerTests {
     @Test func testPowerOffSwitchesFrom20MinTo60MinBeforePowerOff() async throws {
         let currentSource = SourceByte(isPoweredOn: true, isInversed: false, standby: .twentyMinutes, input: .optical)
         mock.responses = [
-            Data([0x52, 0x30, 0x81, currentSource.encode()]),  // GET source
-            Data([0x52, 0x30, 0x81, 0x00]),  // SET standby to 60min response
-            Data([0x52, 0x30, 0x81, 0x00]),  // SET power off response
+            Data([0x52, 0x30, 0x81, currentSource.encode(), 0x00]),  // GET source
+            Data([0x52, 0x11, 0xFF]),  // SET standby to 60min response
+            Data([0x52, 0x11, 0xFF]),  // SET power off response
         ]
         try await controller.powerOff()
         // Should send 3 commands: GET, SET (standby fix), SET (power off)
@@ -71,8 +71,8 @@ struct SpeakerControllerPowerTests {
     @Test func testPowerOffDoesNotTouchStandbyWhen60Min() async throws {
         let currentSource = SourceByte(isPoweredOn: true, isInversed: false, standby: .sixtyMinutes, input: .optical)
         mock.responses = [
-            Data([0x52, 0x30, 0x81, currentSource.encode()]),
-            Data([0x52, 0x30, 0x81, 0x00]),
+            Data([0x52, 0x30, 0x81, currentSource.encode(), 0x00]),
+            Data([0x52, 0x11, 0xFF]),
         ]
         try await controller.powerOff()
         #expect(mock.sentCommands.count == 2)  // Only GET + SET (no standby fix)
@@ -81,8 +81,8 @@ struct SpeakerControllerPowerTests {
     @Test func testPowerOffDoesNotTouchStandbyWhenNever() async throws {
         let currentSource = SourceByte(isPoweredOn: true, isInversed: false, standby: .never, input: .optical)
         mock.responses = [
-            Data([0x52, 0x30, 0x81, currentSource.encode()]),
-            Data([0x52, 0x30, 0x81, 0x00]),
+            Data([0x52, 0x30, 0x81, currentSource.encode(), 0x00]),
+            Data([0x52, 0x11, 0xFF]),
         ]
         try await controller.powerOff()
         #expect(mock.sentCommands.count == 2)

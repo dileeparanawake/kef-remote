@@ -1,4 +1,5 @@
 import AppKit
+import os
 import SwiftUI
 
 // MARK: - HUD State
@@ -58,6 +59,7 @@ final class HUDOverlay {
 
     // MARK: - Singleton state
 
+    private static let logger = AppLogger(subsystem: "com.kef-remote", category: "hud")
     private static var panel: NSPanel?
     private static var dismissTimer: Timer?
     private static var hostingView: NSHostingView<HUDContentView>?
@@ -78,6 +80,7 @@ final class HUDOverlay {
             return
         }
 
+        logger.info("HUD show: \(String(describing: state))")
         let panel = getOrCreatePanel()
         updateContent(state)
         positionOnScreen(panel)
@@ -113,6 +116,7 @@ final class HUDOverlay {
 
         guard let panel = panel, panel.isVisible else { return }
 
+        logger.debug("HUD dismiss")
         dismissTimer?.invalidate()
         dismissTimer = nil
 
