@@ -27,9 +27,9 @@ kill:
 	@PIDS=$$(pgrep -x KEFRemote 2>/dev/null); \
 	if [ -z "$$PIDS" ]; then echo "No KEFRemote running"; exit 0; fi; \
 	for PID in $$PIDS; do \
-		PPID=$$(ps -p $$PID -o ppid= 2>/dev/null | tr -d ' '); \
-		if ps -p $$PPID -o command= 2>/dev/null | grep -q debugserver; then \
-			kill -9 $$PPID 2>/dev/null; \
+		PARENT=$$(ps -p $$PID -o ppid= 2>/dev/null | tr -d ' '); \
+		if ps -p $$PARENT -o command= 2>/dev/null | grep -q debugserver; then \
+			kill -9 $$PARENT 2>/dev/null; \
 		else \
 			kill -9 $$PID 2>/dev/null; \
 		fi; \
