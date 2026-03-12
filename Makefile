@@ -19,9 +19,27 @@ run:
 	@echo "Launching: $(APP_BUNDLE)"
 	open "$(APP_BUNDLE)"
 
-# Kill all running KEFRemote instances (prevents stale background agents)
+# Kill all running KEFRemote instances (prevents stale background agents).
+# Handles both standalone and Xcode-debugged processes. When Xcode's
+# debugserver is the parent, the child can't be killed directly — we
+# kill the debugserver first, which releases the held process.
 kill:
-	@pkill -x KEFRemote 2>/dev/null && echo "Killed KEFRemote" || echo "No KEFRemote running"
+	@PIDS=$$(pgrep -x KEFRemote 2>/dev/null); \
+	if [ -z "$$PIDS" ]; then echo "No KEFRemote running"; exit 0; fi; \
+	for PID in $$PIDS; do \
+		PPID=$$(ps -p $$PID -o ppid= 2>/dev/null | tr -d ' '); \
+		if ps -p $$PPID -o command= 2>/dev/null | grep -q debugserver; then \
+			kill -9 $$PPID 2>/dev/null; \
+		else \
+			kill -9 $$PID 2>/dev/null; \
+		fi; \
+	done; \
+	sleep 0.3; \
+	if pgrep -x KEFRemote >/dev/null 2>&1; then \
+		echo "WARNING: KEFRemote still running — try stopping from Xcode"; \
+	else \
+		echo "KEFRemote stopped"; \
+	fi
 
 # --- Log file commands (work always — Xcode or standalone) ---
 
