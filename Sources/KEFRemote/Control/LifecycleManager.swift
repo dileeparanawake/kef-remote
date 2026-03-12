@@ -88,7 +88,7 @@ final class LifecycleManager {
     /// subsequently-delivered timer callback is ignored.
     private var sleepTimerPending = false
 
-    private let logger = Logger(
+    private let logger = AppLogger(
         subsystem: "com.kef-remote",
         category: "LifecycleManager"
     )
@@ -186,9 +186,7 @@ final class LifecycleManager {
         cancelSleepTimer()
 
         sleepTimerPending = true
-        logger.info(
-            "Sleep detected, starting \(self.powerOffDelay, privacy: .public)s power-off timer"
-        )
+        logger.info("Sleep detected, starting \(self.powerOffDelay)s power-off timer")
 
         sleepTimer = Timer.scheduledTimer(
             withTimeInterval: powerOffDelay,

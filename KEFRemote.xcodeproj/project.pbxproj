@@ -6,26 +6,30 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		45B645182F62DCAE000BE7DE /* KEFRemoteCore in Frameworks */ = {isa = PBXBuildFile; productRef = 455D0DF02F5761500086BFC6 /* KEFRemoteCore */; };
+		45B645192F62DCAE000BE7DE /* KeyboardShortcuts in Frameworks */ = {isa = PBXBuildFile; productRef = 455D0DF12F5761500086BFC6 /* KeyboardShortcuts */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		455D0DE22F5761450086BFC6 /* KEFRemote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KEFRemote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		455D0DF52F5762000086BFC6 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		455D0DF52F5762000086BFC6 /* Exceptions for "Sources/KEFRemote" folder in "KEFRemote" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
-				KEFRemote.entitlements,
 			);
 			target = 455D0DE12F5761450086BFC6 /* KEFRemote */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		455D0DE42F5761450086BFC6 /* KEFRemote */ = {
+		455D0DE42F5761450086BFC6 /* Sources/KEFRemote */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				455D0DF52F5762000086BFC6 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+				455D0DF52F5762000086BFC6 /* Exceptions for "Sources/KEFRemote" folder in "KEFRemote" target */,
 			);
 			path = Sources/KEFRemote;
 			sourceTree = "<group>";
@@ -37,6 +41,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				45B645192F62DCAE000BE7DE /* KeyboardShortcuts in Frameworks */,
+				45B645182F62DCAE000BE7DE /* KEFRemoteCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -46,7 +52,7 @@
 		455D0DD92F5761450086BFC6 = {
 			isa = PBXGroup;
 			children = (
-				455D0DE42F5761450086BFC6 /* KEFRemote */,
+				455D0DE42F5761450086BFC6 /* Sources/KEFRemote */,
 				455D0DE32F5761450086BFC6 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -75,7 +81,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				455D0DE42F5761450086BFC6 /* KEFRemote */,
+				455D0DE42F5761450086BFC6 /* Sources/KEFRemote */,
 			);
 			name = KEFRemote;
 			packageProductDependencies = (
@@ -110,12 +116,12 @@
 			);
 			mainGroup = 455D0DD92F5761450086BFC6;
 			minimizedProjectReferenceProxies = 1;
-			preferredProjectObjectVersion = 77;
-			productRefGroup = 455D0DE32F5761450086BFC6 /* Products */;
 			packageReferences = (
 				455D0DF22F5761500086BFC6 /* XCLocalSwiftPackageReference "." */,
 				455D0DF62F5762000086BFC6 /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */,
 			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 455D0DE32F5761450086BFC6 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -270,11 +276,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Sources/KEFRemote/KEFRemote.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 957JJ3K65U;
-				CODE_SIGN_ENTITLEMENTS = Sources/KEFRemote/KEFRemote.entitlements;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -303,11 +309,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Sources/KEFRemote/KEFRemote.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 957JJ3K65U;
-				CODE_SIGN_ENTITLEMENTS = Sources/KEFRemote/KEFRemote.entitlements;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;

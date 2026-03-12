@@ -14,7 +14,7 @@ import os
 /// 6. Re-launch opens the settings window
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
-    private let logger = Logger(
+    private let logger = AppLogger(
         subsystem: "com.kef-remote",
         category: "AppDelegate"
     )
@@ -22,20 +22,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Logger for speaker communication — protocol and operations.
     /// Receives events from SpeakerController and TCPSpeakerConnection.
     /// CLI: log stream --predicate 'subsystem == "com.kef-remote"' --level debug
-    private let speakerLogger = Logger(
+    private let speakerLogger = AppLogger(
         subsystem: "com.kef-remote",
         category: "speaker"
     )
 
     /// Shared log handler passed to SpeakerController and TCPSpeakerConnection.
-    /// Routes KEFLogLevel to the appropriate os_log level.
-    /// privacy: .public required — without it, messages appear as <private> in log stream.
+    /// Routes KEFLogLevel to AppLogger, which outputs to both os_log and stderr.
     private lazy var speakerLogHandler: KEFLogHandler = { [weak self] level, message in
         guard let self else { return }
         switch level {
-        case .debug: self.speakerLogger.debug("\(message, privacy: .public)")
-        case .info:  self.speakerLogger.info("\(message, privacy: .public)")
-        case .error: self.speakerLogger.error("\(message, privacy: .public)")
+        case .debug: self.speakerLogger.debug(message)
+        case .info:  self.speakerLogger.info(message)
+        case .error: self.speakerLogger.error(message)
         }
     }
 
@@ -59,6 +58,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - App lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Diagnostic: NSLog always reaches logd regardless of os_log configuration.
+        // If this appears in Console.app but Logger entries don't, os_log is broken
+        // for this process. If this also doesn't appear, the code path is not running.
+        NSLog("[KEFRemote] applicationDidFinishLaunching — NSLog smoke test")
+
         // Run as a background agent: no dock icon, no menu bar.
         NSApp.setActivationPolicy(.accessory)
 

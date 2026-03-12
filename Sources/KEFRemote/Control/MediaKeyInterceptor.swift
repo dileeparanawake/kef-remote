@@ -63,7 +63,7 @@ final class MediaKeyInterceptor {
 
     // MARK: - Properties
 
-    fileprivate let logger = Logger(
+    fileprivate let logger = AppLogger(
         subsystem: "com.kef-remote",
         category: "MediaKeyInterceptor"
     )
@@ -245,7 +245,7 @@ final class MediaKeyInterceptor {
             }
 
             if let action = action {
-                logger.info("key: \(String(describing: action), privacy: .public)")
+                logger.info("key: \(String(describing: action))")
                 onMediaKey?(action)
             }
         }
