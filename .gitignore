@@ -9,6 +9,7 @@ resources/
 DerivedData/
 
 .claude/settings.local.json
+.claude/permissions/
 .claude/projects/
 .emdash.json
 **/xcuserdata/

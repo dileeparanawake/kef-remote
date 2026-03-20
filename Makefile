@@ -69,4 +69,31 @@ logs-debug:
 logs-errors:
 	log stream --predicate 'subsystem == "$(SPEAKER_SUBSYSTEM)" AND messageType == error' --style compact
 
-.PHONY: test run kill logs-tail logs-recent logs-full logs logs-debug logs-errors
+# Stop background log stream processes
+logs-stop:
+	pkill -f "log stream" 2>/dev/null || echo "No log stream running"
+
+# --- Context repo commands (kef-remote-context companion directory) ---
+
+CONTEXT_DIR = $(HOME)/coding/projects/context-engineering/projects/kef-remote-context
+
+context-status:
+	git -C $(CONTEXT_DIR) status
+
+context-diff:
+	git -C $(CONTEXT_DIR) diff
+
+context-log:
+	git -C $(CONTEXT_DIR) log --oneline -20
+
+context-show:
+	git -C $(CONTEXT_DIR) show $(if $(REF),$(REF),HEAD)
+
+context-add:
+	git -C $(CONTEXT_DIR) add -A
+
+context-commit:
+	@test -n "$(MSG)" || (echo "Usage: make context-commit MSG=\"your message\""; exit 1)
+	git -C $(CONTEXT_DIR) commit -m "$(MSG)"
+
+.PHONY: test run kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop context-status context-diff context-log context-show context-add context-commit
