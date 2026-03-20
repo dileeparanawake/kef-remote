@@ -73,6 +73,61 @@ logs-errors:
 logs-stop:
 	pkill -f "log stream" 2>/dev/null || echo "No log stream running"
 
+# --- Hardware control (kefctl named interfaces) ---
+
+KEFCTL = perl resources/reference/kefctl/kefctl
+
+# Allow tier — bounded, no-parameter operations (kef-*)
+
+kef-on:
+	$(KEFCTL) --on
+
+kef-off:
+	$(KEFCTL) --off
+
+kef-status:
+	$(KEFCTL) --status
+
+kef-mute:
+	$(KEFCTL) --mute
+
+kef-unmute:
+	$(KEFCTL) --unmute
+
+kef-toggle:
+	$(KEFCTL) --toggle
+
+kef-play:
+	$(KEFCTL) --play
+
+kef-next:
+	$(KEFCTL) --next
+
+kef-previous:
+	$(KEFCTL) --previous
+
+# Ask tier — parameterised operations (kef-raw-*)
+
+kef-raw-volume:
+	@test -n "$(VOL)" || (echo "Usage: make kef-raw-volume VOL=<0-100>"; exit 1)
+	$(KEFCTL) --volume $(VOL)
+
+kef-raw-raise:
+	@test -n "$(VOL)" || (echo "Usage: make kef-raw-raise VOL=<1-100>"; exit 1)
+	$(KEFCTL) --raise $(VOL)
+
+kef-raw-lower:
+	@test -n "$(VOL)" || (echo "Usage: make kef-raw-lower VOL=<1-100>"; exit 1)
+	$(KEFCTL) --lower $(VOL)
+
+kef-raw-input:
+	@test -n "$(SRC)" || (echo "Usage: make kef-raw-input SRC=<wifi|usb|bluetooth|aux|optical>"; exit 1)
+	$(KEFCTL) --input $(SRC)
+
+kef-raw-standby:
+	@test -n "$(MIN)" || (echo "Usage: make kef-raw-standby MIN=<0|20|60>"; exit 1)
+	$(KEFCTL) --standby $(MIN)
+
 # --- Context repo commands (kef-remote-context companion directory) ---
 
 CONTEXT_DIR = $(HOME)/coding/projects/context-engineering/projects/kef-remote-context
@@ -96,4 +151,4 @@ context-commit:
 	@test -n "$(MSG)" || (echo "Usage: make context-commit MSG=\"your message\""; exit 1)
 	git -C $(CONTEXT_DIR) commit -m "$(MSG)"
 
-.PHONY: test run kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop context-status context-diff context-log context-show context-add context-commit
+.PHONY: test run kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby context-status context-diff context-log context-show context-add context-commit
