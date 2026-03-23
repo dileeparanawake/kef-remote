@@ -151,4 +151,9 @@ context-commit:
 	@test -n "$(MSG)" || (echo "Usage: make context-commit MSG=\"your message\""; exit 1)
 	git -C $(CONTEXT_DIR) commit -m "$(MSG)"
 
-.PHONY: test run kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby context-status context-diff context-log context-show context-add context-commit
+# --- Metrics ---
+
+metrics-tokens:
+	python3 context/plans/v1/meta/notes/extract_tokens.py
+
+.PHONY: test run kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby context-status context-diff context-log context-show context-add context-commit metrics-tokens
