@@ -71,6 +71,25 @@ Use `make <target>` for common operations. Key targets:
 - **Always ask for user confirmation before making any commit.**
 - Use **Conventional Commits** syntax (e.g. `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`).
 
+### context/ is a symlink — separate git repo
+
+`context/` in this project is a symlink to the context-engineering repo at
+`~/coding/projects/context-engineering/projects/kef-remote-context/`.
+
+Changes to any file under `context/` (status, design, plans, references, etc.) must be
+committed to the context repo, **not** to kef-remote. Commit context changes first,
+before committing any related kef-remote changes.
+
+Use the Makefile targets to work with the context repo:
+
+```bash
+make context-status   # git status of context repo
+make context-diff     # git diff of context repo
+make context-add      # git add -A in context repo
+make context-commit MSG="docs: update v1 design"
+make context-log      # recent commits in context repo
+```
+
 ## Project context
 
 Project status, plans, decisions, and learnings are tracked in the context repo:
