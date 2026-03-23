@@ -1,7 +1,7 @@
 # kef-remote
 
-A native macOS background app for controlling KEF wireless speakers
-(LS50 Wireless and LSX) via keyboard shortcuts with a floating HUD overlay.
+A native macOS background app for controlling KEF LSX speakers
+via keyboard shortcuts with a floating HUD overlay.
 
 ## Features
 
@@ -14,30 +14,36 @@ A native macOS background app for controlling KEF wireless speakers
   power off after configurable delay when Mac sleeps
 - **Network awareness** — Only active on your home Wi-Fi network (SSID-based)
 - **SSDP discovery** — Automatically finds speakers on the local network
-- **Background agent** — No dock icon, no menu bar; runs invisibly
+- **Background agent** — No dock icon; runs invisibly with a menu bar icon for status and settings
 
 ## Requirements
 
 - macOS 14 (Sonoma) or later
 - Accessibility permission (for media key interception)
-- KEF LS50 Wireless or LSX speaker on the same network
+- KEF LSX speaker on the same network
 
-## Building
+## Building and running
 
-```bash
-swift build --disable-sandbox
-```
-
-## Running
+Build in Xcode (`open KEFRemote.xcodeproj`, then Cmd+B), then launch with:
 
 ```bash
-swift run --disable-sandbox KEFRemote
+make run     # launch most recently built debug app
+make kill    # stop all running instances
+make test    # run test suite
 ```
 
-On first launch, the app will prompt for Accessibility permission. Grant it
-in System Settings > Privacy & Security > Accessibility.
+On first launch, grant Accessibility permission in System Settings > Privacy & Security > Accessibility.
+Re-launch the app while it is running to open the settings window.
 
-Re-launch the app while running to open the settings window.
+### Other useful Makefile targets
+
+```bash
+make logs-recent   # last 200 lines from log file (quick agent snapshot)
+make logs-tail     # live stream from log file
+make logs-debug    # full trace including bytes on the wire (standalone only)
+make kef-on        # power speaker on via kefctl (hardware testing)
+make kef-status    # check speaker state via kefctl
+```
 
 ## Configuration
 
@@ -82,7 +88,7 @@ The protocol uses two registers: 0x25 (volume) and 0x30 (source/power/standby).
 swift test --disable-sandbox
 ```
 
-68 unit tests cover protocol encoding, volume/source codecs, and speaker
+97 unit tests cover protocol encoding, volume/source codecs, and speaker
 controller operations using a mock TCP connection.
 
 ## Credits
