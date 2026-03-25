@@ -1,2 +1,0 @@
-// KEF Remote — v1 greenfield
-// Source files are added per build increment.
