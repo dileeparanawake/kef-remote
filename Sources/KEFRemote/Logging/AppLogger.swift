@@ -11,7 +11,7 @@ import KEFRemoteCore
 ///
 /// Logging never throws - each destination is independent. If the log file
 /// can't be written, os.Logger and stderr still receive the message.
-struct AppLogger: KefLog, @unchecked Sendable {
+struct AppLogger: KefLog, Sendable {
 
     let category: String
     private let osLogger: os.Logger
@@ -25,21 +25,21 @@ struct AppLogger: KefLog, @unchecked Sendable {
 
     func debug(_ message: String) {
         osLogger.debug("\(message, privacy: .public)")
-        writer.write(level: "DEBUG", category: category, message: message)
+        writer.write(level: LogLevel.debug.label, category: category, message: message)
     }
 
     func info(_ message: String) {
         osLogger.info("\(message, privacy: .public)")
-        writer.write(level: "INFO", category: category, message: message)
+        writer.write(level: LogLevel.info.label, category: category, message: message)
     }
 
     func warning(_ message: String) {
         osLogger.warning("\(message, privacy: .public)")
-        writer.write(level: "WARN", category: category, message: message)
+        writer.write(level: LogLevel.warning.label, category: category, message: message)
     }
 
     func error(_ message: String) {
         osLogger.error("\(message, privacy: .public)")
-        writer.write(level: "ERROR", category: category, message: message)
+        writer.write(level: LogLevel.error.label, category: category, message: message)
     }
 }

@@ -56,7 +56,8 @@ final class LogWriter: @unchecked Sendable {
     /// Formats and writes a log entry to stderr and log file.
     ///
     /// stderr is always written first, unconditionally. The file write
-    /// is async-dispatched. If the file handle is nil, stderr still works.
+    /// is synchronous on the serial queue. If the file handle is nil,
+    /// stderr still works.
     func write(level: String, category: String, message: String) {
         let line = queue.sync {
             let timestamp = dateFormatter.string(from: Date())
@@ -66,13 +67,9 @@ final class LogWriter: @unchecked Sendable {
         // stderr - always visible, unconditional.
         fputs(line, stderr)
 
-        // Log file - async dispatch, independent of stderr.
-        if let fileHandle {
-            if let data = line.data(using: .utf8) {
-                queue.async {
-                    fileHandle.write(data)
-                }
-            }
+        // Log file - synchronous write, independent of stderr.
+        if let fileHandle, let data = line.data(using: .utf8) {
+            queue.sync { fileHandle.write(data) }
         }
     }
 }
