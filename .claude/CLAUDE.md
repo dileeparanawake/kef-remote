@@ -42,7 +42,7 @@ Use `make <target>` for common operations. Key targets:
 - `Package.swift` — Swift package manifest (two targets)
 - `KEFRemote.xcodeproj/` — Xcode project for bundling, signing, running
 - `Sources/KEFRemoteCore/` — Core library (protocol, commands, controller)
-- `Sources/KEFRemote/` — macOS app (UI, hotkeys, lifecycle, integration)
+- `Sources/KEFRemote/` — macOS app (UI, hotkeys, settings, system integration)
 - `Sources/KEFRemote/Info.plist` — App metadata (bundle ID, LSUIElement)
 - `Sources/KEFRemote/KEFRemote.entitlements` — Permission declarations
 - `Tests/KEFRemoteCoreTests/` — Unit tests for core library

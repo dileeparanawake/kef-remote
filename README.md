@@ -9,12 +9,10 @@ via keyboard shortcuts with a floating HUD overlay.
 
 - **Media key control** — Hold modifier + press Volume Up/Down/Mute to control
   the KEF speaker instead of system volume
-- **Power shortcuts** — Configurable keyboard shortcuts for power on/off
+- **Power toggle** — Configurable keyboard shortcut to toggle speaker power
 - **HUD overlay** — Floating translucent display showing volume, mute, and
   power status with optimistic and confirmed feedback
 - **Menu bar** — Connection status indicator, settings access, quit
-- **Wake/sleep integration** — Automatically power on speakers when Mac wakes,
-  set standby before Mac sleeps
 - **SSDP discovery** — Automatically finds speakers on the local network
 - **Background agent** — No dock icon; menu bar icon for status and settings
 
