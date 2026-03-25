@@ -55,18 +55,32 @@ logs-recent:
 logs-full:
 	cat "$(LOG_FILE)"
 
-# --- os.Logger stream commands (standalone only — use 'make run') ---
+# --- Log file filter commands (work always — Xcode, standalone, sandbox) ---
 
-# Operational logs via unified logging (standalone only)
-logs:
+# Errors only (from log file)
+logs-errors:
+	grep "\\[ERROR\\]" "$(LOG_FILE)" || echo "No errors in log file"
+
+# Warnings and errors (from log file)
+logs-warnings:
+	grep -E "\\[(WARN|ERROR)\\]" "$(LOG_FILE)" || echo "No warnings or errors in log file"
+
+# Debug-level entries only (from log file)
+logs-debug:
+	grep "\\[DEBUG\\]" "$(LOG_FILE)" || echo "No debug entries in log file"
+
+# --- os.Logger stream commands (standalone + interactive terminal only) ---
+
+# Operational logs via unified logging
+logs-stream:
 	log stream --predicate 'subsystem == "$(SPEAKER_SUBSYSTEM)"' --style compact
 
 # Full trace: operational + bytes on the wire
-logs-debug:
+logs-stream-debug:
 	log stream --predicate 'subsystem == "$(SPEAKER_SUBSYSTEM)"' --level debug --style compact
 
-# Errors only
-logs-errors:
+# Errors only via unified logging
+logs-stream-errors:
 	log stream --predicate 'subsystem == "$(SPEAKER_SUBSYSTEM)" AND messageType == error' --style compact
 
 # Stop background log stream processes
@@ -159,4 +173,4 @@ context-commit:
 metrics-tokens:
 	python3 context/plans/v1/meta/notes/extract_tokens.py
 
-.PHONY: test run kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby context-status context-diff context-log context-show context-add context-add-kef context-commit metrics-tokens
+.PHONY: test run kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby context-status context-diff context-log context-show context-add context-add-kef context-commit metrics-tokens
