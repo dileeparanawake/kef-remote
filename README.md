@@ -1,20 +1,22 @@
 # kef-remote
 
-A native macOS background app for controlling KEF LSX speakers
+A native macOS app for controlling KEF LSX speakers
 via keyboard shortcuts with a floating HUD overlay.
 
-## Features
+**Status:** v1 redesign in progress. See `context/plans/v1/` for design and build plans.
 
-- **Media key control** — Hold Shift + press Volume Up/Down/Mute to control
+## Features (planned for v1)
+
+- **Media key control** — Hold modifier + press Volume Up/Down/Mute to control
   the KEF speaker instead of system volume
-- **Power shortcuts** — Cmd+Shift+O to power on, Cmd+Shift+P to power off
+- **Power shortcuts** — Configurable keyboard shortcuts for power on/off
 - **HUD overlay** — Floating translucent display showing volume, mute, and
-  power status (similar to macOS native OSD)
+  power status with optimistic and confirmed feedback
+- **Menu bar** — Connection status indicator, settings access, quit
 - **Wake/sleep integration** — Automatically power on speakers when Mac wakes,
-  power off after configurable delay when Mac sleeps
-- **Network awareness** — Only active on your home Wi-Fi network (SSID-based)
+  set standby before Mac sleeps
 - **SSDP discovery** — Automatically finds speakers on the local network
-- **Background agent** — No dock icon; runs invisibly with a menu bar icon for status and settings
+- **Background agent** — No dock icon; menu bar icon for status and settings
 
 ## Requirements
 
@@ -56,40 +58,26 @@ to configure:
 - Home network SSID
 - Keyboard shortcuts
 
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| Shift + Volume Up | Raise KEF volume |
-| Shift + Volume Down | Lower KEF volume |
-| Shift + Mute | Toggle KEF mute |
-| Cmd+Shift+O | Power on |
-| Cmd+Shift+P | Power off |
-| Cmd+Shift+Q | Quit |
-
-The modifier key (default: Shift) and power/quit shortcuts are configurable
-in settings.
-
 ## Architecture
 
 Built as a Swift package with two targets:
 
-- **KEFRemoteCore** — Testable library with protocol encoding, speaker
-  controller, config model, TCP connection, and SSDP discovery
-- **KEFRemote** — macOS app with HUD overlay, hotkey interception, settings
-  window, lifecycle hooks, and network monitoring
+- **KEFRemoteCore** — Testable library: logging, protocol encoding, speaker
+  communication, state model, command coalescing
+- **KEFRemote** — macOS app: HUD overlay, keyboard interception, settings
+  window, lifecycle hooks, menu bar
 
-KEF speakers communicate over TCP on port 50001 using 3-4 byte hex commands.
-The protocol uses two registers: 0x25 (volume) and 0x30 (source/power/standby).
+Five architectural layers: Infrastructure, Speaker Communication, Application,
+Input, UI. See `context/plans/v1/design.md` for the full design.
 
 ## Testing
 
 ```bash
-swift test --disable-sandbox
+make test
 ```
 
-97 unit tests cover protocol encoding, volume/source codecs, and speaker
-controller operations using a mock TCP connection.
+Three levels: isolation (unit tests with injectable mocks), integration
+(boundary tests), manual (hardware verification against a real speaker).
 
 ## Credits
 

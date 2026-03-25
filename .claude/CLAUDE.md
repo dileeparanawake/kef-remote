@@ -61,9 +61,8 @@ Use `make <target>` for common operations. Key targets:
 
 ## Testing
 
-- Protocol and command modules: unit tests with mock TCP connection (protocol-based dependency injection via SpeakerConnection)
-- Controller logic: unit tests with mocked connection layer
-- Hardware verification: manual testing against a real speaker
+- All concerns are tested via injectable dependencies (protocol-based dependency injection)
+- Three levels: isolation (unit tests), integration (boundary tests), manual (hardware verification)
 - Run all tests: `swift test --disable-sandbox`
 
 ## Git workflow
