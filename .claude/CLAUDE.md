@@ -106,6 +106,8 @@ Project status, plans, decisions, and learnings are tracked in the context repo:
 - **v1 design:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/v1/design.md`
 - **v1 references:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/v1/references/`
 - **Friction log:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/v1/meta/learnings/friction-log.md`
+- **Planning blueprint:** `~/coding/agents/skills/modules/planning-blueprint/references/blueprint.md` (centralised, v1.1)
+- **Active experiment:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/v1/meta/experiments/EX002-blueprint-v1.1.md`
 
 Read the v1 status file before starting any work on the v1 branch. Log process friction
 (blueprint vs reality mismatches, unclear boundaries) to the friction log.
