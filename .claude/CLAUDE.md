@@ -111,3 +111,17 @@ Project status, plans, decisions, and learnings are tracked in the context repo:
 
 Read the v1 status file before starting any work on the v1 branch. Log process friction
 (blueprint vs reality mismatches, unclear boundaries) to the friction log.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on `dileeparanawake/kef-remote`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.
