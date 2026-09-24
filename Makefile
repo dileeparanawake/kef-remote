@@ -75,7 +75,11 @@ logs-stop:
 
 # --- Hardware control (kefctl named interfaces) ---
 
-KEFCTL = perl resources/reference/kefctl/kefctl
+# kefctl (github.com/kraih/kefctl) is not vendored here. Point KEFCTL_DIR at a
+# copy, in the environment or in a gitignored .claude/make.local.
+-include .claude/make.local
+KEFCTL_DIR ?= kefctl
+KEFCTL = perl $(KEFCTL_DIR)/kefctl
 
 # Allow tier — bounded, no-parameter operations (kef-*)
 
@@ -128,27 +132,4 @@ kef-raw-standby:
 	@test -n "$(MIN)" || (echo "Usage: make kef-raw-standby MIN=<0|20|60>"; exit 1)
 	$(KEFCTL) --standby $(MIN)
 
-# --- Context repo commands (kef-remote-context companion directory) ---
-
-CONTEXT_DIR = $(HOME)/coding/projects/context-engineering/projects/kef-remote-context
-
-context-status:
-	git -C $(CONTEXT_DIR) status
-
-context-diff:
-	git -C $(CONTEXT_DIR) diff
-
-context-log:
-	git -C $(CONTEXT_DIR) log --oneline -20
-
-context-show:
-	git -C $(CONTEXT_DIR) show $(if $(REF),$(REF),HEAD)
-
-context-add:
-	git -C $(CONTEXT_DIR) add -A
-
-context-commit:
-	@test -n "$(MSG)" || (echo "Usage: make context-commit MSG=\"your message\""; exit 1)
-	git -C $(CONTEXT_DIR) commit -m "$(MSG)"
-
-.PHONY: test run kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby context-status context-diff context-log context-show context-add context-commit
+.PHONY: test run kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby

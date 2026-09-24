@@ -19,6 +19,23 @@ Two targets in a Swift package:
 - **Run tests:** `swift test --disable-sandbox`
 - **Signing:** Automatic, personal development team, sandbox disabled
 
+## Makefile
+
+Use `make <target>` for common operations. Key targets:
+
+| Target | Purpose |
+|--------|---------|
+| `make test` | Run test suite (`swift test --disable-sandbox`) |
+| `make run` | Launch most recently built debug app |
+| `make kill` | Stop all running KEFRemote instances |
+| `make logs-recent` | Last 200 lines from log file (quick agent snapshot) |
+| `make logs-tail` | Live stream from log file |
+| `make logs` | Unified logging stream (standalone only) |
+| `make logs-debug` | Full trace including bytes on the wire (standalone only) |
+| `make logs-errors` | Errors only (standalone only) |
+| `make kef-on/off/status` | Hardware control via kefctl (for manual testing) |
+| `make kef-raw-volume VOL=70` | Set volume directly via kefctl |
+
 ## Project structure
 
 - `Package.swift` — Swift package manifest (two targets)
@@ -33,7 +50,7 @@ Two targets in a Swift package:
 ## KEF speaker protocol
 
 - **Connection:** TCP on port 50001
-- **Commands:** GET is 3 bytes, SET is 4 bytes, sent/received over raw TCP
+- **Commands:** GET sends 3 bytes, receives 5 bytes; SET sends 4 bytes, receives 3 bytes (ack)
 - **Registers:** 0x25 (volume), 0x30 (source/power/standby)
 - **Volume encoding:** 0-100 unmuted, 128-228 muted (byte - 128 = actual volume)
 - **Source byte:** Packed bitfield — bit 7 = power, bit 6 = inverse L/R, bits 5-4 = standby mode, bits 3-0 = input source
@@ -47,20 +64,16 @@ Two targets in a Swift package:
 - Hardware verification: manual testing against a real speaker
 - Run all tests: `swift test --disable-sandbox`
 
+## Shell commands
+
+Run one shell command per tool call. Don't chain commands with `&&`, `||` or `;`, and don't wrap several steps in a script to run them as one. Each permission prompt should show one command that can be read at a glance.
+
 ## Git workflow
 
 - **Always ask for user confirmation before making any commit.**
 - Use **Conventional Commits** syntax (e.g. `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`).
+- **Branches:** `main` holds the released app. Work branches off `main` and merges back through a PR.
 
-## Project context
+## Planning
 
-Project status, plans, decisions, and learnings are tracked in the context repo:
-
-- **Status:** `~/coding/projects/context-engineering/projects/kef-remote-context/status.md`
-- **Plans:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/`
-- **Decisions:** `~/coding/projects/context-engineering/projects/kef-remote-context/decisions/`
-- **Learnings:** `~/coding/projects/context-engineering/projects/kef-remote-context/learnings/`
-
-- **Learning goals:** `~/coding/projects/context-engineering/projects/kef-remote-context/learnings/learning-goals.md`
-
-Read the status file to understand where the project stands before starting work.
+This repo has issues switched off. Work items, plans and the agent-skill setup live outside it, and load through a gitignored `CLAUDE.local.md`.
