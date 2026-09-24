@@ -34,8 +34,6 @@ Use `make <target>` for common operations. Key targets:
 | `make logs-errors` | Errors only |
 | `make kef-on/off/status` | Hardware control via kefctl (for manual testing) |
 | `make kef-raw-volume VOL=70` | Set volume directly via kefctl |
-| `make context-status/diff/log` | Git operations on the context repo |
-| `make metrics-tokens` | Extract token usage from JSONL session logs |
 
 ## Project structure
 
@@ -57,7 +55,7 @@ Use `make <target>` for common operations. Key targets:
 - **Source byte:** Packed bitfield — bit 7 = power, bit 6 = inverse L/R, bits 5-4 = standby mode, bits 3-0 = input source
 - **Standby management:** Use "never" standby while awake; switch to 20-minute standby before sleep
 - **Quirk:** Power off with 20-minute standby crashes the speaker — always switch to 60-minute standby before powering off
-- **Full protocol reference:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/v1/references/protocol.md`
+- **Full protocol reference:** in the planning docs (see Planning)
 
 ## Testing
 
@@ -70,58 +68,9 @@ Use `make <target>` for common operations. Key targets:
 - **Always ask for user confirmation before making any commit.**
 - Use **Conventional Commits** syntax (e.g. `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`).
 
-### context/ is a symlink — separate git repo
+- **Branches:** v1 work branches off `v1` and merges back to `v1` through a PR. `main` receives `v1` only when 1.0.0 is ready.
 
-`context/` in this project is a symlink to the context-engineering repo at
-`~/coding/projects/context-engineering/projects/kef-remote-context/`.
+## Planning
 
-Changes to any file under `context/` (status, design, plans, references, etc.) must be
-committed to the context repo, **not** to kef-remote. Commit context changes first,
-before committing any related kef-remote changes.
+This repo has issues switched off. Work items, the design, build plans and the agent-skill setup live outside it, and load through a gitignored `CLAUDE.local.md`.
 
-Use the Makefile targets to work with the context repo:
-
-```bash
-make context-status   # git status of context repo
-make context-diff     # git diff of context repo
-make context-add      # git add -A in context repo
-make context-commit MSG="docs: update v1 design"
-make context-log      # recent commits in context repo
-```
-
-## Project context
-
-Project status, plans, decisions, and learnings are tracked in the context repo:
-
-- **Status:** `~/coding/projects/context-engineering/projects/kef-remote-context/status.md`
-- **Plans:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/`
-- **Decisions:** `~/coding/projects/context-engineering/projects/kef-remote-context/decisions/`
-- **Learnings:** `~/coding/projects/context-engineering/projects/kef-remote-context/learnings/`
-- **Learning goals:** `~/coding/projects/context-engineering/projects/kef-remote-context/learnings/learning-goals.md`
-
-### v1 redesign (active)
-
-- **v1 context:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/v1/context.md`
-- **v1 status:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/v1/status.md`
-- **v1 design:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/v1/design.md`
-- **v1 references:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/v1/references/`
-- **Friction log:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/v1/meta/learnings/friction-log.md`
-- **Planning blueprint:** `~/coding/agents/skills/modules/planning-blueprint/references/blueprint.md` (centralised, v1.1)
-- **Active experiment:** `~/coding/projects/context-engineering/projects/kef-remote-context/plans/v1/meta/experiments/EX002-blueprint-v1.1.md`
-
-Read the v1 status file before starting any work on the v1 branch. Log process friction
-(blueprint vs reality mismatches, unclear boundaries) to the friction log.
-
-## Agent skills
-
-### Issue tracker
-
-Issues live in GitHub Issues on `dileeparanawake/kef-remote`, via the `gh` CLI. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-The five canonical triage roles, each label string equal to its name. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context: `CONTEXT.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.

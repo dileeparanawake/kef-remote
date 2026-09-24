@@ -3,7 +3,7 @@
 A native macOS app for controlling KEF LSX speakers
 via keyboard shortcuts with a floating HUD overlay.
 
-**Status:** v1 redesign in progress. See `context/plans/v1/` for design and build plans.
+**Status:** v1 redesign in progress.
 
 ## Features (planned for v1)
 
@@ -66,7 +66,7 @@ Built as a Swift package with two targets:
   window, lifecycle hooks, menu bar
 
 Five architectural layers: Infrastructure, Speaker Communication, Application,
-Input, UI. See `context/plans/v1/design.md` for the full design.
+Input, UI.
 
 ## Testing
 
@@ -81,7 +81,7 @@ Three levels: isolation (unit tests with injectable mocks), integration
 
 - [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts)
   by Sindre Sorhus (MIT License) — configurable global keyboard shortcuts
-- [kefctl](https://github.com/adetaylor/kefctl) — Perl reference
+- [kefctl](https://github.com/kraih/kefctl) — Perl reference
   implementation (Artistic License 2.0) for KEF speaker protocol details
 
 ## License
