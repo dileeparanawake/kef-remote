@@ -89,7 +89,7 @@ controller operations using a mock TCP connection.
 
 - [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts)
   by Sindre Sorhus (MIT License) — configurable global keyboard shortcuts
-- [kefctl](https://github.com/adetaylor/kefctl) — Perl reference
+- [kefctl](https://github.com/kraih/kefctl) — Perl reference
   implementation (Artistic License 2.0) for KEF speaker protocol details
 
 ## License
