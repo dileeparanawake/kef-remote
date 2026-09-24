@@ -63,6 +63,10 @@ Use `make <target>` for common operations. Key targets:
 - Three levels: isolation (unit tests), integration (boundary tests), manual (hardware verification)
 - Run all tests: `swift test --disable-sandbox`
 
+## Shell commands
+
+Run one shell command per tool call. Don't chain commands with `&&`, `||` or `;`, and don't wrap several steps in a script to run them as one. Each permission prompt should show one command that can be read at a glance.
+
 ## Git workflow
 
 - **Always ask for user confirmation before making any commit.**
