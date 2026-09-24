@@ -14,4 +14,5 @@ DerivedData/
 # Local-only agent and build config (never committed)
 CLAUDE.local.md
 .claude/skills/chart/
+.claude/skills/close-out/
 .claude/make.local
