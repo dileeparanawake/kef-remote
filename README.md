@@ -52,7 +52,6 @@ to configure:
 
 - Speaker IP address (or use auto-discovery)
 - Default input source and standby timeout
-- Wake/sleep behavior and power-off delay
 - Home network SSID
 - Keyboard shortcuts
 
@@ -63,7 +62,7 @@ Built as a Swift package with two targets:
 - **KEFRemoteCore** — Testable library: logging, protocol encoding, speaker
   communication, state model, command coalescing
 - **KEFRemote** — macOS app: HUD overlay, keyboard interception, settings
-  window, lifecycle hooks, menu bar
+  window, menu bar
 
 Five architectural layers: Infrastructure, Speaker Communication, Application,
 Input, UI.
