@@ -1,5 +1,7 @@
 # kef-remote
 
+> **Paused.** This branch is a rewrite of KEF Remote that is on hold. The working app is on `main`, and its releases are on the Releases page.
+
 A native macOS app for controlling KEF LSX speakers
 via keyboard shortcuts with a floating HUD overlay.
 
