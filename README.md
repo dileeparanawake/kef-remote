@@ -1,97 +1,153 @@
-# kef-remote
+# KEF Remote
 
-A native macOS background app for controlling KEF wireless speakers
-(LS50 Wireless and LSX) via keyboard shortcuts with a floating HUD overlay.
+A small macOS app that puts a KEF LSX speaker on your keyboard. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Two more shortcuts turn the speaker on and off.
 
-## Features
+It runs in the background with no window, Dock icon or menu bar icon.
 
-- **Media key control** — Hold Shift + press Volume Up/Down/Mute to control
-  the KEF speaker instead of system volume
-- **Power shortcuts** — Cmd+Shift+O to power on, Cmd+Shift+P to power off
-- **HUD overlay** — Floating translucent display showing volume, mute, and
-  power status (similar to macOS native OSD)
-- **Wake/sleep integration** — Automatically power on speakers when Mac wakes,
-  power off after configurable delay when Mac sleeps
-- **Network awareness** — Only active on your home Wi-Fi network (SSID-based)
-- **SSDP discovery** — Automatically finds speakers on the local network
-- **Background agent** — No dock icon, no menu bar; runs invisibly
+This is an early release with real rough edges. Read [Known limitations](#known-limitations) before you install it.
 
 ## Requirements
 
-- macOS 14 (Sonoma) or later
-- Accessibility permission (for media key interception)
-- KEF LS50 Wireless or LSX speaker on the same network
+- macOS 14 (Sonoma) or later.
+- A KEF LSX on the same network as your Mac.
+- Accessibility permission, so the app can see the volume keys.
 
-## Building
+I've only tested it on an original LSX. The LS50 Wireless uses the same control protocol, so it may work, but I haven't tried one. Newer models such as the LSX II and LS50 Wireless II use a different control system and aren't supported.
 
-```bash
-swift build --disable-sandbox
+## Install
+
+### 1. Download
+
+Download the zip from the [Releases](https://github.com/dileeparanawake/kef-remote/releases) page, unzip it, and move `KEFRemote.app` to your Applications folder.
+
+### 2. Tell it where the speaker is
+
+KEF Remote can't find the speaker by itself yet, so you give it the speaker's IP address before you open it.
+
+To find the IP, open your router's admin page and look at its list of connected devices for one named LSX or KEF. While you're there, reserve that IP for the speaker (routers often call this a DHCP reservation). KEF Remote won't notice if the speaker's IP changes.
+
+Then, in Terminal, create the config file, putting your speaker's IP in place of `192.168.1.50`:
+
+```sh
+mkdir -p ~/.kef-remote
+cat > ~/.kef-remote/config.json <<'EOF'
+{
+  "app": { "launchAtLogin": false },
+  "defaults": { "input": 11, "standby": 2 },
+  "lifecycle": { "powerOffDelay": 60, "powerOffSleep": false, "powerOnWake": false },
+  "network": {},
+  "speaker": { "lastKnownIp": "192.168.1.50" }
+}
+EOF
 ```
 
-## Running
+Leave everything except the IP as it is. Every section has to be there and the file has to be valid JSON. If anything's wrong, the app quietly falls back to its defaults and loses the IP.
 
-```bash
-swift run --disable-sandbox KEFRemote
+The app reads this file only when it starts, so quit and reopen it after any change.
+
+### 3. Open it the first time
+
+KEF Remote is signed with a free Apple developer account rather than a paid Developer ID, so macOS can't check it with Apple and blocks the first open.
+
+#### macOS 15 (Sequoia) and later
+
+1. Open `KEFRemote.app`. macOS says it wasn't opened. Click Done.
+2. Open System Settings > Privacy & Security and scroll down to Security.
+3. Click Open Anyway. It only shows for about an hour after the blocked open.
+4. Enter your password, then click Open.
+
+#### macOS 14 (Sonoma)
+
+Control-click `KEFRemote.app` in Finder, choose Open, then click Open.
+
+#### Any version, from Terminal
+
+Remove the quarantine flag macOS adds to downloads, and it opens normally:
+
+```sh
+xattr -d com.apple.quarantine /Applications/KEFRemote.app
 ```
 
-On first launch, the app will prompt for Accessibility permission. Grant it
-in System Settings > Privacy & Security > Accessibility.
+You only need to do this once.
 
-Re-launch the app while running to open the settings window.
+### 4. Allow Accessibility
 
-## Configuration
+On first open, macOS asks to give KEF Remote Accessibility access. Open System Settings from the prompt and turn KEFRemote on under Privacy & Security > Accessibility.
 
-Settings are stored at `~/.kef-remote/config.json`. Use the settings window
-to configure:
+Then quit KEF Remote (Cmd+Shift+Q) and open it again. It only starts listening for the volume keys at launch, so the permission takes effect after a restart.
 
-- Speaker IP address (or use auto-discovery)
-- Default input source and standby timeout
-- Wake/sleep behavior and power-off delay
-- Home network SSID
-- Keyboard shortcuts
+### 5. Allow local network access
 
-## Keyboard Shortcuts
+On macOS 15 and later, macOS asks whether KEF Remote can find and connect to devices on your local network. Click Allow, or it can't reach the speaker. If you missed the prompt, turn it on in System Settings > Privacy & Security > Local Network.
 
-| Shortcut | Action |
-|----------|--------|
-| Shift + Volume Up | Raise KEF volume |
-| Shift + Volume Down | Lower KEF volume |
-| Shift + Mute | Toggle KEF mute |
-| Cmd+Shift+O | Power on |
-| Cmd+Shift+P | Power off |
-| Cmd+Shift+Q | Quit |
+## Shortcuts
 
-The modifier key (default: Shift) and power/quit shortcuts are configurable
-in settings.
+| Shortcut | What it does |
+|---|---|
+| Control + Volume Up (F12) | Speaker volume up by 5 |
+| Control + Volume Down (F11) | Speaker volume down by 5 |
+| Control + Mute (F10) | Mute or unmute the speaker |
+| Cmd + Shift + O | Turn the speaker on |
+| Cmd + Shift + P | Turn the speaker off |
+| Cmd + Shift + Q | Quit KEF Remote |
 
-## Architecture
+If your function keys are set to work as standard F keys, hold Fn as well for the volume keys.
 
-Built as a Swift package with two targets:
+Cmd+Shift+Q is also the macOS shortcut for Log Out. While KEF Remote is running it should get the shortcut first. If macOS asks whether you want to log out instead, click Cancel and quit KEF Remote from Activity Monitor.
 
-- **KEFRemoteCore** — Testable library with protocol encoding, speaker
-  controller, config model, TCP connection, and SSDP discovery
-- **KEFRemote** — macOS app with HUD overlay, hotkey interception, settings
-  window, lifecycle hooks, and network monitoring
+To use a different key from Control, run this in Terminal with `shift`, `option` or `command`, then quit and reopen the app:
 
-KEF speakers communicate over TCP on port 50001 using 3-4 byte hex commands.
-The protocol uses two registers: 0x25 (volume) and 0x30 (source/power/standby).
+```sh
+defaults write com.dileeparanawake.KEFRemote mediaKeyModifier option
+```
 
-## Testing
+## Known limitations
 
-```bash
+| Limitation | What to do for now |
+|---|---|
+| It can't find the speaker on the network by itself. | Set the speaker's IP in `~/.kef-remote/config.json` (see [Install](#2-tell-it-where-the-speaker-is)). |
+| If the speaker's IP changes, it keeps trying the old one. | Reserve an IP for the speaker in your router, or update the config and restart. |
+| The settings window doesn't open. | Edit `~/.kef-remote/config.json` and restart the app. |
+| There's no Dock or menu bar icon, so no sign it's running. | Press Control + Volume Up. If the volume display appears, it's running. Or look for KEFRemote in Activity Monitor. |
+| Quitting needs a shortcut. | Cmd+Shift+Q, or quit KEFRemote in Activity Monitor. |
+| It doesn't start at login. | Add it in System Settings > General > Login Items. |
+| Fast repeated key presses can get lost. After an error, presses are ignored for about two seconds while it reconnects. | Press the keys one at a time. |
+| Turning the speaker on at wake and off at sleep is in the code, but off by default and untested. | Leave `powerOnWake` and `powerOffSleep` set to `false`. |
+
+## Build from source
+
+You'll need Xcode on macOS 14 or later.
+
+1. Clone this repo and open `KEFRemote.xcodeproj` in Xcode.
+2. In the KEFRemote target's Signing & Capabilities, choose your own team. If Xcode rejects the bundle identifier, change it to something unique.
+3. Press Cmd+R to build and run.
+
+Run the tests with:
+
+```sh
 swift test --disable-sandbox
 ```
 
-68 unit tests cover protocol encoding, volume/source codecs, and speaker
-controller operations using a mock TCP connection.
+There are 97 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, and the speaker commands against a mock connection. Everything that touches the real speaker, the keys or the display was tested by hand.
+
+## How it works
+
+The app talks to the speaker over TCP on port 50001, the protocol the KEF Control app uses. Volume and mute live in one register, and power, input and standby are packed into the bits of another.
+
+The code is a Swift package with two targets:
+
+- **KEFRemoteCore**: the protocol, speaker commands, TCP connection and config, with no UI.
+- **KEFRemote**: the macOS app, with volume key interception, the on-screen display and the shortcuts.
+
+## How it was built
+
+I built KEF Remote with AI coding agents, and tested it against my own LSX.
 
 ## Credits
 
-- [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts)
-  by Sindre Sorhus (MIT License) — configurable global keyboard shortcuts
-- [kefctl](https://github.com/kraih/kefctl) — Perl reference
-  implementation (Artistic License 2.0) for KEF speaker protocol details
+- [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) by Sindre Sorhus (MIT License), for the global shortcuts.
+- [kefctl](https://github.com/kraih/kefctl), a Perl reference implementation (Artistic License 2.0), for the details of the KEF speaker protocol.
 
-## License
+## Licence
 
-MIT
+MIT. See [LICENSE](LICENSE).
