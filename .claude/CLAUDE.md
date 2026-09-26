@@ -64,13 +64,9 @@ Use `make <target>` for common operations. Key targets:
 - Hardware verification: manual testing against a real speaker
 - Run all tests: `swift test --disable-sandbox`
 
-## Shell commands
-
-Run one shell command per tool call. Don't chain commands with `&&`, `||` or `;`, and don't wrap several steps in a script to run them as one. Each permission prompt should show one command that can be read at a glance.
-
 ## Git workflow
 
-- **Always ask for user confirmation before making any commit.**
+- Commit when a unit of work is done; push only when asked.
 - Use **Conventional Commits** syntax (e.g. `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`).
 - **Branches:** `main` holds the released app. Work branches off `main` and merges back through a PR.
 
