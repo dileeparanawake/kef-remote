@@ -18,7 +18,7 @@ I've only tested it on an original LSX. The LS50 Wireless uses the same control 
 
 ### 1. Download
 
-Download the zip from the [Releases](https://github.com/dileeparanawake/kef-remote/releases) page, unzip it, and move `KEFRemote.app` to your Applications folder.
+Download the zip from the [Releases](https://github.com/dileeparanawake/kef-remote/releases) page, unzip it by double-clicking it in Finder, and move `KEFRemote.app` to your Applications folder.
 
 ### 2. Tell it where the speaker is
 
@@ -26,7 +26,7 @@ KEF Remote can't find the speaker by itself yet, so you give it the speaker's IP
 
 To find the IP, open your router's admin page and look at its list of connected devices for one named LSX or KEF. While you're there, reserve that IP for the speaker (routers often call this a DHCP reservation). KEF Remote won't notice if the speaker's IP changes.
 
-Then, in Terminal, create the config file, putting your speaker's IP in place of `192.168.1.50`:
+Then, in Terminal, create the config file, putting your speaker's IP in place of `192.168.1.50`. This works in zsh, the macOS default shell. If you use another shell, such as fish, type `zsh` first.
 
 ```sh
 mkdir -p ~/.kef-remote
@@ -65,10 +65,10 @@ Control-click `KEFRemote.app` in Finder, choose Open, then click Open.
 Remove the quarantine flag macOS adds to downloads, and it opens normally:
 
 ```sh
-xattr -d com.apple.quarantine /Applications/KEFRemote.app
+xattr -dr com.apple.quarantine /Applications/KEFRemote.app
 ```
 
-You only need to do this once.
+You only need to do this once. If it says "No such xattr", the flag is already gone.
 
 ### 4. Allow Accessibility
 
