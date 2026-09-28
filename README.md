@@ -49,8 +49,6 @@ It prints the IP it saved, then "Saved". If you see an error instead, the file i
 
 ### 3. Open it the first time
 
-KEF Remote is signed with a free Apple developer account rather than a paid Developer ID. Signing proves who built it, but macOS only skips this check for apps Apple has also notarised, so it blocks the first open. That's expected.
-
 #### macOS 15 (Sequoia) and later
 
 1. Open `KEFRemote.app`. macOS says it wasn't opened. Click Done.
