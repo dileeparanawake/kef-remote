@@ -139,10 +139,6 @@ The code is a Swift package with two targets:
 - **KEFRemoteCore**: the protocol, speaker commands, TCP connection and config, with no UI.
 - **KEFRemote**: the macOS app, with volume key interception, the on-screen display and the shortcuts.
 
-## How it was built
-
-I built KEF Remote with AI coding agents, and tested it against my own LSX.
-
 ## Credits
 
 - [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) by Sindre Sorhus (MIT License), for the global shortcuts.
