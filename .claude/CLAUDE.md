@@ -66,7 +66,8 @@ Use `make <target>` for common operations. Key targets:
 
 ## Git workflow
 
-- Commit when a unit of work is done; push only when asked.
+- Commit when a unit of work is done.
+- **Push once, at the end of each turn**, after all work (sub-agents too) is finished. Never push mid-work: it interrupts the flow. The push asks Dileepa's permission, and that prompt is the gate.
 - Use **Conventional Commits** syntax (e.g. `feat:`, `fix:`, `docs:`, `chore:`, `refactor:`, `test:`).
 - **Branches:** `main` holds the released app. Work branches off `main` and merges back through a PR.
 
