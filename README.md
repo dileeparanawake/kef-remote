@@ -24,30 +24,32 @@ Download the zip from the [Releases](https://github.com/dileeparanawake/kef-remo
 
 KEF Remote can't find the speaker by itself yet, so you give it the speaker's IP address before you open it.
 
-To find the IP, open your router's admin page and look at its list of connected devices for one named LSX or KEF. While you're there, reserve that IP for the speaker (routers often call this a DHCP reservation). KEF Remote won't notice if the speaker's IP changes.
+To find the IP, look in KEF's own app on your phone: it shows the speaker's IP in the speaker's settings while it's connected. Or open your router's admin page and look at its list of connected devices for one named LSX or KEF. While you're there, reserve that IP for the speaker (routers often call this a DHCP reservation), because KEF Remote won't notice if the speaker's IP changes.
 
-Then, in Terminal, create the config file, putting your speaker's IP in place of `192.168.1.50`. This works in zsh, the macOS default shell. If you use another shell, such as fish, type `zsh` first.
+Then copy the block below into Terminal. First change the IP on the first line to your speaker's: open a text editor, paste the block, edit the first line, then copy it into Terminal. It works in zsh, the macOS default shell; if you use another shell, such as fish, type `zsh` first.
 
 ```sh
+KEF_IP=192.168.1.50
 mkdir -p ~/.kef-remote
-cat > ~/.kef-remote/config.json <<'EOF'
+cat > ~/.kef-remote/config.json <<EOF
 {
   "app": { "launchAtLogin": false },
   "defaults": { "input": 11, "standby": 2 },
   "lifecycle": { "powerOffDelay": 60, "powerOffSleep": false, "powerOnWake": false },
   "network": {},
-  "speaker": { "lastKnownIp": "192.168.1.50" }
+  "speaker": { "lastKnownIp": "$KEF_IP" }
 }
 EOF
+plutil -extract speaker.lastKnownIp raw ~/.kef-remote/config.json && echo "Saved. If KEF Remote is open, quit it (Cmd+Shift+Q) and open it again."
 ```
 
-Leave everything except the IP as it is. Every section has to be there and the file has to be valid JSON. If anything's wrong, the app quietly falls back to its defaults and loses the IP.
+It prints the IP it saved, then "Saved". If you see an error instead, the file isn't valid: run the block again.
 
-The app reads this file only when it starts, so quit and reopen it after any change.
+**The app reads this file only when it starts.** After any change, quit KEF Remote (Cmd+Shift+Q) and open it again.
 
 ### 3. Open it the first time
 
-KEF Remote is signed with a free Apple developer account rather than a paid Developer ID, so macOS can't check it with Apple and blocks the first open.
+KEF Remote is signed with a free Apple developer account rather than a paid Developer ID. Signing proves who built it, but macOS only skips this check for apps Apple has also notarised, so it blocks the first open. That's expected.
 
 #### macOS 15 (Sequoia) and later
 
@@ -79,6 +81,10 @@ Then quit KEF Remote (Cmd+Shift+Q) and open it again. It only starts listening f
 ### 5. Allow local network access
 
 On macOS 15 and later, macOS asks whether KEF Remote can find and connect to devices on your local network. Click Allow, or it can't reach the speaker. If you missed the prompt, turn it on in System Settings > Privacy & Security > Local Network.
+
+### 6. Check it's running
+
+KEF Remote has no window, Dock icon or menu bar icon, so nothing appears when it opens. To check, press Cmd+Shift+O to turn the speaker on, then Control + volume up: a small panel in the middle of the screen shows the volume. If nothing happens, check the IP (step 2) and that you reopened the app after granting Accessibility (step 4).
 
 ## Shortcuts
 
