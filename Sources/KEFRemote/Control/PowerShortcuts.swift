@@ -22,11 +22,9 @@ extension KeyboardShortcuts.Name {
 /// - Power Off: Cmd+Shift+P
 /// - Quit: Cmd+Shift+Q
 ///
-/// Shortcuts are user-configurable via the settings window (Task 21)
-/// using `KeyboardShortcuts.RecorderCocoa` views. The actual speaker
-/// commands are NOT wired up here -- that happens in the integration
-/// task (Task 22). This class only provides the shortcut registration
-/// and callback mechanism.
+/// Shortcuts are user-configurable in the settings window's Hotkeys
+/// tab. This class only registers shortcuts and fires callbacks.
+/// `AppDelegate` turns the callbacks into speaker commands.
 ///
 /// Usage:
 /// ```swift

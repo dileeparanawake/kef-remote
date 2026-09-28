@@ -15,9 +15,8 @@ import os
 /// to 20-minute standby before powering off on sleep (so the speaker
 /// eventually enters standby on its own if the Mac doesn't wake up).
 ///
-/// The actual speaker commands are NOT wired up here -- that happens
-/// in the integration task (Task 22). This class only provides the
-/// lifecycle monitoring infrastructure and callback mechanism.
+/// This class only watches wake/sleep and fires callbacks.
+/// `AppDelegate` turns the callbacks into speaker commands.
 ///
 /// Usage:
 /// ```swift

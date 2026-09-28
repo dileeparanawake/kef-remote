@@ -11,18 +11,18 @@ import SwiftUI
 /// `~/.kef-remote/config.json` on init and saves back on every change
 /// via the view's `onChange` modifier.
 ///
-/// **Note:** This view model is not wired to the speaker — it only
-/// reads/writes the persisted configuration. The integration task
-/// (Task 22) will connect config changes to the live speaker controller.
+/// **Note:** This view model only reads and writes the config file.
+/// It does not talk to the speaker. `AppDelegate` reads the config at
+/// launch, so most changes take effect after a relaunch.
 final class SettingsViewModel: ObservableObject {
     @Published var config: AppConfig
 
-    /// Placeholder connection status. Will be driven by the speaker
-    /// controller in Task 22.
+    /// Placeholder connection status. Not yet driven by the speaker
+    /// controller.
     @Published var connectionStatus: String = "Not connected"
 
-    /// Placeholder for discovery in progress. Will be driven by
-    /// SSDPDiscovery in Task 22.
+    /// Placeholder for discovery in progress. Not yet driven by
+    /// SSDPDiscovery.
     @Published var isDiscovering: Bool = false
 
     init() {
@@ -143,7 +143,7 @@ struct SettingsView: View {
             Section("Discovery") {
                 HStack {
                     Button("Discover") {
-                        // Placeholder — will be wired to SSDPDiscovery in Task 22.
+                        // Placeholder — not yet wired to SSDPDiscovery.
                         viewModel.isDiscovering = true
                     }
                     .disabled(viewModel.isDiscovering)

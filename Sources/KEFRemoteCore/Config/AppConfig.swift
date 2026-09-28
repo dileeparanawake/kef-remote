@@ -2,7 +2,7 @@ import Foundation
 
 /// Persisted app configuration. Stored as JSON at ~/.kef-remote/config.json.
 ///
-/// See design doc Section 5.3 for the full schema.
+/// The nested structs below are the full schema.
 public struct AppConfig: Codable, Equatable {
     public var speaker: SpeakerConfig?
     public var defaults: DefaultsConfig

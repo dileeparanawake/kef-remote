@@ -70,7 +70,7 @@ struct AppConfigTests {
         #expect(config.network.homeSSID == nil)
     }
 
-    @Test(.disabled("InputSource and StandbyMode use UInt8 raw values — string decoding requires custom Codable (see 2026-03-03-config-and-runtime-fixes.md)"))
+    @Test(.disabled("InputSource and StandbyMode use UInt8 raw values — string decoding requires custom Codable"))
     func decodesConfigWithStringEnumValues() throws {
         // Config files should support human-readable strings like
         // "optical" and "never" instead of requiring integer raw

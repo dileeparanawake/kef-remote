@@ -25,9 +25,9 @@ import os
 /// try monitor.start()
 /// ```
 ///
-/// The actual integration with hotkeys and lifecycle hooks is NOT wired
-/// here — that happens in the integration task (Task 22). This class
-/// only provides the monitoring infrastructure and state publishing.
+/// This class only watches the network and publishes state.
+/// `AppDelegate` activates or deactivates hotkeys and lifecycle hooks
+/// in response.
 final class NetworkMonitor: NSObject {
 
     // MARK: - Types

@@ -28,9 +28,8 @@ import os
 /// interceptor.start()
 /// ```
 ///
-/// The actual speaker commands are NOT wired up here — that happens
-/// in the integration task. This class only provides the interception
-/// infrastructure and callback mechanism.
+/// This class only intercepts keys and fires callbacks. `AppDelegate`
+/// turns the callbacks into speaker commands.
 final class MediaKeyInterceptor {
 
     // MARK: - Types
@@ -71,9 +70,7 @@ final class MediaKeyInterceptor {
     /// Called when a media key is intercepted while the modifier is held.
     ///
     /// This callback is invoked on the main thread (the run loop
-    /// thread where the event tap is installed). The action is NOT
-    /// wired to speaker commands yet — that happens in the integration
-    /// task.
+    /// thread where the event tap is installed).
     var onMediaKey: ((MediaKeyAction) -> Void)?
 
     /// The modifier key that must be held to intercept media keys.
