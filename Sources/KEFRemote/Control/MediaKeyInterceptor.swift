@@ -6,7 +6,7 @@ import os
 /// Intercepts media key events when a modifier key is held.
 ///
 /// Uses a `CGEvent` tap to monitor system-defined events. When the
-/// configured modifier (default: Shift) is held and a media key
+/// configured modifier (default: Control) is held and a media key
 /// (volume up, volume down, mute) is pressed, the event is consumed
 /// and the appropriate callback is triggered instead of the system
 /// handling it.
@@ -78,10 +78,10 @@ final class MediaKeyInterceptor {
 
     /// The modifier key that must be held to intercept media keys.
     ///
-    /// Defaults to Shift. When this modifier is held and a media key
+    /// Defaults to Control. When this modifier is held and a media key
     /// is pressed, the event is consumed (not passed to the system)
     /// and ``onMediaKey`` is called.
-    var modifier: CGEventFlags = .maskControl
+    var modifier: CGEventFlags = MediaKeyModifier.defaultChoice.eventFlags
 
     /// The Mach port for the CGEvent tap.
     fileprivate var eventTap: CFMachPort?

@@ -135,24 +135,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         applyMediaKeyModifier()
     }
 
-    /// Read the media key modifier preference from UserDefaults and apply
-    /// it to the interceptor.
-    ///
-    /// The SettingsView stores the modifier choice in UserDefaults under
-    /// the key "mediaKeyModifier" as one of: "shift", "control", "option",
-    /// "command". We map that to the corresponding CGEventFlags value.
+    /// Apply the saved media key modifier (set in the settings window)
+    /// to the interceptor. Read once at launch.
     private func applyMediaKeyModifier() {
-        let stored = UserDefaults.standard.string(forKey: "mediaKeyModifier") ?? "control"
-        switch stored {
-        case "control":
-            mediaKeys.modifier = .maskControl
-        case "option":
-            mediaKeys.modifier = .maskAlternate
-        case "command":
-            mediaKeys.modifier = .maskCommand
-        default:
-            mediaKeys.modifier = .maskShift
-        }
+        mediaKeys.modifier = MediaKeyModifier.stored.eventFlags
     }
 
     private var configFileURL: URL {

@@ -202,10 +202,9 @@ struct SettingsView: View {
         Form {
             Section("Media Key Modifier") {
                 Picker("Modifier", selection: modifierBinding) {
-                    Text("Shift").tag(ModifierChoice.shift)
-                    Text("Control").tag(ModifierChoice.control)
-                    Text("Option").tag(ModifierChoice.option)
-                    Text("Command").tag(ModifierChoice.command)
+                    ForEach(MediaKeyModifier.allCases, id: \.self) { choice in
+                        Text(choice.displayName).tag(choice)
+                    }
                 }
                 .pickerStyle(.menu)
 
@@ -314,36 +313,14 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Modifier choice (for media key interception)
+    // MARK: - Media key modifier
 
-    /// Represents the modifier key choices for media key interception.
-    ///
-    /// This is a UI-only enum for the settings picker. The actual
-    /// CGEventFlags mapping happens in MediaKeyInterceptor, which reads
-    /// from a stored preference. For now, the modifier choice is stored
-    /// locally via `@AppStorage` — it will be wired to the interceptor
-    /// in Task 22.
-    private enum ModifierChoice: String, CaseIterable {
-        case shift = "shift"
-        case control = "control"
-        case option = "option"
-        case command = "command"
-    }
-
-    /// Binding that stores the media key modifier preference.
-    ///
-    /// Uses `@AppStorage` style persistence via UserDefaults. The
-    /// actual mapping to `CGEventFlags` is handled by the integration
-    /// layer in Task 22.
-    private var modifierBinding: Binding<ModifierChoice> {
+    /// Reads and writes the saved ``MediaKeyModifier``. `AppDelegate`
+    /// applies it to the interceptor at launch.
+    private var modifierBinding: Binding<MediaKeyModifier> {
         Binding(
-            get: {
-                let stored = UserDefaults.standard.string(forKey: "mediaKeyModifier") ?? "shift"
-                return ModifierChoice(rawValue: stored) ?? .shift
-            },
-            set: { newValue in
-                UserDefaults.standard.set(newValue.rawValue, forKey: "mediaKeyModifier")
-            }
+            get: { MediaKeyModifier.stored },
+            set: { MediaKeyModifier.store($0) }
         )
     }
 }
