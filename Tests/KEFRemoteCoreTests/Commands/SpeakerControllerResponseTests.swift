@@ -2,7 +2,7 @@ import Testing
 import Foundation
 @testable import KEFRemoteCore
 
-struct SpeakerControllerLayer2Tests {
+struct SpeakerControllerResponseTests {
 
     // MARK: - Helpers
 
