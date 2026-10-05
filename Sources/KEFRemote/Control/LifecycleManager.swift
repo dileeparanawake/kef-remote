@@ -7,13 +7,14 @@ import os
 ///
 /// When the Mac goes to sleep, a configurable delay timer starts.
 /// If the Mac wakes before the timer fires, the timer is cancelled
-/// and the speaker is powered on. If the timer fires (after wake from
-/// a real sleep), the speaker is powered off with a 20-minute standby.
+/// and the speaker is powered on. If the timer fires, it asks for
+/// 20-minute standby, then for power-off.
 ///
 /// The "dynamic standby" feature sets the speaker to "never" standby
-/// while the Mac is awake (so it stays on indefinitely) and switches
-/// to 20-minute standby before powering off on sleep (so the speaker
-/// eventually enters standby on its own if the Mac doesn't wake up).
+/// while the Mac is awake (so it stays on indefinitely) and asks for
+/// 20-minute standby when the timer fires. Note: when power-off on
+/// sleep is on, `SpeakerController.powerOff()` then switches 20 to 60
+/// minutes first, because powering off at 20 minutes crashes the speaker.
 ///
 /// This class only watches wake/sleep and fires callbacks.
 /// `AppDelegate` turns the callbacks into speaker commands.
