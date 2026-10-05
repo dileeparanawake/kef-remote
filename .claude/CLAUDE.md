@@ -31,6 +31,7 @@ Use `make <target>` for common operations. Key targets:
 | `make discover` | Find the speaker over SSDP and print every step (`MAC=...` to match one) |
 | `make app-icon` | Redraw the app icon PNGs from `Design/AppIcon.svg` |
 | `make run` | Launch most recently built debug app |
+| `make test-build` | Quit the running app, build this branch with `xcodebuild`, and launch it for a hand test |
 | `make package` | Zip the latest Release build into `dist/KEFRemote-<version>.zip` (`ditto --norsrc --keepParent`) |
 | `make kill` | Stop all running KEFRemote instances |
 | `make logs-recent` | Last 200 lines from log file (quick agent snapshot) |

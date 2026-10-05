@@ -28,6 +28,18 @@ run:
 	@echo "Launching: $(APP_BUNDLE)"
 	open "$(APP_BUNDLE)"
 
+# Build this checkout's branch and launch it, ready for a hand test.
+# Quits any running KEF Remote first. No Xcode needed. Run it from the
+# checkout or worktree that holds the branch under test.
+TEST_BUILD_DIR = .build/test-build
+TEST_APP = $(TEST_BUILD_DIR)/Build/Products/Debug/KEFRemote.app
+test-build: kill
+	@echo "Building branch: $$(git branch --show-current) ($$(git rev-parse --short HEAD))"
+	xcodebuild -project KEFRemote.xcodeproj -scheme KEFRemote -configuration Debug -derivedDataPath $(TEST_BUILD_DIR) build -quiet
+	open "$(TEST_APP)"
+	@echo "Running: $(TEST_APP)"
+	@echo "Watch the log with: make logs-tail"
+
 # --- Release packaging ---
 
 RELEASE_APP = $(shell ls -td $(DERIVED_DATA)/KEFRemote-*/Build/Products/Release/KEFRemote.app 2>/dev/null | head -1)
@@ -175,4 +187,4 @@ kef-raw-standby:
 	@test -n "$(MIN)" || (echo "Usage: make kef-raw-standby MIN=<0|20|60>"; exit 1)
 	$(KEFCTL) --standby $(MIN)
 
-.PHONY: test discover app-icon run package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
+.PHONY: test discover app-icon run test-build package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
