@@ -7,8 +7,8 @@ import os
 /// This is the integration hub that wires all components together:
 /// 1. Loads config on launch
 /// 2. Starts network monitor to determine if on the home network
-/// 3. When active: sets up the speaker connection (it opens on the
-///    first command), registers hotkeys, starts lifecycle hooks
+/// 3. When active: sets up the speaker connection and checks it answers,
+///    registers hotkeys, starts lifecycle hooks
 /// 4. Hotkey triggers flow through SpeakerController and produce HUD feedback
 /// 5. On a failed check of the saved IP, or a failed command: in Auto
 ///    discovery, rediscovers if the speaker was unreachable (it may have a
@@ -329,9 +329,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Find the speaker with SSDP, save its IP (and MAC, if none was saved),
-    /// then connect, or keep the connection if it is already on that IP. Runs when no IP is saved, when a command can't reach
-    /// the speaker (it may have a new IP), from Discover in settings and
-    /// from Find speaker in the menu.
+    /// then connect, or keep the connection if it is already on that IP.
+    /// Runs when no IP is saved, when a command can't reach the speaker
+    /// (it may have a new IP), from Discover in settings and from Find
+    /// speaker in the menu.
     private func runDiscovery(trigger: String) async -> DiscoveryOutcome {
         guard !isDiscovering else {
             logger.info("Discovery already running")

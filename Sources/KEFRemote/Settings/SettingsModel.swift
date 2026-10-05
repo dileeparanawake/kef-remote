@@ -16,8 +16,9 @@ struct SettingsActions {
 }
 
 /// State for the settings window: the discovery mode, the IP field,
-/// discovery, and the media key modifier. Shortcuts are stored by the KeyboardShortcuts
-/// recorders themselves; the model only logs each change.
+/// discovery, the media key modifier, and refusing a shortcut that is
+/// already taken. Shortcuts are stored by the KeyboardShortcuts
+/// recorders themselves; the model checks and logs each change.
 ///
 /// Every action is logged under the `settings` category.
 @MainActor
