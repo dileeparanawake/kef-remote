@@ -338,6 +338,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Media key callbacks
 
+    /// How many percent one volume key press moves the speaker.
+    private static let volumeStep = 5
+
     private func setupMediaKeyCallbacks() {
         mediaKeys.onMediaKey = { [weak self] action in
             guard let self, let controller = self.controller else { return }
@@ -346,13 +349,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 do {
                     switch action {
                     case .volumeUp:
-                        try await controller.raiseVolume(by: 5)
+                        try await controller.raiseVolume(by: Self.volumeStep)
                         let state = try await controller.getVolumeState()
                         await MainActor.run {
                             HUDOverlay.show(.volume(level: state.level))
                         }
                     case .volumeDown:
-                        try await controller.lowerVolume(by: 5)
+                        try await controller.lowerVolume(by: Self.volumeStep)
                         let state = try await controller.getVolumeState()
                         await MainActor.run {
                             HUDOverlay.show(.volume(level: state.level))
