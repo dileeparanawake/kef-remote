@@ -7,7 +7,8 @@ Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) o
 Two targets in a Swift package:
 
 - **KEFRemoteCore** (library) — Testable protocol, command, and controller logic. No UI, no system frameworks beyond Foundation.
-- **KEFRemote** (executable) — macOS app with HUD overlay, hotkey interception, settings window, and system integration.
+- **KEFRemoteCore** folders: `Protocol/` (byte encoding), `Commands/` (`SpeakerController`), `Connection/` (TCP), `Config/` (`config.json`), `Discovery/` (SSDP), `Logging/`.
+- **KEFRemote** (executable) — macOS app with HUD overlay, hotkey interception (`Control/`), logging to file (`Logging/`), and system integration. A settings view exists (`UI/SettingsView.swift`) but its window doesn't open yet.
 
 **Tech stack:** Swift, macOS 14+, SPM + Xcode project, Network.framework (TCP), CoreWLAN, KeyboardShortcuts, CGEvent tap, Swift Testing.
 
@@ -27,6 +28,7 @@ Use `make <target>` for common operations. Key targets:
 |--------|---------|
 | `make test` | Run test suite (`swift test --disable-sandbox`) |
 | `make run` | Launch most recently built debug app |
+| `make package` | Zip the latest Release build into `dist/KEFRemote-<version>.zip` (`ditto --norsrc --keepParent`) |
 | `make kill` | Stop all running KEFRemote instances |
 | `make logs-recent` | Last 200 lines from log file (quick agent snapshot) |
 | `make logs-tail` | Live stream from log file |
