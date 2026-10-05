@@ -1,14 +1,14 @@
 # KEF Remote
 
-Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) over TCP. Runs as a background agent (LSUIElement=true) with no Dock icon. A menu bar icon shows whether the speaker is connected (it answered the last exchange), offers Find speaker when it isn't, and opens Settings (a plain `NSWindow`). It intercepts media keys and shows a HUD overlay for volume/source feedback. Menu and settings actions log under the `menubar` and `settings` categories.
+Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) over TCP. Runs as a background agent (LSUIElement=true) with no Dock icon. A menu bar icon shows whether the speaker is connected (it answered the last exchange), with a red dot when something needs the user and a brief green dot on connecting. It offers Find speaker when it isn't connected, and opens Settings (a plain `NSWindow`). It intercepts media keys and shows a HUD overlay for volume/source feedback. Menu and settings actions log under the `menubar` and `settings` categories.
 
 ## Codebase
 
 Three targets in a Swift package, plus tests:
 
 - **KEFRemoteCore** (library) — Testable protocol, command, and controller logic. No UI, no system frameworks beyond Foundation and Network.
-- **KEFRemoteCore** folders: `Protocol/` (byte encoding), `Commands/` (`SpeakerController`), `Connection/` (TCP), `Config/` (`config.json`), `Discovery/` (SSDP), `Logging/`, `MenuBar/` and `HUD/` (what the icon and HUD show), `Network/` (home-network rule).
-- **KEFRemote** (executable) — macOS app: HUD overlay (`UI/`), hotkeys, wake/sleep and Wi-Fi watching (`Control/`), menu bar (`MenuBar/`), settings window (`Settings/`), logging to file (`Logging/`). `AppDelegate` wires them together.
+- **KEFRemoteCore** folders: `Protocol/` (byte encoding), `Commands/` (`SpeakerController`, the connection check), `Connection/` (TCP, reply timeout), `Config/` (`config.json`, Auto/Manual discovery), `Discovery/` (SSDP), `Logging/`, `MenuBar/` and `HUD/` (what the icon and HUD show), `Network/` (home-network rule, Local Network permission), `Shortcuts/` (what each global shortcut does), `Utilities/`.
+- **KEFRemote** (executable) — macOS app: HUD overlay (`UI/`), media keys and global shortcuts, wake/sleep and Wi-Fi watching (`Control/`), menu bar (`MenuBar/`), settings window (`Settings/`), logging to file (`Logging/`). `AppDelegate` wires them together.
 - **kef-discover** (executable) — runs discovery once and prints each step (`make discover`).
 
 **Tech stack:** Swift, macOS 14+, SPM + Xcode project, Network.framework (TCP), CoreWLAN, KeyboardShortcuts, CGEvent tap, Swift Testing.
@@ -56,7 +56,7 @@ Use `make <target>` for common operations. Key targets:
 - `Design/` — Icon source SVG and the script that renders it
 - `Sources/KEFRemote/KEFRemote.entitlements` — Permission declarations
 - `Tests/KEFRemoteCoreTests/` — Unit tests for core library
-- `~/.kef-remote/config.json` — User config (speaker IP, MAC, preferences)
+- `~/.kef-remote/config.json` — User config (speaker IP, MAC, `discovery`: `auto` or `manual`, preferences). Shortcuts are saved by KeyboardShortcuts in UserDefaults
 
 ## KEF speaker protocol
 
