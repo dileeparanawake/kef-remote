@@ -1,7 +1,9 @@
 import AppKit
+import KEFRemoteCore
 
 /// Draws the menu bar icon: an SF Symbol at the size of the system's own
-/// menu bar icons, with a red dot bottom-right when something needs him.
+/// menu bar icons, with a red dot bottom-right when something needs him,
+/// or a green one for a moment after it connects (``MenuBarDot``).
 ///
 /// ```
 /// no dot                       dot
@@ -23,25 +25,34 @@ enum MenuBarIconImage {
     /// Clear ring cut round the dot, so it doesn't merge into the speaker.
     static let dotGap: CGFloat = 1
 
-    static func make(symbolName: String, withDot: Bool, accessibilityLabel: String) -> NSImage {
+    static func make(symbolName: String, dot: MenuBarDot, accessibilityLabel: String) -> NSImage {
         let config = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
         let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibilityLabel)?
             .withSymbolConfiguration(config) ?? NSImage()
 
-        guard withDot else {
+        guard let dotColour = colour(of: dot) else {
             symbol.isTemplate = true
             return symbol
         }
 
         let image = NSImage(size: symbol.size, flipped: false) { rect in
             drawSpeaker(symbol, in: rect)
-            NSColor.systemRed.setFill()
+            dotColour.setFill()
             NSBezierPath(ovalIn: dotRect(in: rect)).fill()
             return true
         }
         image.isTemplate = false
         image.accessibilityDescription = accessibilityLabel
         return image
+    }
+
+    /// The dot's colour, or nil for no dot.
+    private static func colour(of dot: MenuBarDot) -> NSColor? {
+        switch dot {
+        case .none: nil
+        case .needsAttention: .systemRed
+        case .justConnected: .systemGreen
+        }
     }
 
     /// The speaker in the menu bar's text colour, with a clear ring where

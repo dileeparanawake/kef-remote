@@ -15,11 +15,11 @@ struct MenuBarIcon: View {
         let shown = model.presentation
         Image(nsImage: MenuBarIconImage.make(
             symbolName: shown.symbolName,
-            withDot: shown.needsAttention,
+            dot: shown.dot,
             accessibilityLabel: shown.accessibilityLabel
         ))
         .accessibilityLabel(shown.accessibilityLabel)
-        .onAppear { log.info("menu bar icon shown: \(shown.symbolName), red dot \(shown.needsAttention ? "on" : "off")") }
+        .onAppear { log.info("menu bar icon shown: \(shown.symbolName), dot \(shown.dot)") }
         .onChange(of: colorScheme) { _, scheme in log.info("menu bar icon redrawn for \(scheme) mode") }
     }
 }

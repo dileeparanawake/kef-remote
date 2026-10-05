@@ -12,12 +12,16 @@ import Foundation
 ///
 /// The red dot marks a state that needs him. It is a shape as well as a
 /// colour, so it reads without colour vision. A state with a dot puts
-/// what's wrong and what to do on the menu's first line.
+/// what's wrong and what to do on the menu's first line. A green dot
+/// shows briefly on connecting (see ``ConnectedFlash``).
 public struct MenuBarPresentation: Equatable, Sendable {
     /// An SF Symbol name.
     public let symbolName: String
     /// Show a red dot on the icon: something needs him.
     public let needsAttention: Bool
+    /// The dot to draw: red when it needs him, green while it has just
+    /// connected, else none. Red always wins.
+    public let dot: MenuBarDot
     /// True only when the speaker answered the last exchange.
     public let isConnected: Bool
     /// The menu's first line: connected, or what's wrong and what to do.
@@ -36,7 +40,9 @@ public struct MenuBarPresentation: Equatable, Sendable {
     static let attentionSymbol = "hifispeaker"
     static let notConnectedTitle = "Not connected"
 
-    public init(status: ConnectionStatus, speakerName: String?, ip: String?) {
+    /// - Parameter isFlashingConnected: Within ``ConnectedFlash/duration``
+    ///   of becoming connected.
+    public init(status: ConnectionStatus, speakerName: String?, ip: String?, isFlashingConnected: Bool = false) {
         let name = speakerName ?? "the speaker"
         let address = ip ?? "no IP"
 
@@ -54,6 +60,14 @@ public struct MenuBarPresentation: Equatable, Sendable {
             needsAttention = false
         case .noSpeaker, .notConnected, .localNetworkBlocked:
             needsAttention = true
+        }
+
+        if needsAttention {
+            dot = .needsAttention
+        } else if isConnected && isFlashingConnected {
+            dot = .justConnected
+        } else {
+            dot = .none
         }
 
         switch status {
