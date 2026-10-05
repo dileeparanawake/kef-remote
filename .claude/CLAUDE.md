@@ -4,11 +4,12 @@ Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) o
 
 ## Codebase
 
-Two targets in a Swift package:
+Three targets in a Swift package, plus tests:
 
-- **KEFRemoteCore** (library) — Testable protocol, command, and controller logic. No UI, no system frameworks beyond Foundation.
-- **KEFRemoteCore** folders: `Protocol/` (byte encoding), `Commands/` (`SpeakerController`), `Connection/` (TCP), `Config/` (`config.json`), `Discovery/` (SSDP), `Logging/`.
-- **KEFRemote** (executable) — macOS app with HUD overlay, hotkey interception (`Control/`), logging to file (`Logging/`), and system integration. A settings view exists (`UI/SettingsView.swift`) but its window doesn't open yet.
+- **KEFRemoteCore** (library) — Testable protocol, command, and controller logic. No UI, no system frameworks beyond Foundation and Network.
+- **KEFRemoteCore** folders: `Protocol/` (byte encoding), `Commands/` (`SpeakerController`), `Connection/` (TCP), `Config/` (`config.json`), `Discovery/` (SSDP), `Logging/`, `MenuBar/` and `HUD/` (what the icon and HUD show), `Network/` (home-network rule).
+- **KEFRemote** (executable) — macOS app: HUD overlay (`UI/`), hotkeys, wake/sleep and Wi-Fi watching (`Control/`), menu bar (`MenuBar/`), settings window (`Settings/`), logging to file (`Logging/`). `AppDelegate` wires them together.
+- **kef-discover** (executable) — runs discovery once and prints each step (`make discover`).
 
 **Tech stack:** Swift, macOS 14+, SPM + Xcode project, Network.framework (TCP), CoreWLAN, KeyboardShortcuts, CGEvent tap, Swift Testing.
 
@@ -44,7 +45,7 @@ Use `make <target>` for common operations. Key targets:
 
 ## Project structure
 
-- `Package.swift` — Swift package manifest (two targets)
+- `Package.swift` — Swift package manifest (three targets, one test target)
 - `KEFRemote.xcodeproj/` — Xcode project for bundling, signing, running
 - `Sources/KEFRemoteCore/` — Core library (protocol, commands, controller)
 - `Sources/KEFRemote/` — macOS app (UI, hotkeys, lifecycle, integration)
