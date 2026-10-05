@@ -9,6 +9,8 @@ public struct AppConfig: Codable, Equatable {
     public var lifecycle: LifecycleConfig
     public var network: NetworkConfig
     public var app: AppBehaviourConfig
+    /// Auto or Manual. A file from before 0.2.0 has none: that means Auto.
+    public var discovery: DiscoveryMode
 
     public init() {
         self.speaker = nil
@@ -16,6 +18,18 @@ public struct AppConfig: Codable, Equatable {
         self.lifecycle = LifecycleConfig()
         self.network = NetworkConfig()
         self.app = AppBehaviourConfig()
+        self.discovery = .auto
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        speaker = try container.decodeIfPresent(SpeakerConfig.self, forKey: .speaker)
+        defaults = try container.decode(DefaultsConfig.self, forKey: .defaults)
+        lifecycle = try container.decode(LifecycleConfig.self, forKey: .lifecycle)
+        network = try container.decode(NetworkConfig.self, forKey: .network)
+        app = try container.decode(AppBehaviourConfig.self, forKey: .app)
+        // Added in 0.2.0: an older file keeps finding the speaker by itself.
+        discovery = try container.decodeIfPresent(DiscoveryMode.self, forKey: .discovery) ?? .auto
     }
 
     public struct SpeakerConfig: Codable, Equatable, Sendable {

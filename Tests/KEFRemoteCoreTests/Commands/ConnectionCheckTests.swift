@@ -20,6 +20,18 @@ struct ConnectionCheckTests {
         #expect(outcome == .rediscover)
     }
 
+    /// Manual discovery: the user typed the IP and the app must not go
+    /// looking for another, even when the saved IP stops answering.
+    @Test func manualDiscoveryNeverStartsDiscovery() async {
+        let mock = MockSpeakerConnection()
+        mock.errorToThrow = .connectionFailed("timed out")
+        let controller = SpeakerController(connection: mock)
+
+        let outcome = await controller.checkConnection(.savedIP, discovery: .manual)
+
+        #expect(outcome == .notConnected)
+    }
+
     /// Discovery ends by checking the IP it settled on. If that fails too,
     /// searching again would loop (a speaker off at the wall never answers).
     @Test func aCheckAfterDiscoveryNeverStartsDiscoveryAgain() async {

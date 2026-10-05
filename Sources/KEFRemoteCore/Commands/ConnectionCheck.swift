@@ -22,13 +22,14 @@ public enum CheckOutcome: Equatable, Sendable {
     /// The speaker did not answer, and searching would not help.
     case notConnected
 
-    /// The outcome of a check that failed with `error`.
-    init(failure error: Error, origin: CheckOrigin) {
+    /// The outcome of a check that failed with `error`. Only a saved IP,
+    /// in Auto discovery, is worth searching for.
+    init(failure error: Error, origin: CheckOrigin, discovery: DiscoveryMode) {
         // An empty read means something answered at that IP, so it hasn't moved.
         let isUnreachable = (error as? KEFError)?.isConnectionFailure ?? true
         // With Local Network blocked, discovery would fail the same way.
         let searchCanHelp = isUnreachable && !LocalNetworkPermission.isDenied(by: error)
-        self = searchCanHelp && origin == .savedIP ? .rediscover : .notConnected
+        self = searchCanHelp && origin == .savedIP && discovery.searchesBySelf ? .rediscover : .notConnected
     }
 }
 
@@ -57,8 +58,11 @@ extension SpeakerController {
     /// Check the speaker answers, by reading its source byte, and say what
     /// to do if it doesn't. A refused connection is tried again first. The
     /// result reaches `onReply` like any other exchange.
+    ///
+    /// - Parameter discovery: In Manual, a failed check never searches.
     public func checkConnection(
         _ origin: CheckOrigin,
+        discovery: DiscoveryMode = .auto,
         refusalRetry: RefusalRetry = .standard
     ) async -> CheckOutcome {
         log(.info, "Checking the speaker answers")
@@ -72,7 +76,7 @@ extension SpeakerController {
                 log(.info, "Speaker refused the connection; trying again (\(retries) of \(refusalRetry.attempts))")
                 await refusalRetry.pause()
             } catch {
-                let outcome = CheckOutcome(failure: error, origin: origin)
+                let outcome = CheckOutcome(failure: error, origin: origin, discovery: discovery)
                 log(.warning, "Speaker did not answer the check (\(error)): \(outcome.nextStep)")
                 return outcome
             }
