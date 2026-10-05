@@ -6,39 +6,32 @@
 
 A small macOS app that puts a KEF LSX speaker on your keyboard. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Cmd+Shift+O turns the speaker on, or off if it's on.
 
-![Control plus the volume key changes the speaker's volume; Cmd, Shift and O turns it on](docs/images/cover.png)
+![KEF Remote: Control plus the volume up key shows a volume panel at 60% on screen, and the KEF speaker plays louder](docs/images/social-preview.png)
 
 It runs in the background with no Dock icon. A small speaker icon in the menu bar shows whether it's connected to the speaker, and opens Settings.
 
 This is an early release with real rough edges. Read [Known limitations](#known-limitations) before you install it.
-
-## What's new in 0.2.0
-
-- **Finds the speaker by itself.** It searches the network when it starts, and again if the speaker's IP changes. No Terminal step.
-- **Auto or Manual discovery.** Settings shows the speaker it found and its IP. Choose Manual to type the IP yourself.
-- **Menu bar menu.** Settings… and Quit, plus a settings window for the speaker's IP, the modifier key and the shortcuts.
-- **Shows when it's connected.** A filled speaker icon and "Connected to LSX", with a green dot for a moment when it connects, and a pulsing orange dot while it looks for the speaker. When it can't reach the speaker, a red dot, and the menu says what's wrong and what to do, with a Find speaker item.
-- **One power shortcut.** Cmd+Shift+O turns the speaker on or off, whichever it isn't.
-- **Your own shortcuts.** Record new keys for power, volume up, volume down, mute and quit in Settings.
-- **An app icon.**
-- **Logging.** Each command, decision and failure writes one plain line to `~/.kef-remote/logs/kef-remote.log`.
-- **Code quality.** Tests went from 97 to 244, and two review passes tidied names, comments and logging.
 
 ## Requirements
 
 - macOS 14 (Sonoma) or later.
 - A KEF LSX on the same network as your Mac.
 - Accessibility permission, so the app can see the volume keys.
+- On macOS 15 and later, Local Network permission, so the app can find the speaker.
 
 I've only tested it on an original LSX. The LS50 Wireless uses the same control protocol, so it may work, but I haven't tried one. Newer models such as the LSX II and LS50 Wireless II use a different control system and aren't supported.
 
 ## Install
+
+Upgrading from 0.1.0? Read [Upgrading from 0.1.0](#upgrading-from-010) first.
 
 ### 1. Download
 
 Download the zip from the [Releases](https://github.com/dileeparanawake/kef-remote/releases) page, unzip it by double-clicking it in Finder, and move `KEFRemote.app` to your Applications folder.
 
 ### 2. Open it the first time
+
+macOS blocks the first open, because Apple hasn't checked (notarized) the app.
 
 #### macOS 15 (Sequoia) and later
 
@@ -61,31 +54,66 @@ xattr -dr com.apple.quarantine /Applications/KEFRemote.app
 
 You only need to do this once. If it says "No such xattr", the flag is already gone.
 
-### 3. Allow local network access
+### 3. Allow Local Network
 
-On macOS 15 and later, macOS asks whether KEF Remote can find and connect to devices on your local network. Click Allow, or it can't find or reach the speaker. If you missed the prompt, turn it on in System Settings > Privacy & Security > Local Network.
+On macOS 15 and later, macOS asks if KEF Remote can find and connect to devices on your local network. Click Allow. Without it, the app can't find or reach the speaker.
+
+If you missed the prompt, turn on KEF Remote in System Settings > Privacy & Security > Local Network.
 
 ### 4. Allow Accessibility
 
-On first open, macOS asks to give KEF Remote Accessibility access. Open System Settings from the prompt and turn KEFRemote on under Privacy & Security > Accessibility.
+macOS also asks to let KEFRemote control this computer. Click Open System Settings, then turn on KEFRemote under Privacy & Security > Accessibility.
 
-Then quit KEF Remote (Cmd+Shift+Q) and open it again. It only starts listening for the volume keys at launch, so the permission takes effect after a restart.
+The two prompts can show in either order.
 
-### 5. Check it's connected
+### 5. Restart KEF Remote
 
-When it opens, KEF Remote looks for the speaker on your network and saves its IP. Click the speaker icon in the menu bar: it should say "Connected to LSX".
+The app only starts listening for the volume keys when it opens. So quit it and open it again:
 
-Then press Cmd+Shift+O to turn the speaker on, then Control + volume up: a small panel in the middle of the screen shows the volume.
+1. Click the speaker icon in the menu bar, then click Quit KEF Remote. (Or press Cmd+Shift+Q.)
+2. Open `KEFRemote.app` from Applications.
 
-If the icon has a red dot, the menu's first line says what's wrong and what to do. Usually that's Find speaker. If you've just allowed local network access, this is the fix.
+### 6. Check it's connected
+
+When it opens, KEF Remote looks for the speaker on your network and saves its IP. Click the speaker icon in the menu bar. It should say "Connected to LSX".
+
+Press Cmd+Shift+O to turn the speaker on. Then press Control + volume up. A small panel in the middle of the screen shows the volume.
+
+If the icon has a red dot, the menu's first line says what's wrong and what to do. Usually it says "click Find speaker". Find speaker is in the same menu.
 
 ### If it can't find the speaker
 
-Set the IP by hand. Click the menu bar icon, choose Settings…, set Discovery to Manual under Speaker, type the speaker's IP and click Save. In Manual, KEF Remote uses that IP and never looks for the speaker by itself. Switch back to Auto to let it find the speaker again.
+Set the IP by hand:
+
+1. Click the menu bar icon and choose Settings….
+2. Under Speaker, set Discovery to Manual.
+3. Type the speaker's IP and click Save.
+
+In Manual, KEF Remote uses that IP and never looks for the speaker by itself. Switch back to Auto to let it find the speaker again.
 
 To find the IP, look in KEF's own app on your phone: it shows the speaker's IP in the speaker's settings while it's connected. Or open your router's admin page and look at its list of connected devices for one named LSX or KEF.
 
-The IP and the discovery mode are saved in `~/.kef-remote/config.json`. A config file from 0.1.0 keeps working, with discovery on Auto.
+The IP and the discovery mode are saved in `~/.kef-remote/config.json`.
+
+### Upgrading from 0.1.0
+
+0.1.0 has no menu bar icon, so quit it another way.
+
+1. Quit 0.1.0: press Cmd+Shift+Q, or quit KEFRemote in Activity Monitor.
+2. Download 0.2.0 (step 1) and replace `KEFRemote.app` in Applications.
+3. Open it. If macOS blocks it, follow step 2.
+4. If the volume keys don't respond, open System Settings > Privacy & Security > Accessibility. Turn KEFRemote off, then on again. Then restart KEF Remote (step 5).
+
+Your config file from 0.1.0 keeps working, with discovery on Auto.
+
+## What's new in 0.2.0
+
+- **Finds the speaker by itself**, when it opens and again if the speaker's IP changes. No Terminal step.
+- **Auto or Manual discovery.** Settings shows the speaker it found and its IP. Choose Manual to type the IP yourself.
+- **Menu bar icon.** It shows if it's connected. A red dot means something needs you, and the menu says what to do.
+- **Settings window** for the speaker, the modifier key and your own shortcuts (power, volume up, volume down, mute and quit).
+- **One power shortcut.** Cmd+Shift+O turns the speaker on or off, whichever it isn't.
+- **Also:** an app icon, a plain log file at `~/.kef-remote/logs/kef-remote.log`, and tests up from 97 to 244.
 
 ## Shortcuts
 
@@ -99,7 +127,7 @@ The IP and the discovery mode are saved in `~/.kef-remote/config.json`. A config
 
 If your function keys are set to work as standard F keys, hold Fn as well for the volume keys.
 
-Cmd+Shift+Q is also the macOS shortcut for Log Out. While KEF Remote is running it should get the shortcut first. If macOS asks whether you want to log out instead, click Cancel and quit KEF Remote from Activity Monitor.
+Cmd+Shift+Q is also the macOS shortcut for Log Out. While KEF Remote is running it should get the shortcut first. If macOS asks whether you want to log out instead, click Cancel. Then quit from the menu bar icon: click it, then Quit KEF Remote.
 
 To use a different key from Control, or change the shortcuts, open Settings from the menu bar icon. To change a shortcut, click its field and press the new keys; Delete clears it. Volume up, volume down and mute have no shortcut until you record one. Changes apply straight away.
 
@@ -118,7 +146,7 @@ The icon shows whether KEF Remote is connected to the speaker. It checks when it
 
 The red dot is a shape as well as a colour, so you can see it without colour vision.
 
-The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker". Find speaker looks for the speaker on the network and saves its IP. Settings… and Quit are below.
+The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker". Find speaker looks for the speaker on the network and saves its IP. Settings… and Quit KEF Remote are below.
 
 ## Known limitations
 
