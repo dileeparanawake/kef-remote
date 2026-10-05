@@ -7,10 +7,11 @@ import os
 /// This is the integration hub that wires all components together:
 /// 1. Loads config on launch
 /// 2. Starts network monitor to determine if on the home network
-/// 3. When active: connects to the speaker, registers hotkeys, starts
-///    lifecycle hooks
+/// 3. When active: sets up the speaker connection (it opens on the
+///    first command), registers hotkeys, starts lifecycle hooks
 /// 4. Hotkey triggers flow through SpeakerController and produce HUD feedback
-/// 5. On command failure: disconnects, waits, reconnects (simple retry)
+/// 5. On command failure: rediscovers if the speaker was unreachable
+///    (it may have a new IP), otherwise reconnects after 2 seconds
 /// 6. Keeps the menu bar status up to date (``MenuBarModel``)
 /// 7. Opens the settings window from the menu, or when the app is
 ///    launched again while running, and applies settings changes live
