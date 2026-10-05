@@ -92,11 +92,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - App lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Diagnostic: NSLog always reaches logd regardless of os_log configuration.
-        // If this appears in Console.app but Logger entries don't, os_log is broken
-        // for this process. If this also doesn't appear, the code path is not running.
-        NSLog("[KEFRemote] applicationDidFinishLaunching — NSLog smoke test")
-
         // Run as a background agent: no Dock icon. The menu bar icon
         // comes from the MenuBarExtra scene in KEFRemoteApp.
         NSApp.setActivationPolicy(.accessory)
