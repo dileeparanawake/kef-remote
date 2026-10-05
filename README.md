@@ -103,18 +103,18 @@ To use a different key from Control, or change the shortcuts, open Settings from
 
 ## Menu bar icon
 
-The icon's shape shows the result of the last thing the app tried:
+The icon shows whether KEF Remote is connected to the speaker. It checks when it starts, and every key press updates it.
 
 | Icon | Meaning |
 |---|---|
-| Speaker outline | Speaker IP set, no command yet |
-| Filled speaker | Last command worked |
-| Warning triangle | Last command failed; it is reconnecting |
+| Filled speaker | Connected: the speaker answered |
+| Speaker outline | Checking the speaker answers |
+| Speaker with a warning badge | Not connected: the speaker didn't answer |
 | Magnifying glass | Looking for the speaker |
 | Speaker with a plus | No speaker set |
 | Crossed-out speaker | Paused: not on the home network |
 
-The menu has the status line, Settings… and Quit.
+The menu's first line says "Connected to LSX" or "Not connected", with the IP or the reason under it. When it isn't connected, Find speaker looks for the speaker on the network and saves its IP. Settings… and Quit are below.
 
 ## Known limitations
 

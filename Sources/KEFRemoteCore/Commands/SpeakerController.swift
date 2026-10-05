@@ -25,17 +25,26 @@ public struct SpeakerStatus: Equatable {
 /// Every send/receive passes through `sendAndReceive()`, which logs
 /// hex bytes at `.debug` level and validates the response shape before
 /// returning. Invalid responses are logged at `.error` level with a
-/// full hex dump.
+/// full hex dump. After each send it reports a ``SpeakerReply`` to
+/// `onReply`: the live connected state the menu bar shows.
 ///
 /// Operations are async because they involve network I/O (send command,
 /// await response).
 public class SpeakerController {
     private let connection: SpeakerConnection
     private let log: KEFLogHandler
+    private let onReply: (SpeakerReply) -> Void
 
-    public init(connection: SpeakerConnection, log: @escaping KEFLogHandler = { _, _ in }) {
+    /// - Parameter onReply: Called after every send, on the caller's
+    ///   task, with whether the speaker answered.
+    public init(
+        connection: SpeakerConnection,
+        log: @escaping KEFLogHandler = { _, _ in },
+        onReply: @escaping (SpeakerReply) -> Void = { _ in }
+    ) {
         self.connection = connection
         self.log = log
+        self.onReply = onReply
     }
 
     // MARK: - Core: send and receive
@@ -48,8 +57,20 @@ public class SpeakerController {
     /// - Logs `.error` with full hex dump on validation failure, then throws
     private func sendAndReceive(_ command: Data, expectResponseBytes: Int) async throws -> Data {
         log(.debug, "SEND: \(command.hexString)")
-        let response = try await connection.send(command, expectResponseBytes: expectResponseBytes)
+        let response: Data
+        do {
+            response = try await connection.send(command, expectResponseBytes: expectResponseBytes)
+        } catch {
+            // An empty read (invalidResponse) says nothing about the link,
+            // so only connection failures count as unreachable.
+            if (error as? KEFError)?.isConnectionFailure ?? true {
+                onReply(.unreachable("\(error)"))
+            }
+            throw error
+        }
         log(.debug, "RECV: \(response.hexString)")
+        // Any bytes back mean the speaker is there, even if badly shaped.
+        onReply(.answered)
 
         do {
             if expectResponseBytes == KEFCommand.getResponseSize {
@@ -100,6 +121,13 @@ public class SpeakerController {
         let source = SourceByte(byte: byte)
         log(.info, "source: power=\(source.isPoweredOn ? "on" : "off") input=\(source.input) standby=\(source.standby)")
         return source
+    }
+
+    /// Check the speaker answers, by reading its source byte. The result
+    /// reaches `onReply` like any other exchange.
+    public func checkConnection() async throws {
+        log(.info, "Checking the speaker answers")
+        _ = try await getSourceByte()
     }
 
     /// Read the full speaker state: volume then source, sequentially.

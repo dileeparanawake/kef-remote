@@ -12,7 +12,15 @@ struct ConnectionStatusTests {
         #expect(ConnectionStatus.idle(isActive: true, speakerIP: "") == .noSpeaker)
     }
 
-    @Test func onTheHomeNetworkWithAnIPTheStatusIsReady() {
-        #expect(ConnectionStatus.idle(isActive: true, speakerIP: "192.168.1.80") == .ready)
+    @Test func onTheHomeNetworkWithAnIPTheStatusIsConnecting() {
+        #expect(ConnectionStatus.idle(isActive: true, speakerIP: "192.168.1.80") == .connecting)
+    }
+
+    @Test func aSpeakerThatAnsweredIsConnected() {
+        #expect(ConnectionStatus(.answered) == .connected)
+    }
+
+    @Test func aSpeakerThatCouldNotBeReachedIsNotConnected() {
+        #expect(ConnectionStatus(.unreachable("timed out")) == .notConnected)
     }
 }

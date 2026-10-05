@@ -1,13 +1,13 @@
 import Combine
 import KEFRemoteCore
 
-/// What the menu bar shows: the connection status and which speaker.
+/// What the menu bar shows: whether the speaker is connected, and which one.
 ///
 /// `AppDelegate` owns it and sets it as things happen. The menu bar
 /// views only read it. Each real change is logged once, with its reason:
 ///
 /// ```
-/// [menubar] status ready -> ok (volumeUp succeeded)
+/// [menubar] status connecting -> connected (speaker answered)
 /// ```
 @MainActor
 final class MenuBarModel: ObservableObject {
@@ -22,7 +22,7 @@ final class MenuBarModel: ObservableObject {
     }
 
     /// Change the status. A change to the same status is ignored, so
-    /// repeated successes don't fill the log.
+    /// every command's reply doesn't fill the log.
     func set(_ newStatus: ConnectionStatus, reason: String) {
         guard newStatus != status else { return }
         log.info("status \(status.rawValue) -> \(newStatus.rawValue) (\(reason))")

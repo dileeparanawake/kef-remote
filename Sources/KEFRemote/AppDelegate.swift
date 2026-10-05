@@ -12,7 +12,8 @@ import os
 /// 4. Hotkey triggers flow through SpeakerController and produce HUD feedback
 /// 5. On command failure: rediscovers if the speaker was unreachable
 ///    (it may have a new IP), otherwise reconnects after 2 seconds
-/// 6. Keeps the menu bar status up to date (``MenuBarModel``)
+/// 6. Keeps the menu bar's connected state live (``MenuBarModel``):
+///    every exchange with the speaker reports whether it answered
 /// 7. Opens the settings window from the menu, or when the app is
 ///    launched again while running, and applies settings changes live
 @MainActor
@@ -157,6 +158,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         logger.info("App became active")
     }
 
+    /// Run discovery from "Find speaker" in the menu. A HUD says if it
+    /// finds nothing; the menu bar shows the rest.
+    func findSpeaker() {
+        discoverInBackground(trigger: "Find speaker in menu")
+    }
+
     /// Open the settings window and bring it to the front.
     func showSettings(source: SettingsWindowController.Source) {
         settingsWindow.show(source: source)
@@ -238,9 +245,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         let conn = TCPSpeakerConnection(host: ip, log: speakerLogHandler)
+        let controller = SpeakerController(
+            connection: conn,
+            log: speakerLogHandler,
+            onReply: { [weak self, weak conn] reply in
+                Task { @MainActor in self?.showReply(reply, from: conn) }
+            }
+        )
         self.connection = conn
-        self.controller = SpeakerController(connection: conn, log: speakerLogHandler)
-        logger.info("Speaker configured at \(ip) — connection opens on first command")
+        self.controller = controller
+        logger.info("Speaker configured at \(ip) — checking it answers")
+        menuBar.set(.connecting, reason: "checking \(ip)")
+
+        Task {
+            do {
+                try await controller.checkConnection()
+            } catch {
+                // Not rediscovered here: a speaker that is off at the wall
+                // would loop. "Find speaker" in the menu runs discovery.
+                logger.warning("Speaker at \(ip) did not answer the check: \(error)")
+            }
+        }
+    }
+
+    /// Show whether the speaker answered, unless the reply came from a
+    /// connection that has since been dropped (a reconnect, or going dormant).
+    /// Replies during discovery are dropped too: it ends by checking again.
+    private func showReply(_ reply: SpeakerReply, from conn: TCPSpeakerConnection?) {
+        guard let conn, conn === connection, !isDiscovering else { return }
+        switch reply {
+        case .answered:
+            menuBar.set(.connected, reason: "speaker answered")
+        case .unreachable(let reason):
+            menuBar.set(.notConnected, reason: "speaker unreachable: \(reason)")
+        }
     }
 
     /// Disconnect from the speaker and clear the controller.
@@ -261,13 +299,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Drop the current connection and connect to the saved IP.
     private func reconnect(reason: String) {
         disconnectSpeaker()
-        if isActive { connectToSpeaker() }
         menuBar.set(.idle(isActive: isActive, speakerIP: config.speaker?.lastKnownIp), reason: reason)
+        if isActive { connectToSpeaker() }
     }
 
     /// Find the speaker with SSDP, save its IP (and MAC, if none was saved),
-    /// then connect. Runs when no IP is saved, when connecting fails (the
-    /// speaker may have a new IP), and from Discover in settings.
+    /// then connect. Runs when no IP is saved, when a command can't reach
+    /// the speaker (it may have a new IP), from Discover in settings and
+    /// from Find speaker in the menu.
     private func runDiscovery(trigger: String) async -> DiscoveryOutcome {
         guard !isDiscovering else {
             logger.info("Discovery already running")
@@ -276,20 +315,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         isDiscovering = true
         defer { isDiscovering = false }
 
-        let statusBefore = menuBar.status
         menuBar.set(.searching, reason: "discovery started: \(trigger)")
-
-        // If nothing is found, a failed speaker stays failed. Otherwise
-        // go back to what the config says.
-        let statusIfNotFound: () -> ConnectionStatus = { [unowned self] in
-            statusBefore == .error
-                ? .error
-                : .idle(isActive: self.isActive, speakerIP: self.config.speaker?.lastKnownIp)
-        }
 
         do {
             guard let updated = try await finder.rediscover(config.speaker) else {
-                menuBar.set(statusIfNotFound(), reason: "discovery found nothing")
+                recheckSavedSpeaker(reason: "discovery found nothing")
                 return .notFound
             }
             saveSpeaker(updated)
@@ -297,8 +327,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return .found(updated)
         } catch {
             logger.error("Discovery failed: \(error)")
-            menuBar.set(statusIfNotFound(), reason: "discovery failed")
+            recheckSavedSpeaker(reason: "discovery failed")
             return .failure(error)
+        }
+    }
+
+    /// After discovery finds nothing, check the saved IP again, so the menu
+    /// bar shows a live answer rather than a guess. With no IP saved, only
+    /// show that: connecting would start discovery again.
+    private func recheckSavedSpeaker(reason: String) {
+        let idle = ConnectionStatus.idle(isActive: isActive, speakerIP: config.speaker?.lastKnownIp)
+        if idle == .connecting {
+            reconnect(reason: reason)
+        } else {
+            menuBar.set(idle, reason: reason)
         }
     }
 
@@ -337,15 +379,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return controller
     }
 
-    /// Record a command's result in the menu bar icon.
-    private func commandSucceeded(_ command: String) {
-        menuBar.set(.ok, reason: "\(command) succeeded")
-    }
-
-    private func commandFailed(_ command: String) {
-        menuBar.set(.error, reason: "\(command) failed")
-    }
-
     // MARK: - Media key callbacks
 
     /// How many percent one volume key press moves the speaker.
@@ -381,14 +414,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             }
                         }
                     }
-                    await MainActor.run { self.commandSucceeded("\(action)") }
                 } catch {
                     self.logger.error(
                         "Media key command failed: \(error.localizedDescription)"
                     )
                     await MainActor.run {
                         HUDOverlay.show(.error("Command failed"))
-                        self.commandFailed("\(action)")
                     }
                     self.handleCommandError(error)
                 }
@@ -408,7 +439,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     try await controller.powerOn()
                     await MainActor.run {
                         HUDOverlay.show(.powerOn)
-                        self.commandSucceeded("power on")
                     }
                 } catch {
                     self.logger.error(
@@ -416,7 +446,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     )
                     await MainActor.run {
                         HUDOverlay.show(.error("Power on failed"))
-                        self.commandFailed("power on")
                     }
                     self.handleCommandError(error)
                 }
@@ -431,7 +460,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     try await controller.powerOff()
                     await MainActor.run {
                         HUDOverlay.show(.powerOff)
-                        self.commandSucceeded("power off")
                     }
                 } catch {
                     self.logger.error(
@@ -439,7 +467,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     )
                     await MainActor.run {
                         HUDOverlay.show(.error("Power off failed"))
-                        self.commandFailed("power off")
                     }
                     self.handleCommandError(error)
                 }
@@ -464,13 +491,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     try await controller.powerOn()
                     await MainActor.run {
                         HUDOverlay.show(.powerOn)
-                        self.commandSucceeded("wake power-on")
                     }
                 } catch {
                     self.logger.error(
                         "Wake power-on failed: \(error.localizedDescription)"
                     )
-                    await MainActor.run { self.commandFailed("wake power-on") }
                     self.handleCommandError(error)
                 }
             }

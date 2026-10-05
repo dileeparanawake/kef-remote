@@ -3,56 +3,83 @@ import Testing
 
 struct MenuBarPresentationTests {
 
-    @Test func afterACommandSucceedsTheIconIsAFilledSpeaker() {
-        let shown = MenuBarPresentation(status: .ok, speakerName: "LSX", ip: "192.168.1.80")
-
-        #expect(shown.symbolName == "hifispeaker.fill")
-        #expect(shown.title == "Connected to LSX")
+    private func shown(_ status: ConnectionStatus, name: String? = "LSX", ip: String? = "192.168.1.80") -> MenuBarPresentation {
+        MenuBarPresentation(status: status, speakerName: name, ip: ip)
     }
 
-    @Test func afterACommandFailsTheIconIsAWarningTriangle() {
-        let shown = MenuBarPresentation(status: .error, speakerName: "LSX", ip: "192.168.1.80")
+    // MARK: - Connected
 
-        #expect(shown.symbolName == "exclamationmark.triangle")
-        #expect(shown.title == "Can't reach LSX")
+    @Test func whenConnectedTheIconIsAFilledSpeakerAndTheMenuSaysSo() {
+        let connected = shown(.connected)
+
+        #expect(connected.isConnected)
+        #expect(connected.symbolName == "hifispeaker.fill")
+        #expect(connected.title == "Connected to LSX")
+        #expect(connected.detail == "192.168.1.80")
+        #expect(!connected.offersFindSpeaker)
     }
 
-    @Test func beforeAnyCommandTheMenuShowsWhereTheSpeakerIs() {
-        let shown = MenuBarPresentation(status: .ready, speakerName: "LSX", ip: "192.168.1.80")
-
-        #expect(shown.symbolName == "hifispeaker")
-        #expect(shown.title == "LSX at 192.168.1.80")
+    @Test func withNoSavedNameConnectedSaysTheSpeaker() {
+        #expect(shown(.connected, name: nil).title == "Connected to the speaker")
     }
 
-    @Test func offTheHomeNetworkTheIconIsACrossedOutSpeaker() {
-        let shown = MenuBarPresentation(status: .dormant, speakerName: "LSX", ip: "192.168.1.80")
+    // MARK: - Not connected
 
-        #expect(shown.symbolName == "speaker.slash")
-        #expect(shown.title == "Paused: not on home network")
+    @Test func everyOtherStatusSaysNotConnectedOnTheFirstLine() {
+        for status in [ConnectionStatus.dormant, .noSpeaker, .searching, .connecting, .notConnected] {
+            #expect(!shown(status).isConnected)
+            #expect(shown(status).title == "Not connected")
+        }
+    }
+
+    @Test func whenTheSpeakerCannotBeReachedTheIconHasAWarningBadge() {
+        let failed = shown(.notConnected)
+
+        #expect(failed.symbolName == "hifispeaker.badge.exclamationmark")
+        #expect(failed.detail == "Can't reach LSX at 192.168.1.80")
+        #expect(failed.offersFindSpeaker)
+    }
+
+    @Test func whileCheckingTheSpeakerTheIconIsAnOutline() {
+        let checking = shown(.connecting)
+
+        #expect(checking.symbolName == "hifispeaker")
+        #expect(checking.detail == "Checking LSX at 192.168.1.80…")
+        #expect(checking.offersFindSpeaker)
     }
 
     @Test func withNoSpeakerSetTheIconAsksForOne() {
-        let shown = MenuBarPresentation(status: .noSpeaker, speakerName: nil, ip: nil)
+        let none = shown(.noSpeaker, name: nil, ip: nil)
 
-        #expect(shown.symbolName == "hifispeaker.badge.plus")
-        #expect(shown.title == "No speaker set")
+        #expect(none.symbolName == "hifispeaker.badge.plus")
+        #expect(none.detail == "No speaker set")
+        #expect(none.offersFindSpeaker)
     }
 
-    @Test func whileDiscoveryRunsTheIconIsAMagnifyingGlass() {
-        let shown = MenuBarPresentation(status: .searching, speakerName: nil, ip: nil)
+    @Test func whileDiscoveryRunsThereIsNoSecondFindItem() {
+        let searching = shown(.searching, name: nil, ip: nil)
 
-        #expect(shown.symbolName == "magnifyingglass")
-        #expect(shown.title == "Looking for the speaker…")
+        #expect(searching.symbolName == "magnifyingglass")
+        #expect(searching.detail == "Looking for the speaker…")
+        #expect(!searching.offersFindSpeaker)
     }
 
-    @Test func withNoSavedNameTheMenuSaysTheSpeaker() {
-        #expect(MenuBarPresentation(status: .ok, speakerName: nil, ip: "192.168.1.80").title == "Connected to the speaker")
-        #expect(MenuBarPresentation(status: .ready, speakerName: nil, ip: "192.168.1.80").title == "Speaker at 192.168.1.80")
+    @Test func offTheHomeNetworkTheIconIsACrossedOutSpeakerAndFindIsHidden() {
+        let paused = shown(.dormant)
+
+        #expect(paused.symbolName == "speaker.slash")
+        #expect(paused.detail == "Paused: not on home network")
+        #expect(!paused.offersFindSpeaker)
     }
 
-    @Test func voiceOverReadsTheAppNameAndTheStatusLine() {
-        let shown = MenuBarPresentation(status: .error, speakerName: "LSX", ip: "192.168.1.80")
+    @Test func withNoSavedNameOrIPTheDetailStillReads() {
+        #expect(shown(.notConnected, name: nil, ip: nil).detail == "Can't reach the speaker at no IP")
+    }
 
-        #expect(shown.accessibilityLabel == "KEF Remote: Can't reach LSX")
+    // MARK: - VoiceOver
+
+    @Test func voiceOverReadsTheAppNameAndBothLines() {
+        #expect(shown(.notConnected).accessibilityLabel == "KEF Remote: Not connected. Can't reach LSX at 192.168.1.80")
+        #expect(shown(.connected).accessibilityLabel == "KEF Remote: Connected to LSX. 192.168.1.80")
     }
 }
