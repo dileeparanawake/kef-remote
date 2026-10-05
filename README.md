@@ -2,7 +2,7 @@
 
 A small macOS app that puts a KEF LSX speaker on your keyboard. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Two more shortcuts turn the speaker on and off.
 
-It runs in the background with no window, Dock icon or menu bar icon.
+It runs in the background with no Dock icon. A small speaker icon in the menu bar shows it's running, and opens Settings.
 
 This is an early release with real rough edges. Read [Known limitations](#known-limitations) before you install it.
 
@@ -82,7 +82,7 @@ On macOS 15 and later, macOS asks whether KEF Remote can find and connect to dev
 
 ### 6. Check it's running
 
-KEF Remote has no window, Dock icon or menu bar icon, so nothing appears when it opens. To check, press Cmd+Shift+O to turn the speaker on, then Control + volume up: a small panel in the middle of the screen shows the volume. If nothing happens, check the IP (step 2) and that you reopened the app after granting Accessibility (step 4).
+A speaker icon appears in the menu bar. Click it to see the speaker's status. Then press Cmd+Shift+O to turn the speaker on, then Control + volume up: a small panel in the middle of the screen shows the volume. If nothing happens, check the IP (step 2) and that you reopened the app after granting Accessibility (step 4).
 
 ## Shortcuts
 
@@ -99,11 +99,22 @@ If your function keys are set to work as standard F keys, hold Fn as well for th
 
 Cmd+Shift+Q is also the macOS shortcut for Log Out. While KEF Remote is running it should get the shortcut first. If macOS asks whether you want to log out instead, click Cancel and quit KEF Remote from Activity Monitor.
 
-To use a different key from Control, run this in Terminal with `shift`, `option` or `command`, then quit and reopen the app:
+To use a different key from Control, or change the shortcuts, open Settings from the menu bar icon. Changes apply straight away.
 
-```sh
-defaults write com.dileeparanawake.KEFRemote mediaKeyModifier option
-```
+## Menu bar icon
+
+The icon's shape shows the result of the last thing the app tried:
+
+| Icon | Meaning |
+|---|---|
+| Speaker outline | Speaker IP set, no command yet |
+| Filled speaker | Last command worked |
+| Warning triangle | Last command failed; it is reconnecting |
+| Magnifying glass | Looking for the speaker |
+| Speaker with a plus | No speaker set |
+| Crossed-out speaker | Paused: not on the home network |
+
+The menu has the status line, Settings… and Quit.
 
 ## Known limitations
 
@@ -111,9 +122,6 @@ defaults write com.dileeparanawake.KEFRemote mediaKeyModifier option
 |---|---|
 | It can't find the speaker on the network by itself. | Set the speaker's IP in `~/.kef-remote/config.json` (see [Install](#2-tell-it-where-the-speaker-is)). |
 | If the speaker's IP changes, it keeps trying the old one. | Reserve an IP for the speaker in your router, or update the config and restart. |
-| The settings window doesn't open. | Edit `~/.kef-remote/config.json` and restart the app. |
-| There's no Dock or menu bar icon, so no sign it's running. | Press Control + Volume Up. If the volume display appears, it's running. Or look for KEFRemote in Activity Monitor. |
-| Quitting needs a shortcut. | Cmd+Shift+Q, or quit KEFRemote in Activity Monitor. |
 | It doesn't start at login. | Add it in System Settings > General > Login Items. |
 | Fast repeated key presses can get lost. After an error, presses are ignored for about two seconds while it reconnects. | Press the keys one at a time. |
 | Turning the speaker on at wake and off at sleep is in the code, but off by default and untested. | Leave `powerOnWake` and `powerOffSleep` set to `false`. |
