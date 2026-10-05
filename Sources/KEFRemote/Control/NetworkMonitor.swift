@@ -1,6 +1,5 @@
 import CoreWLAN
 import Foundation
-import os
 
 /// Monitors Wi-Fi network changes and publishes active/dormant state.
 ///
@@ -50,7 +49,7 @@ final class NetworkMonitor: NSObject {
 
     // MARK: - Properties
 
-    private let logger = Logger(
+    private let logger = AppLogger(
         subsystem: "com.kef-remote",
         category: "NetworkMonitor"
     )
@@ -157,7 +156,7 @@ final class NetworkMonitor: NSObject {
         let currentSSID = wifiClient.interface()?.ssid()
         let newState = evaluateState(currentSSID: currentSSID)
 
-        logger.info("Network check: SSID=\(currentSSID ?? "<none>", privacy: .public), homeSSID=\(self.homeSSID ?? "<not set>", privacy: .public), state=\(newState.description, privacy: .public)")
+        logger.info("Network check: SSID=\(currentSSID ?? "<none>"), homeSSID=\(homeSSID ?? "<not set>"), state=\(newState)")
 
         updateState(newState)
     }
@@ -193,9 +192,7 @@ final class NetworkMonitor: NSObject {
             let oldState = self.state
             self.state = newState
             if oldState != newState {
-                self.logger.info(
-                    "Network state changed: \(oldState.description) -> \(newState.description)"
-                )
+                self.logger.info("Network state changed: \(oldState) -> \(newState)")
                 self.onStateChange?(newState)
             }
         }
@@ -216,7 +213,7 @@ extension NetworkMonitor: CWEventDelegate {
     /// This method is called on an arbitrary thread. We dispatch the
     /// state evaluation to the main thread via ``updateState(_:)``.
     func ssidDidChangeForWiFiInterface(withName interfaceName: String) {
-        logger.debug("SSID change detected on interface: \(interfaceName, privacy: .public)")
+        logger.debug("SSID change detected on interface: \(interfaceName)")
         checkCurrentNetwork()
     }
 }
