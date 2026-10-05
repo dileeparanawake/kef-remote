@@ -10,6 +10,16 @@ public enum HUDState: Equatable, Sendable {
     case error(String)
 }
 
+extension HUDState {
+    /// The HUD after a command failed. When the speaker couldn't be
+    /// reached it says so (the menu says what to do); any other failure
+    /// shows `otherwise`, such as "Power failed".
+    public static func failure(_ error: Error, otherwise message: String) -> HUDState {
+        let isUnreachable = (error as? KEFError)?.isConnectionFailure ?? false
+        return .error(isUnreachable ? "Can't reach the speaker" : message)
+    }
+}
+
 /// How a ``HUDState`` looks: the icon and the line under it.
 ///
 /// `HUDOverlay` draws it; this decides it, so it can be tested.

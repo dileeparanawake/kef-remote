@@ -39,4 +39,23 @@ struct HUDPresentationTests {
         #expect(HUDPresentation(.waking).symbolName == "antenna.radiowaves.left.and.right")
         #expect(HUDPresentation(.waking).label == "Waking...")
     }
+
+    // MARK: - A failed command
+
+    /// Live test, 5 Oct: with the speaker unplugged the HUD said
+    /// "Command failed". Say what's wrong instead.
+    @Test func aCommandThatCannotReachTheSpeakerSaysSo() {
+        for error in [KEFError.commandTimeout, .connectionFailed("timed out"), .connectionRefused, .notConnected] {
+            #expect(HUDState.failure(error, otherwise: "Command failed") == .error("Can't reach the speaker"), "\(error)")
+        }
+    }
+
+    @Test func aBadReplyKeepsTheCommandsOwnMessage() {
+        #expect(HUDState.failure(KEFError.invalidResponse, otherwise: "Power failed") == .error("Power failed"))
+    }
+
+    @Test func anUnknownErrorKeepsTheCommandsOwnMessage() {
+        struct Other: Error {}
+        #expect(HUDState.failure(Other(), otherwise: "Command failed") == .error("Command failed"))
+    }
 }

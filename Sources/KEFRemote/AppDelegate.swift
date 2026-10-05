@@ -467,7 +467,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 HUDOverlay.show(action == .mute && state.isMuted ? .muted : .volume(level: state.level))
             } catch {
                 logger.error("Volume command failed: \(error.localizedDescription)")
-                HUDOverlay.show(.error("Command failed"))
+                HUDOverlay.show(.failure(error, otherwise: "Command failed"))
                 handleCommandError(error)
             }
         }
@@ -503,7 +503,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 HUDOverlay.show(isOn ? .powerOn : .powerOff)
             } catch {
                 logger.error("Power toggle failed: \(error.localizedDescription)")
-                HUDOverlay.show(.error("Power failed"))
+                HUDOverlay.show(.failure(error, otherwise: "Power failed"))
                 handleCommandError(error)
             }
         }
@@ -527,6 +527,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.logger.error(
                         "Wake power-on failed: \(error.localizedDescription)"
                     )
+                    // Replace "Waking..." so it doesn't look stuck.
+                    await MainActor.run {
+                        HUDOverlay.show(.failure(error, otherwise: "Power failed"))
+                    }
                     self.handleCommandError(error)
                 }
             }
