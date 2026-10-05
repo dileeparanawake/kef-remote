@@ -77,18 +77,34 @@ logs-recent:
 logs-full:
 	cat "$(LOG_FILE)"
 
-# --- os.Logger stream commands (standalone only — use 'make run') ---
-
-# Operational logs via unified logging (standalone only)
-logs:
-	log stream --predicate 'subsystem == "$(SPEAKER_SUBSYSTEM)"' --style compact
-
-# Full trace: operational + bytes on the wire
-logs-debug:
-	log stream --predicate 'subsystem == "$(SPEAKER_SUBSYSTEM)"' --level debug --style compact
+# --- Log file filters (work always — Xcode, standalone, agent sandbox) ---
 
 # Errors only
 logs-errors:
+	@grep -F "[ERROR]" "$(LOG_FILE)" || echo "No errors in log file"
+
+# Warnings and errors
+logs-warnings:
+	@grep -E "\\[(WARN|ERROR)\\]" "$(LOG_FILE)" || echo "No warnings or errors in log file"
+
+# Debug lines only (bytes on the wire)
+logs-debug:
+	@grep -F "[DEBUG]" "$(LOG_FILE)" || echo "No debug lines in log file"
+
+# --- os.Logger stream commands (standalone app + interactive terminal only) ---
+# `log stream` refuses to run inside the agent sandbox: agents use the
+# log file targets above.
+
+# Operational logs via unified logging
+logs-stream:
+	log stream --predicate 'subsystem == "$(SPEAKER_SUBSYSTEM)"' --style compact
+
+# Full trace: operational + bytes on the wire
+logs-stream-debug:
+	log stream --predicate 'subsystem == "$(SPEAKER_SUBSYSTEM)"' --level debug --style compact
+
+# Errors only via unified logging
+logs-stream-errors:
 	log stream --predicate 'subsystem == "$(SPEAKER_SUBSYSTEM)" AND messageType == error' --style compact
 
 # Stop background log stream processes
@@ -154,4 +170,4 @@ kef-raw-standby:
 	@test -n "$(MIN)" || (echo "Usage: make kef-raw-standby MIN=<0|20|60>"; exit 1)
 	$(KEFCTL) --standby $(MIN)
 
-.PHONY: test discover run package kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
+.PHONY: test discover run package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby

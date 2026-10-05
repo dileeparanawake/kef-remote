@@ -33,9 +33,12 @@ Use `make <target>` for common operations. Key targets:
 | `make kill` | Stop all running KEFRemote instances |
 | `make logs-recent` | Last 200 lines from log file (quick agent snapshot) |
 | `make logs-tail` | Live stream from log file |
-| `make logs` | Unified logging stream (standalone only) |
-| `make logs-debug` | Full trace including bytes on the wire (standalone only) |
-| `make logs-errors` | Errors only (standalone only) |
+| `make logs-errors` | Errors only, from the log file |
+| `make logs-warnings` | Warnings and errors, from the log file |
+| `make logs-debug` | Debug lines (bytes on the wire), from the log file |
+| `make logs-stream` | Unified logging stream (standalone app, interactive terminal only) |
+| `make logs-stream-debug` | Unified logging, full trace (standalone app, interactive terminal only) |
+| `make logs-stream-errors` | Unified logging, errors only (standalone app, interactive terminal only) |
 | `make kef-on/off/status` | Hardware control via kefctl (for manual testing) |
 | `make kef-raw-volume VOL=70` | Set volume directly via kefctl |
 
