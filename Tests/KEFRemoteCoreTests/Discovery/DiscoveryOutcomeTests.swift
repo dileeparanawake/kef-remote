@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import KEFRemoteCore
 
@@ -19,5 +20,17 @@ struct DiscoveryOutcomeTests {
 
     @Test func aSecondPressWhileSearchingIsNotARun() {
         #expect(DiscoveryOutcome.alreadyRunning.message == "Already looking")
+    }
+
+    @Test func noRouteToHostPointsAtTheLocalNetworkPermission() {
+        let outcome = DiscoveryOutcome.failure(SocketError("sendto", code: EHOSTUNREACH))
+
+        #expect(outcome.message.hasSuffix("Allow KEF Remote in System Settings > Privacy & Security > Local Network."))
+    }
+
+    @Test func otherSocketErrorsShowJustTheError() {
+        let outcome = DiscoveryOutcome.failure(SocketError("bind", code: EADDRINUSE))
+
+        #expect(outcome == .failed("bind failed: Address already in use (errno 48)"))
     }
 }

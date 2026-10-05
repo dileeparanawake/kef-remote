@@ -25,3 +25,17 @@ public enum DiscoveryOutcome: Equatable, Sendable {
         }
     }
 }
+
+extension DiscoveryOutcome {
+    /// A failed search, with a hint when the cause is likely a setting.
+    ///
+    /// macOS answers "No route to host" when the app is not allowed on
+    /// the local network, so name that permission.
+    public static func failure(_ error: Error) -> DiscoveryOutcome {
+        var reason = "\(error)"
+        if let socketError = error as? SocketError, socketError.code == EHOSTUNREACH {
+            reason += ". Allow KEF Remote in System Settings > Privacy & Security > Local Network."
+        }
+        return .failed(reason)
+    }
+}
