@@ -2,39 +2,33 @@ import AppKit
 import SwiftUI
 
 /// The menu bar icon. Filled speaker when connected; other shapes say
-/// why not (see ``MenuBarPresentation``).
+/// why not, and a red dot says something needs him (see
+/// ``MenuBarPresentation`` and ``MenuBarIconImage``).
 struct MenuBarIcon: View {
     @ObservedObject var model: MenuBarModel
-
-    /// SF Symbol point size. At 13pt the speaker symbols are 16 to 17pt
-    /// tall, the size of the system's own menu bar icons.
-    private static let symbolPointSize: CGFloat = 13
+    /// Read so the icon is drawn again when light or dark mode changes.
+    @Environment(\.colorScheme) private var colorScheme
 
     private let log = AppLogger(subsystem: "com.kef-remote", category: "menubar")
 
     var body: some View {
         let shown = model.presentation
-        Image(nsImage: Self.templateImage(shown.symbolName))
-            .accessibilityLabel(shown.accessibilityLabel)
-            .onAppear { log.info("menu bar icon shown: \(shown.symbolName)") }
-    }
-
-    /// A fixed-size template image, so macOS tints it for light and dark
-    /// menu bars and it never grows past the bar.
-    private static func templateImage(_ symbolName: String) -> NSImage {
-        let config = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
-        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
-            .withSymbolConfiguration(config) ?? NSImage()
-        image.isTemplate = true
-        return image
+        Image(nsImage: MenuBarIconImage.make(
+            symbolName: shown.symbolName,
+            withDot: shown.needsAttention,
+            accessibilityLabel: shown.accessibilityLabel
+        ))
+        .accessibilityLabel(shown.accessibilityLabel)
+        .onAppear { log.info("menu bar icon shown: \(shown.symbolName), red dot \(shown.needsAttention ? "on" : "off")") }
+        .onChange(of: colorScheme) { _, scheme in log.info("menu bar icon redrawn for \(scheme) mode") }
     }
 }
 
 /// The menu that drops down from the icon.
 ///
 /// ```
-/// Connected to LSX          Not connected
-/// 192.168.1.80              Can't reach LSX at 192.168.1.80
+/// Connected to LSX          Can't reach LSX: click Find speaker
+/// 192.168.1.80              No answer at 192.168.1.80
 /// ─────────────             Find speaker
 /// Settings…        ⌘,       ─────────────
 /// Quit KEF Remote  ⌘Q       Settings… / Quit

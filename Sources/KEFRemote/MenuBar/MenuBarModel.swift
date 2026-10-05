@@ -7,7 +7,7 @@ import KEFRemoteCore
 /// views only read it. Each real change is logged once, with its reason:
 ///
 /// ```
-/// [menubar] status connecting -> connected (speaker answered)
+/// [menubar] status connecting -> notConnected (speaker unreachable: …), red dot on
 /// ```
 @MainActor
 final class MenuBarModel: ObservableObject {
@@ -22,11 +22,16 @@ final class MenuBarModel: ObservableObject {
     }
 
     /// Change the status. A change to the same status is ignored, so
-    /// every command's reply doesn't fill the log.
+    /// every command's reply doesn't fill the log. The red dot is logged
+    /// when it comes or goes.
     func set(_ newStatus: ConnectionStatus, reason: String) {
         guard newStatus != status else { return }
-        log.info("status \(status.rawValue) -> \(newStatus.rawValue) (\(reason))")
+        let oldStatus = status
+        let hadDot = presentation.needsAttention
         status = newStatus
+        let hasDot = presentation.needsAttention
+        let dotChange = hadDot == hasDot ? "" : ", red dot \(hasDot ? "on" : "off")"
+        log.info("status \(oldStatus.rawValue) -> \(newStatus.rawValue) (\(reason))\(dotChange)")
     }
 
     /// Show which speaker the app talks to.
