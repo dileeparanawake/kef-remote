@@ -10,6 +10,8 @@ public enum KEFError: Error, Equatable {
     case invalidResponse
     case notConnected
     case speakerUnreachable
+    /// macOS kept the app off the local network. Carries its message.
+    case localNetworkBlocked(String)
 }
 
 extension KEFError {
@@ -17,7 +19,8 @@ extension KEFError {
     /// False when it answered with something unexpected.
     public var isConnectionFailure: Bool {
         switch self {
-        case .connectionFailed, .connectionRefused, .notConnected, .speakerUnreachable, .commandTimeout:
+        case .connectionFailed, .connectionRefused, .notConnected, .speakerUnreachable, .commandTimeout,
+             .localNetworkBlocked:
             return true
         case .invalidResponse:
             return false

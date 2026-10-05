@@ -7,4 +7,6 @@ public enum SpeakerReply: Equatable, Sendable {
     case answered
     /// The speaker could not be reached. Carries the reason, for the log.
     case unreachable(String)
+    /// macOS kept the app off the local network. Carries the reason, for the log.
+    case localNetworkBlocked(String)
 }

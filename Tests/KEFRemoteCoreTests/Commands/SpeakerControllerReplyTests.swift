@@ -33,6 +33,16 @@ struct SpeakerControllerReplyTests {
         #expect(replies() == [.unreachable("connectionFailed(\"timed out\")")])
     }
 
+    @Test func whenLocalNetworkIsBlockedTheReplySaysSo() async {
+        let mock = MockSpeakerConnection()
+        mock.errorToThrow = .localNetworkBlocked("Network is down")
+        let (controller, replies) = recordingController(mock: mock)
+
+        _ = try? await controller.getVolumeState()
+
+        #expect(replies() == [.localNetworkBlocked("localNetworkBlocked(\"Network is down\")")])
+    }
+
     @Test func aBadlyShapedAnswerStillCountsAsAnswered() async {
         let mock = MockSpeakerConnection()
         mock.responses = [Data([0xFF, 0x00, 0x00, 0x00, 0x00])]

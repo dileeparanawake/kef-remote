@@ -119,10 +119,13 @@ public class TCPSpeakerConnection: SpeakerConnection {
 
 extension KEFError {
     /// A connection error from Network.framework. A refusal gets its own
-    /// case, so the check can try again rather than give up.
+    /// case, so the check can try again rather than give up; so does a
+    /// blocked Local Network, so the menu can name the setting.
     init(_ error: NWError) {
         if case .posix(.ECONNREFUSED) = error {
             self = .connectionRefused
+        } else if case .posix(let code) = error, LocalNetworkPermission.deniedCodes.contains(code) {
+            self = .localNetworkBlocked(error.localizedDescription)
         } else {
             self = .connectionFailed(error.localizedDescription)
         }

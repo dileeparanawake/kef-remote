@@ -63,7 +63,9 @@ public class SpeakerController {
         } catch {
             // An empty read (invalidResponse) says nothing about the link,
             // so only connection failures count as unreachable.
-            if (error as? KEFError)?.isConnectionFailure ?? true {
+            if LocalNetworkPermission.isDenied(by: error) {
+                onReply(.localNetworkBlocked("\(error)"))
+            } else if (error as? KEFError)?.isConnectionFailure ?? true {
                 onReply(.unreachable("\(error)"))
             }
             throw error

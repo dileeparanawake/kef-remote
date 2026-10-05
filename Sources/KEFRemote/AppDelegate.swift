@@ -295,6 +295,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             menuBar.set(.connected, reason: "speaker answered")
         case .unreachable(let reason):
             menuBar.set(.notConnected, reason: "speaker unreachable: \(reason)")
+        case .localNetworkBlocked(let reason):
+            menuBar.set(.localNetworkBlocked, reason: "Local Network blocked: \(reason)")
         }
     }
 
@@ -348,6 +350,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             logger.error("Discovery failed: \(error)")
             recheckSavedSpeaker(reason: "discovery failed")
+            // Name the setting until the recheck, if any, gives a live answer.
+            if LocalNetworkPermission.isDenied(by: error) {
+                menuBar.set(.localNetworkBlocked, reason: "discovery failed: \(error)")
+            }
             return .failure(error)
         }
     }

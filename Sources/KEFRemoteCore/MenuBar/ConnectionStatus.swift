@@ -18,6 +18,8 @@ public enum ConnectionStatus: String, Equatable, Sendable {
     case connected
     /// The speaker could not be reached on the last exchange.
     case notConnected
+    /// macOS kept the app off the local network, so nothing reaches the speaker.
+    case localNetworkBlocked
 }
 
 extension ConnectionStatus {
@@ -38,6 +40,7 @@ extension ConnectionStatus {
         switch reply {
         case .answered: self = .connected
         case .unreachable: self = .notConnected
+        case .localNetworkBlocked: self = .localNetworkBlocked
         }
     }
 }

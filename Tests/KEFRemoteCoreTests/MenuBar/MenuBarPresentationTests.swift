@@ -23,21 +23,71 @@ struct MenuBarPresentationTests {
         #expect(shown(.connected, name: nil).title == "Connected to the speaker")
     }
 
-    // MARK: - Not connected
+    // MARK: - Red dot
 
-    @Test func everyOtherStatusSaysNotConnectedOnTheFirstLine() {
-        for status in [ConnectionStatus.dormant, .noSpeaker, .searching, .connecting, .notConnected] {
-            #expect(!shown(status).isConnected)
-            #expect(shown(status).title == "Not connected")
+    /// Live test, 5 Oct: he wants to see at a glance that something
+    /// needs him, without opening the menu.
+    @Test func statesThatNeedHimShowTheRedDot() {
+        for status in [ConnectionStatus.noSpeaker, .notConnected, .localNetworkBlocked] {
+            #expect(shown(status).needsAttention, "\(status)")
         }
     }
 
-    @Test func whenTheSpeakerCannotBeReachedTheIconHasAWarningBadge() {
+    /// Connected, checking, searching and off the home network all sort
+    /// themselves out, so they show no dot.
+    @Test func statesThatSortThemselvesOutShowNoDot() {
+        for status in [ConnectionStatus.connected, .connecting, .searching, .dormant] {
+            #expect(!shown(status).needsAttention, "\(status)")
+        }
+    }
+
+    /// The dot sits bottom-right, where a symbol's badge would be, so a
+    /// state with a dot uses the plain speaker.
+    @Test func aStateWithTheDotUsesThePlainSpeakerSoNoBadgeIsHidden() {
+        for status in [ConnectionStatus.noSpeaker, .notConnected, .localNetworkBlocked] {
+            #expect(shown(status).symbolName == "hifispeaker", "\(status)")
+        }
+    }
+
+    // MARK: - Needs him: the first line says what's wrong and what to do
+
+    @Test func whenTheSpeakerCannotBeReachedTheMenuSaysToFindIt() {
         let failed = shown(.notConnected)
 
-        #expect(failed.symbolName == "hifispeaker.badge.exclamationmark")
-        #expect(failed.detail == "Can't reach LSX at 192.168.1.80")
+        #expect(failed.title == "Can't reach LSX: click Find speaker")
+        #expect(failed.detail == "No answer at 192.168.1.80")
         #expect(failed.offersFindSpeaker)
+    }
+
+    @Test func whenLocalNetworkIsBlockedTheMenuSaysToAllowIt() {
+        let blocked = shown(.localNetworkBlocked)
+
+        #expect(blocked.title == "Can't reach LSX: allow Local Network in System Settings")
+        #expect(blocked.detail == "Privacy & Security > Local Network > KEF Remote")
+        #expect(blocked.offersFindSpeaker)
+    }
+
+    @Test func withNoSpeakerSetTheMenuSaysToFindOne() {
+        let none = shown(.noSpeaker, name: nil, ip: nil)
+
+        #expect(none.title == "No speaker set: click Find speaker")
+        #expect(none.detail == "Or type its IP in Settings…")
+        #expect(none.offersFindSpeaker)
+    }
+
+    @Test func withNoSavedNameOrIPTheLinesStillRead() {
+        #expect(shown(.notConnected, name: nil, ip: nil).title == "Can't reach the speaker: click Find speaker")
+        #expect(shown(.notConnected, name: nil, ip: nil).detail == "No answer at no IP")
+        #expect(shown(.localNetworkBlocked, name: nil).title == "Can't reach the speaker: allow Local Network in System Settings")
+    }
+
+    // MARK: - Sorts itself out
+
+    @Test func everyStateWithoutTheDotOrConnectionSaysNotConnected() {
+        for status in [ConnectionStatus.dormant, .searching, .connecting] {
+            #expect(!shown(status).isConnected)
+            #expect(shown(status).title == "Not connected")
+        }
     }
 
     @Test func whileCheckingTheSpeakerTheIconIsAnOutline() {
@@ -46,14 +96,6 @@ struct MenuBarPresentationTests {
         #expect(checking.symbolName == "hifispeaker")
         #expect(checking.detail == "Checking LSX at 192.168.1.80…")
         #expect(checking.offersFindSpeaker)
-    }
-
-    @Test func withNoSpeakerSetTheIconAsksForOne() {
-        let none = shown(.noSpeaker, name: nil, ip: nil)
-
-        #expect(none.symbolName == "hifispeaker.badge.plus")
-        #expect(none.detail == "No speaker set")
-        #expect(none.offersFindSpeaker)
     }
 
     @Test func whileDiscoveryRunsThereIsNoSecondFindItem() {
@@ -72,14 +114,10 @@ struct MenuBarPresentationTests {
         #expect(!paused.offersFindSpeaker)
     }
 
-    @Test func withNoSavedNameOrIPTheDetailStillReads() {
-        #expect(shown(.notConnected, name: nil, ip: nil).detail == "Can't reach the speaker at no IP")
-    }
-
     // MARK: - VoiceOver
 
     @Test func voiceOverReadsTheAppNameAndBothLines() {
-        #expect(shown(.notConnected).accessibilityLabel == "KEF Remote: Not connected. Can't reach LSX at 192.168.1.80")
+        #expect(shown(.notConnected).accessibilityLabel == "KEF Remote: Can't reach LSX: click Find speaker. No answer at 192.168.1.80")
         #expect(shown(.connected).accessibilityLabel == "KEF Remote: Connected to LSX. 192.168.1.80")
     }
 }

@@ -43,6 +43,18 @@ struct ConnectionCheckTests {
         #expect(outcome == .notConnected)
     }
 
+    /// With Local Network blocked, discovery can't run either: searching
+    /// would only fail the same way.
+    @Test func aBlockedLocalNetworkDoesNotStartDiscovery() async {
+        let mock = MockSpeakerConnection()
+        mock.errorToThrow = .localNetworkBlocked("Network is down")
+        let controller = SpeakerController(connection: mock)
+
+        let outcome = await controller.checkConnection(.savedIP)
+
+        #expect(outcome == .notConnected)
+    }
+
     /// An empty read means something answered at that IP, so it hasn't moved.
     @Test func anEmptyReadDoesNotStartDiscovery() async {
         let mock = MockSpeakerConnection()

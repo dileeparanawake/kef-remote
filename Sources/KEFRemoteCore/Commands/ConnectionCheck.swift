@@ -26,7 +26,9 @@ public enum CheckOutcome: Equatable, Sendable {
     init(failure error: Error, origin: CheckOrigin) {
         // An empty read means something answered at that IP, so it hasn't moved.
         let isUnreachable = (error as? KEFError)?.isConnectionFailure ?? true
-        self = isUnreachable && origin == .savedIP ? .rediscover : .notConnected
+        // With Local Network blocked, discovery would fail the same way.
+        let searchCanHelp = isUnreachable && !LocalNetworkPermission.isDenied(by: error)
+        self = searchCanHelp && origin == .savedIP ? .rediscover : .notConnected
     }
 }
 

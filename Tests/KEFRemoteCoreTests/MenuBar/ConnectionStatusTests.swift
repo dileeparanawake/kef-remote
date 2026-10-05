@@ -23,4 +23,8 @@ struct ConnectionStatusTests {
     @Test func aSpeakerThatCouldNotBeReachedIsNotConnected() {
         #expect(ConnectionStatus(.unreachable("timed out")) == .notConnected)
     }
+
+    @Test func aSpeakerBlockedByLocalNetworkIsLocalNetworkBlocked() {
+        #expect(ConnectionStatus(.localNetworkBlocked("Network is down")) == .localNetworkBlocked)
+    }
 }
