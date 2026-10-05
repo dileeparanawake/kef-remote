@@ -321,7 +321,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Find the speaker with SSDP, save its IP (and MAC, if none was saved),
-    /// then connect. Runs when no IP is saved, when a command can't reach
+    /// then connect, or keep the connection if it is already on that IP. Runs when no IP is saved, when a command can't reach
     /// the speaker (it may have a new IP), from Discover in settings and
     /// from Find speaker in the menu.
     private func runDiscovery(trigger: String) async -> DiscoveryOutcome {
@@ -340,13 +340,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return .notFound
             }
             saveSpeaker(updated)
-            reconnect(.afterDiscovery, reason: "discovery found the speaker")
+            switch ConnectionAfterDiscovery(foundIP: updated.lastKnownIp, connectedIP: connection?.host) {
+            case .keep: recheckLiveConnection(reason: "discovery found the speaker where it is connected")
+            case .reconnect: reconnect(.afterDiscovery, reason: "discovery found the speaker")
+            }
             return .found(updated)
         } catch {
             logger.error("Discovery failed: \(error)")
             recheckSavedSpeaker(reason: "discovery failed")
             return .failure(error)
         }
+    }
+
+    /// Keep the live connection and check it again, so the menu bar leaves
+    /// "Searching" with a live answer.
+    private func recheckLiveConnection(reason: String) {
+        guard let controller, let connection else { return }
+        logger.info("Keeping the connection to \(connection.host): \(reason)")
+        menuBar.set(.connecting, reason: reason)
+        checkSpeaker(controller, on: connection, origin: .afterDiscovery)
     }
 
     /// After discovery finds nothing, check the saved IP again, so the menu

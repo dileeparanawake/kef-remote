@@ -3,6 +3,9 @@ import Foundation
 /// Errors that can occur during speaker communication.
 public enum KEFError: Error, Equatable {
     case connectionFailed(String)
+    /// The speaker turned the connection down. A KEF takes one connection
+    /// at a time, so this is brief while an old one is still closing.
+    case connectionRefused
     case commandTimeout
     case invalidResponse
     case notConnected
@@ -14,7 +17,7 @@ extension KEFError {
     /// False when it answered with something unexpected.
     public var isConnectionFailure: Bool {
         switch self {
-        case .connectionFailed, .notConnected, .speakerUnreachable, .commandTimeout:
+        case .connectionFailed, .connectionRefused, .notConnected, .speakerUnreachable, .commandTimeout:
             return true
         case .invalidResponse:
             return false

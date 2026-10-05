@@ -10,7 +10,8 @@ import Network
 /// This class is not used in tests — tests use MockSpeakerConnection.
 public class TCPSpeakerConnection: SpeakerConnection {
     private var connection: NWConnection?
-    private let host: String
+    /// The speaker's IP, so the app can tell if discovery found the one it is on.
+    public let host: String
     private let port: UInt16
     private let log: KEFLogHandler
 
@@ -92,14 +93,14 @@ public class TCPSpeakerConnection: SpeakerConnection {
                 case .failed(let error):
                     conn?.stateUpdateHandler = nil
                     self?.log(.error, "TCP: connection failed — \(error.localizedDescription)")
-                    continuation.resume(throwing: KEFError.connectionFailed(error.localizedDescription))
+                    continuation.resume(throwing: KEFError(error))
                 case .waiting(let error):
                     // A dead route (e.g. the speaker's old IP) waits here
                     // forever. Fail instead, so the app can rediscover.
                     conn?.stateUpdateHandler = nil
                     conn?.cancel()
                     self?.log(.error, "TCP: connection waiting — \(error.localizedDescription); giving up")
-                    continuation.resume(throwing: KEFError.connectionFailed(error.localizedDescription))
+                    continuation.resume(throwing: KEFError(error))
                 case .cancelled:
                     conn?.stateUpdateHandler = nil
                     self?.log(.error, "TCP: connection cancelled")
@@ -113,5 +114,17 @@ public class TCPSpeakerConnection: SpeakerConnection {
 
         self.connection = conn
         return conn
+    }
+}
+
+extension KEFError {
+    /// A connection error from Network.framework. A refusal gets its own
+    /// case, so the check can try again rather than give up.
+    init(_ error: NWError) {
+        if case .posix(.ECONNREFUSED) = error {
+            self = .connectionRefused
+        } else {
+            self = .connectionFailed(error.localizedDescription)
+        }
     }
 }

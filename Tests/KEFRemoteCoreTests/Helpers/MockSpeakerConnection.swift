@@ -15,9 +15,16 @@ final class MockSpeakerConnection: SpeakerConnection {
     /// If set, `send()` throws this error instead of returning a response.
     var errorToThrow: KEFError?
 
+    /// Errors to throw first, in order, one per `send()`, before
+    /// `errorToThrow` or `responses` are used.
+    var failures: [KEFError] = []
+
     func send(_ data: Data, expectResponseBytes: Int) async throws -> Data {
         sentCommands.append(data)
         sentExpectedSizes.append(expectResponseBytes)
+        if !failures.isEmpty {
+            throw failures.removeFirst()
+        }
         if let error = errorToThrow {
             throw error
         }
