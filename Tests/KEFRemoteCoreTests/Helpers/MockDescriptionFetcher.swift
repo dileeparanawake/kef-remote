@@ -16,9 +16,7 @@ final class MockDescriptionFetcher: DescriptionFetcher, @unchecked Sendable {
     var fetched: [URL] { lock.lock(); defer { lock.unlock() }; return fetchedURLs }
 
     func fetch(_ url: URL) async throws -> Data {
-        lock.lock()
-        fetchedURLs.append(url)
-        lock.unlock()
+        lock.withLock { fetchedURLs.append(url) }
         guard let body = bodies[url.absoluteString] else { throw NotFound() }
         return body
     }

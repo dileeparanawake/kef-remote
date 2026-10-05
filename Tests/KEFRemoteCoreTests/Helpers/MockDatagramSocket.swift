@@ -32,8 +32,7 @@ final class MockDatagramSocket: DatagramSocket, @unchecked Sendable {
 
     /// Returns the next queued reply at once, or nil (as if the deadline passed).
     func receive(until deadline: ContinuousClock.Instant) async throws -> Datagram? {
-        lock.lock(); defer { lock.unlock() }
-        return queued.isEmpty ? nil : queued.removeFirst()
+        lock.withLock { queued.isEmpty ? nil : queued.removeFirst() }
     }
 
     func close() {

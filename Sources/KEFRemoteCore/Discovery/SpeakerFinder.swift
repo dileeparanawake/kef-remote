@@ -29,7 +29,7 @@ public struct FoundSpeaker: Equatable, Sendable {
 public struct SpeakerFinder: Sendable {
     private let makeSocket: @Sendable () throws -> DatagramSocket
     private let fetcher: DescriptionFetcher
-    private let log: KEFLog
+    let log: KEFLog
     private let listenFor: Duration
     private let resendAfter: Duration
 
@@ -48,6 +48,15 @@ public struct SpeakerFinder: Sendable {
         self.log = log
         self.listenFor = listenFor
         self.resendAfter = resendAfter
+    }
+
+    /// A finder on the real network: a BSD UDP socket and URLSession.
+    public static func onNetwork(log: KEFLog) -> SpeakerFinder {
+        SpeakerFinder(
+            makeSocket: { try BSDDatagramSocket() },
+            fetcher: URLSessionDescriptionFetcher(),
+            log: log
+        )
     }
 
     /// Search the network for the speaker.
