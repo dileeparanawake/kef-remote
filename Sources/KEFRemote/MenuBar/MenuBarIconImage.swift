@@ -3,7 +3,8 @@ import KEFRemoteCore
 
 /// Draws the menu bar icon: an SF Symbol at the size of the system's own
 /// menu bar icons, with a red dot bottom-right when something needs him,
-/// or a green one for a moment after it connects (``MenuBarDot``).
+/// a green one for a moment after it connects, or an orange one while it
+/// looks for the speaker (``MenuBarDot``).
 ///
 /// ```
 /// no dot                       dot
@@ -20,12 +21,16 @@ enum MenuBarIconImage {
     /// SF Symbol point size. At 13pt the speaker symbols are 16 to 17pt
     /// tall, the size of the system's own menu bar icons.
     static let symbolPointSize: CGFloat = 13
-    /// Big enough to see at a glance, small enough to leave the speaker readable.
-    static let dotDiameter: CGFloat = 5
+    /// Big enough to see at a glance, small enough to leave the speaker
+    /// readable. 5pt read too small in Round 3 (5 Oct); 6pt is 12 whole
+    /// pixels on a Retina screen.
+    static let dotDiameter: CGFloat = 6
     /// Clear ring cut round the dot, so it doesn't merge into the speaker.
     static let dotGap: CGFloat = 1
 
-    static func make(symbolName: String, dot: MenuBarDot, accessibilityLabel: String) -> NSImage {
+    /// - Parameter dotOpacity: How strongly the dot shows, for the pulse
+    ///   (``SearchingPulse``); 1 for a steady dot.
+    static func make(symbolName: String, dot: MenuBarDot, dotOpacity: Double = 1, accessibilityLabel: String) -> NSImage {
         let config = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .regular)
         let symbol = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibilityLabel)?
             .withSymbolConfiguration(config) ?? NSImage()
@@ -37,7 +42,7 @@ enum MenuBarIconImage {
 
         let image = NSImage(size: symbol.size, flipped: false) { rect in
             drawSpeaker(symbol, in: rect)
-            dotColour.setFill()
+            dotColour.withAlphaComponent(dotOpacity).setFill()
             NSBezierPath(ovalIn: dotRect(in: rect)).fill()
             return true
         }
@@ -52,6 +57,7 @@ enum MenuBarIconImage {
         case .none: nil
         case .needsAttention: .systemRed
         case .justConnected: .systemGreen
+        case .searching: .systemOrange
         }
     }
 

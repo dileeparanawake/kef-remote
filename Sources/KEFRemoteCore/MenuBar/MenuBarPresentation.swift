@@ -1,7 +1,7 @@
 import Foundation
 
-/// How a ``ConnectionStatus`` looks in the menu bar: the icon, whether it
-/// has a red dot, and the two lines at the top of the menu.
+/// How a ``ConnectionStatus`` looks in the menu bar: the icon, its dot,
+/// and the two lines at the top of the menu.
 ///
 /// ```
 /// icon, no dot              icon with a red dot
@@ -13,14 +13,16 @@ import Foundation
 /// The red dot marks a state that needs him. It is a shape as well as a
 /// colour, so it reads without colour vision. A state with a dot puts
 /// what's wrong and what to do on the menu's first line. A green dot
-/// shows briefly on connecting (see ``ConnectedFlash``).
+/// shows briefly on connecting (see ``ConnectedFlash``), and an orange
+/// one pulses while it looks for the speaker (see ``SearchingPulse``).
 public struct MenuBarPresentation: Equatable, Sendable {
     /// An SF Symbol name.
     public let symbolName: String
     /// Show a red dot on the icon: something needs him.
     public let needsAttention: Bool
-    /// The dot to draw: red when it needs him, green while it has just
-    /// connected, else none. Red always wins.
+    /// The dot to draw: red when it needs him, orange while it looks for
+    /// the speaker, green while it has just connected, else none. Red
+    /// always wins.
     public let dot: MenuBarDot
     /// True only when the speaker answered the last exchange.
     public let isConnected: Bool
@@ -35,9 +37,9 @@ public struct MenuBarPresentation: Equatable, Sendable {
     /// What VoiceOver reads for the icon.
     public var accessibilityLabel: String { "KEF Remote: \(title). \(detail)" }
 
-    /// The symbol under the red dot. Plain, because the dot sits where a
-    /// badge would be.
-    static let attentionSymbol = "hifispeaker"
+    /// The outline speaker: while checking, and under the red and orange
+    /// dots. Plain, because the dot sits where a badge would be.
+    static let plainSpeakerSymbol = "hifispeaker"
     static let notConnectedTitle = "Not connected"
 
     /// - Parameter isFlashingConnected: Within ``ConnectedFlash/duration``
@@ -64,6 +66,8 @@ public struct MenuBarPresentation: Equatable, Sendable {
 
         if needsAttention {
             dot = .needsAttention
+        } else if status == .searching {
+            dot = .searching
         } else if isConnected && isFlashingConnected {
             dot = .justConnected
         } else {
@@ -76,11 +80,13 @@ public struct MenuBarPresentation: Equatable, Sendable {
             title = Self.notConnectedTitle
             detail = "Paused: not on home network"
         case .searching:
-            symbolName = "magnifyingglass"
+            // The speaker stays (Round 3, 5 Oct): the pulsing dot says
+            // it's looking, so the icon doesn't jump to a new shape.
+            symbolName = Self.plainSpeakerSymbol
             title = Self.notConnectedTitle
             detail = "Looking for the speaker…"
         case .connecting:
-            symbolName = "hifispeaker"
+            symbolName = Self.plainSpeakerSymbol
             title = Self.notConnectedTitle
             detail = "Checking \(name) at \(address)…"
         case .connected:
@@ -88,15 +94,15 @@ public struct MenuBarPresentation: Equatable, Sendable {
             title = "Connected to \(name)"
             detail = address
         case .noSpeaker:
-            symbolName = Self.attentionSymbol
+            symbolName = Self.plainSpeakerSymbol
             title = "No speaker set: click Find speaker"
             detail = "Or type its IP in Settings…"
         case .notConnected:
-            symbolName = Self.attentionSymbol
+            symbolName = Self.plainSpeakerSymbol
             title = "Can't reach \(name): click Find speaker"
             detail = "No answer at \(address)"
         case .localNetworkBlocked:
-            symbolName = Self.attentionSymbol
+            symbolName = Self.plainSpeakerSymbol
             title = "Can't reach \(name): allow Local Network in System Settings"
             detail = "Privacy & Security > Local Network > KEF Remote"
         }

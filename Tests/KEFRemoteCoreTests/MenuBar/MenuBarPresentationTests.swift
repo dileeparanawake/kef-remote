@@ -101,9 +101,18 @@ struct MenuBarPresentationTests {
     @Test func whileDiscoveryRunsThereIsNoSecondFindItem() {
         let searching = shown(.searching, name: nil, ip: nil)
 
-        #expect(searching.symbolName == "magnifyingglass")
         #expect(searching.detail == "Looking for the speaker…")
         #expect(!searching.offersFindSpeaker)
+    }
+
+    /// Round 3, 5 Oct: the speaker stays while it looks (no icon swap);
+    /// the pulsing orange dot says it's looking.
+    @Test func whileFindingTheSpeakerTheIconStaysASpeaker() {
+        let searching = shown(.searching, name: nil, ip: nil)
+
+        #expect(searching.symbolName == "hifispeaker")
+        #expect(searching.dot == .searching)
+        #expect(!searching.needsAttention)
     }
 
     @Test func offTheHomeNetworkTheIconIsACrossedOutSpeakerAndFindIsHidden() {

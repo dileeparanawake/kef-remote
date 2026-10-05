@@ -8,8 +8,10 @@ import KEFRemoteCore
 ///
 /// ```
 /// [menubar] status connecting -> notConnected (speaker unreachable: …), red dot on
-/// [menubar] status connecting -> connected (speaker answered), green dot for 2.0 seconds
+/// [menubar] status connecting -> connected (speaker answered), green dot for 4.0 seconds
 /// ```
+///
+/// While it looks for the speaker, ``pulse`` fades the orange dot.
 @MainActor
 final class MenuBarModel: ObservableObject {
     @Published private(set) var status: ConnectionStatus = .dormant
@@ -17,6 +19,9 @@ final class MenuBarModel: ObservableObject {
     @Published private(set) var speakerIP: String?
     /// True for ``ConnectedFlash/duration`` after becoming connected.
     @Published private(set) var isFlashingConnected = false
+
+    /// Fades the orange dot while it looks for the speaker.
+    let pulse = MenuBarPulse()
 
     /// Ends the green dot; replaced when a new flash starts.
     private var flashEnd: Task<Void, Never>?
@@ -41,6 +46,7 @@ final class MenuBarModel: ObservableObject {
         let flashNote = flashes ? ", green dot for \(ConnectedFlash.duration)" : ""
         log.info("status \(oldStatus.rawValue) -> \(newStatus.rawValue) (\(reason))\(dotChange)\(flashNote)")
         if flashes { flashConnected() }
+        pulse.run(presentation.dot.pulses)
     }
 
     /// Show the green dot, then take it away after ``ConnectedFlash/duration``.

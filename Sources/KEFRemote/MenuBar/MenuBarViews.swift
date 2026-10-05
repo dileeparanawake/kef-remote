@@ -3,9 +3,13 @@ import SwiftUI
 
 /// The menu bar icon. Filled speaker when connected; other shapes say
 /// why not, and a red dot says something needs him (see
-/// ``MenuBarPresentation`` and ``MenuBarIconImage``).
+/// ``MenuBarPresentation`` and ``MenuBarIconImage``). An orange dot
+/// pulses while it looks for the speaker (``MenuBarPulse``).
 struct MenuBarIcon: View {
     @ObservedObject var model: MenuBarModel
+    /// Watched here, not through the model, so each pulse frame redraws
+    /// only the icon.
+    @ObservedObject var pulse: MenuBarPulse
     /// Read so the icon is drawn again when light or dark mode changes.
     @Environment(\.colorScheme) private var colorScheme
 
@@ -16,6 +20,7 @@ struct MenuBarIcon: View {
         Image(nsImage: MenuBarIconImage.make(
             symbolName: shown.symbolName,
             dot: shown.dot,
+            dotOpacity: shown.dot.pulses ? pulse.dotOpacity : 1,
             accessibilityLabel: shown.accessibilityLabel
         ))
         .accessibilityLabel(shown.accessibilityLabel)

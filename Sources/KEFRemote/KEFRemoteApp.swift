@@ -22,7 +22,7 @@ struct KEFRemoteApp: App {
                 openSettings: { appDelegate.showSettings(source: .menu) }
             )
         } label: {
-            MenuBarIcon(model: appDelegate.menuBar)
+            MenuBarIcon(model: appDelegate.menuBar, pulse: appDelegate.menuBar.pulse)
         }
         .menuBarExtraStyle(.menu)
     }
