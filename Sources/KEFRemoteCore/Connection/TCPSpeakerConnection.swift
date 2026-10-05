@@ -92,6 +92,13 @@ public class TCPSpeakerConnection: SpeakerConnection {
                     conn?.stateUpdateHandler = nil
                     self?.log(.error, "TCP: connection failed — \(error.localizedDescription)")
                     continuation.resume(throwing: KEFError.connectionFailed(error.localizedDescription))
+                case .waiting(let error):
+                    // A dead route (e.g. the speaker's old IP) waits here
+                    // forever. Fail instead, so the app can rediscover.
+                    conn?.stateUpdateHandler = nil
+                    conn?.cancel()
+                    self?.log(.error, "TCP: connection waiting — \(error.localizedDescription); giving up")
+                    continuation.resume(throwing: KEFError.connectionFailed(error.localizedDescription))
                 case .cancelled:
                     conn?.stateUpdateHandler = nil
                     self?.log(.error, "TCP: connection cancelled")
