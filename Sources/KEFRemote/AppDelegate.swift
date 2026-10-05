@@ -155,6 +155,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    /// Logged so the settings window's "came to the front" check can be
+    /// read alongside it.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        logger.info("App became active")
+    }
+
     /// Open the settings window and bring it to the front.
     func showSettings(source: SettingsWindowController.Source) {
         settingsWindow.show(source: source)
@@ -296,7 +302,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             logger.error("Discovery failed: \(error)")
             menuBar.set(statusIfNotFound(), reason: "discovery failed")
-            return .failed("\(error)")
+            return .failure(error)
         }
     }
 

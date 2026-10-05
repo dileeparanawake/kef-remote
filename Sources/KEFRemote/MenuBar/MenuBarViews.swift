@@ -5,10 +5,13 @@ import SwiftUI
 struct MenuBarIcon: View {
     @ObservedObject var model: MenuBarModel
 
+    private let log = AppLogger(subsystem: "com.kef-remote", category: "menubar")
+
     var body: some View {
         let shown = model.presentation
         Image(systemName: shown.symbolName)
             .accessibilityLabel(shown.accessibilityLabel)
+            .onAppear { log.info("menu bar icon shown: \(shown.symbolName)") }
     }
 }
 

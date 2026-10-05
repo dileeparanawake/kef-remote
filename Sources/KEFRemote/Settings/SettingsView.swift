@@ -15,11 +15,15 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section("Speaker") {
-                HStack {
-                    TextField("IP address", text: $model.ipText, prompt: Text("192.168.1.80"))
-                        .onSubmit { model.saveIP() }
-                    Button("Save") { model.saveIP() }
-                        .disabled(!model.canSaveIP)
+                LabeledContent("IP address") {
+                    HStack {
+                        TextField("IP address", text: $model.ipText, prompt: Text("192.168.1.80"))
+                            .labelsHidden()
+                            .frame(width: 150)
+                            .onSubmit { model.saveIP() }
+                        Button("Save") { model.saveIP() }
+                            .disabled(!model.canSaveIP)
+                    }
                 }
 
                 HStack {
