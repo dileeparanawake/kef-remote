@@ -15,13 +15,7 @@ let savedMAC = arguments.firstIndex(of: "--mac").flatMap { index in
 }
 
 let log = HandlerLog { level, message in
-    let label: String
-    switch level {
-    case .debug: label = "DEBUG"
-    case .info: label = "INFO "
-    case .warning: label = "WARN "
-    case .error: label = "ERROR"
-    }
+    let label = level.label.padding(toLength: 5, withPad: " ", startingAt: 0)
     print("[\(label)] \(message)")
 }
 
