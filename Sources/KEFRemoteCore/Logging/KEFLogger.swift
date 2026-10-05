@@ -10,6 +10,9 @@ public enum KEFLogLevel {
     /// Safe to leave on in production — concise and meaningful.
     case info
 
+    /// Something went wrong but the app carries on (a reply dropped, a retry).
+    case warning
+
     /// Failures: invalid response, connection lost, unexpected behaviour.
     case error
 }
@@ -29,6 +32,7 @@ public enum KEFLogLevel {
 ///     switch level {
 ///     case .debug: kefLog.debug("\(message, privacy: .public)")
 ///     case .info:  kefLog.info("\(message, privacy: .public)")
+///     case .warning: kefLog.warning("\(message, privacy: .public)")
 ///     case .error: kefLog.error("\(message, privacy: .public)")
 ///     }
 /// }
@@ -43,13 +47,3 @@ public enum KEFLogLevel {
 /// log stream --predicate 'subsystem == "com.kef-remote"' --level debug
 /// ```
 public typealias KEFLogHandler = (KEFLogLevel, String) -> Void
-
-// MARK: - Internal helpers
-
-extension Data {
-    /// Formats bytes as space-separated uppercase hex pairs.
-    /// e.g. Data([0x47, 0x25, 0x80]) → "47 25 80"
-    var hexString: String {
-        map { String(format: "%02X", $0) }.joined(separator: " ")
-    }
-}

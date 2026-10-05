@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch level {
         case .debug: self.speakerLogger.debug(message)
         case .info:  self.speakerLogger.info(message)
+        case .warning: self.speakerLogger.warning(message)
         case .error: self.speakerLogger.error(message)
         }
     }
