@@ -17,12 +17,12 @@ This is an early release with real rough edges. Read [Known limitations](#known-
 - **Finds the speaker by itself.** It searches the network when it starts, and again if the speaker's IP changes. No Terminal step.
 - **Auto or Manual discovery.** Settings shows the speaker it found and its IP. Choose Manual to type the IP yourself.
 - **Menu bar menu.** Settings… and Quit, plus a settings window for the speaker's IP, the modifier key and the shortcuts.
-- **Shows when it's connected.** A filled speaker icon and "Connected to LSX", or "Not connected" with the reason and a Find speaker item.
+- **Shows when it's connected.** A filled speaker icon and "Connected to LSX", with a green dot for a moment when it connects. When it can't reach the speaker, a red dot, and the menu says what's wrong and what to do, with a Find speaker item.
 - **One power shortcut.** Cmd+Shift+O turns the speaker on or off, whichever it isn't.
 - **Your own shortcuts.** Record new keys for power, volume up, volume down, mute and quit in Settings.
 - **An app icon.**
 - **Logging.** Each command, decision and failure writes one plain line to `~/.kef-remote/logs/kef-remote.log`.
-- **Code quality.** Tests went from 97 to 173, and a review pass tidied names, comments and logging.
+- **Code quality.** Tests went from 97 to 236, and two review passes tidied names, comments and logging.
 
 ## Requirements
 
@@ -77,7 +77,7 @@ When it opens, KEF Remote looks for the speaker on your network and saves its IP
 
 Then press Cmd+Shift+O to turn the speaker on, then Control + volume up: a small panel in the middle of the screen shows the volume.
 
-If the menu says "Not connected", click Find speaker. If you've just allowed local network access, this is the fix.
+If the icon has a red dot, the menu's first line says what's wrong and what to do. Usually that's Find speaker. If you've just allowed local network access, this is the fix.
 
 ### If it can't find the speaker
 
@@ -110,13 +110,15 @@ The icon shows whether KEF Remote is connected to the speaker. It checks when it
 | Icon | Meaning |
 |---|---|
 | Filled speaker | Connected: the speaker answered |
+| Filled speaker, green dot | Just connected (the dot goes after 2 seconds) |
 | Speaker outline | Checking the speaker answers |
-| Speaker with a warning badge | Not connected: the speaker didn't answer |
+| Speaker outline, red dot | Needs you: the speaker didn't answer, no speaker is set, or Local Network access is off |
 | Magnifying glass | Looking for the speaker |
-| Speaker with a plus | No speaker set |
 | Crossed-out speaker | Paused: not on the home network |
 
-The menu's first line says "Connected to LSX" or "Not connected", with the IP or the reason under it. When it isn't connected, Find speaker looks for the speaker on the network and saves its IP. Settings… and Quit are below.
+The red dot is a shape as well as a colour, so you can see it without colour vision.
+
+The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker". Find speaker looks for the speaker on the network and saves its IP. Settings… and Quit are below.
 
 ## Known limitations
 
@@ -142,7 +144,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 216 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, discovery against a mock socket, the menu bar's states and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 236 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 ## How it works
 
