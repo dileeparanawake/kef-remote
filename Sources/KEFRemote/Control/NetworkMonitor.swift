@@ -1,5 +1,6 @@
 import CoreWLAN
 import Foundation
+import KEFRemoteCore
 
 /// Monitors Wi-Fi network changes and publishes active/dormant state.
 ///
@@ -12,7 +13,8 @@ import Foundation
 /// If ``homeSSID`` is `nil` (not configured yet), the monitor defaults
 /// to ``NetworkState/active`` — the assumption is that the user hasn't
 /// configured network awareness yet, so we allow the app to work
-/// everywhere.
+/// everywhere. The decision itself is ``NetworkState/on(currentSSID:homeSSID:)``
+/// in the core library, where it is tested.
 ///
 /// Usage:
 /// ```swift
@@ -28,24 +30,6 @@ import Foundation
 /// `AppDelegate` activates or deactivates hotkeys and lifecycle hooks
 /// in response.
 final class NetworkMonitor: NSObject {
-
-    // MARK: - Types
-
-    /// Whether the app should be active or dormant based on the current
-    /// Wi-Fi network.
-    enum NetworkState: Equatable, CustomStringConvertible {
-        /// On the home network (or homeSSID not configured).
-        case active
-        /// On a different network or disconnected from Wi-Fi.
-        case dormant
-
-        var description: String {
-            switch self {
-            case .active: "active"
-            case .dormant: "dormant"
-            }
-        }
-    }
 
     // MARK: - Properties
 
@@ -154,32 +138,11 @@ final class NetworkMonitor: NSObject {
     /// after the user changes the homeSSID in settings).
     func checkCurrentNetwork() {
         let currentSSID = wifiClient.interface()?.ssid()
-        let newState = evaluateState(currentSSID: currentSSID)
+        let newState = NetworkState.on(currentSSID: currentSSID, homeSSID: homeSSID)
 
         logger.info("Network check: SSID=\(currentSSID ?? "<none>"), homeSSID=\(homeSSID ?? "<not set>"), state=\(newState)")
 
         updateState(newState)
-    }
-
-    /// Determine what the network state should be given the current SSID.
-    ///
-    /// - Parameter currentSSID: The SSID from CoreWLAN, or `nil` if
-    ///   disconnected.
-    /// - Returns: The evaluated network state.
-    private func evaluateState(currentSSID: String?) -> NetworkState {
-        // If no home SSID is configured, default to active (don't
-        // restrict functionality until the user sets up network awareness).
-        guard let homeSSID = homeSSID else {
-            return .active
-        }
-
-        // If we can't read the SSID (disconnected from Wi-Fi), go dormant.
-        guard let currentSSID = currentSSID else {
-            return .dormant
-        }
-
-        // Case-sensitive comparison against the home SSID.
-        return currentSSID == homeSSID ? .active : .dormant
     }
 
     /// Update the stored state and notify the callback if it changed.
