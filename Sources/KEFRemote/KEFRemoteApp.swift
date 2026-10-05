@@ -2,22 +2,25 @@ import SwiftUI
 
 /// The main entry point for the KEF Remote macOS app.
 ///
-/// This app runs as a background agent (no dock icon, no menu bar icon).
-/// It uses an `AppDelegate` to manage lifecycle events including
-/// single-instance detection and activation policy.
+/// The app runs as a background agent (no Dock icon). Its only scene is
+/// a menu bar icon with a small menu: a status line, Settings… and Quit.
+/// The settings window is a plain `NSWindow` owned by ``AppDelegate``
+/// (see ``SettingsWindowController``), so it can open from the menu and
+/// when the app is launched again while it is running.
 ///
-/// The `Settings` scene hosts the ``SettingsView``, which provides
-/// configuration for speaker connection, hotkeys, audio defaults,
-/// lifecycle behaviour, network awareness, and app preferences.
-/// The settings window opens when the app is re-launched while
-/// already running (see ``AppDelegate/applicationShouldHandleReopen(_:hasVisibleWindows:)``).
+/// Removing the icon from the menu bar (Cmd-drag) quits the app.
 @main
 struct KEFRemoteApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        Settings {
-            SettingsView()
+        MenuBarExtra {
+            MenuBarMenu(model: appDelegate.menuBar) {
+                appDelegate.showSettings(source: .menu)
+            }
+        } label: {
+            MenuBarIcon(model: appDelegate.menuBar)
         }
+        .menuBarExtraStyle(.menu)
     }
 }

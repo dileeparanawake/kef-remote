@@ -11,7 +11,10 @@ import os
 ///    lifecycle hooks
 /// 4. Hotkey triggers flow through SpeakerController and produce HUD feedback
 /// 5. On command failure: disconnects, waits, reconnects (simple retry)
-/// 6. Re-launch opens the settings window
+/// 6. Keeps the menu bar status up to date (``MenuBarModel``)
+/// 7. Opens the settings window from the menu, or when the app is
+///    launched again while running, and applies settings changes live
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let logger = AppLogger(
@@ -45,6 +48,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         category: "discovery"
     )
 
+    // MARK: - Menu bar and settings
+
+    /// What the menu bar icon and menu show. Read by ``KEFRemoteApp``.
+    let menuBar = MenuBarModel()
+
+    private lazy var settingsModel = SettingsModel(
+        savedIP: config.speaker?.lastKnownIp,
+        actions: SettingsActions(
+            saveSpeakerIP: { [weak self] ip in self?.saveSpeakerIP(ip) },
+            discoverSpeaker: { [weak self] in
+                await self?.runDiscovery(trigger: "Discover in settings") ?? .failed("app is closing")
+            },
+            applyModifier: { [weak self] choice in
+                self?.mediaKeys.modifier = choice.eventFlags
+                self?.logger.info("Media key modifier is now \(choice.rawValue)")
+            }
+        )
+    )
+
+    private lazy var settingsWindow = SettingsWindowController(model: settingsModel)
+
     // MARK: - Components
 
     private lazy var finder = SpeakerFinder.onNetwork(log: discoveryLogger)
@@ -73,7 +97,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // for this process. If this also doesn't appear, the code path is not running.
         NSLog("[KEFRemote] applicationDidFinishLaunching — NSLog smoke test")
 
-        // Run as a background agent: no dock icon, no menu bar.
+        // Run as a background agent: no Dock icon. The menu bar icon
+        // comes from the MenuBarExtra scene in KEFRemoteApp.
         NSApp.setActivationPolicy(.accessory)
 
         // 1. Load config from disk.
@@ -126,14 +151,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        return true
+        showSettings(source: .reopen)
+        return false
+    }
+
+    /// Open the settings window and bring it to the front.
+    func showSettings(source: SettingsWindowController.Source) {
+        settingsWindow.show(source: source)
     }
 
     // MARK: - Config
 
     private func loadConfig() {
         config = (try? AppConfig.load(from: configFileURL)) ?? AppConfig()
+        menuBar.showSpeaker(config.speaker)
         applyConfig()
     }
 
@@ -145,8 +176,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         applyMediaKeyModifier()
     }
 
-    /// Apply the saved media key modifier (set in the settings window)
-    /// to the interceptor. Read once at launch.
+    /// Apply the saved media key modifier to the interceptor at launch.
+    /// The settings window applies later changes through ``settingsModel``.
     private func applyMediaKeyModifier() {
         mediaKeys.modifier = MediaKeyModifier.stored.eventFlags
     }
@@ -170,6 +201,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         logger.info("Activating — on home network")
 
+        menuBar.set(.idle(isActive: true, speakerIP: config.speaker?.lastKnownIp), reason: "on home network")
         connectToSpeaker()
         mediaKeys.start()
         powerShortcuts.register()
@@ -184,6 +216,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         isActive = false
 
         logger.info("Deactivating — off home network")
+        menuBar.set(.dormant, reason: "off home network")
 
         mediaKeys.stop()
         powerShortcuts.unregister()
@@ -198,7 +231,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func connectToSpeaker() {
         guard let ip = config.speaker?.lastKnownIp else {
             logger.warning("No speaker IP configured — attempting discovery")
-            discoverSpeaker()
+            discoverInBackground(trigger: "no IP saved")
             return
         }
 
@@ -215,48 +248,90 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller = nil
     }
 
+    /// Save an IP typed in settings, and connect to it.
+    private func saveSpeakerIP(_ ip: String) {
+        var speaker = config.speaker ?? AppConfig.SpeakerConfig()
+        speaker.lastKnownIp = ip
+        saveSpeaker(speaker)
+        reconnect(reason: "IP changed in settings")
+    }
+
+    /// Drop the current connection and connect to the saved IP.
+    private func reconnect(reason: String) {
+        disconnectSpeaker()
+        if isActive { connectToSpeaker() }
+        menuBar.set(.idle(isActive: isActive, speakerIP: config.speaker?.lastKnownIp), reason: reason)
+    }
+
     /// Find the speaker with SSDP, save its IP (and MAC, if none was saved),
-    /// then connect. Runs when no IP is saved, and when connecting fails,
-    /// since the speaker may have a new IP.
-    private func discoverSpeaker() {
+    /// then connect. Runs when no IP is saved, when connecting fails (the
+    /// speaker may have a new IP), and from Discover in settings.
+    private func runDiscovery(trigger: String) async -> DiscoveryOutcome {
         guard !isDiscovering else {
             logger.info("Discovery already running")
-            return
+            return .alreadyRunning
         }
         isDiscovering = true
-        let finder = self.finder
-        let saved = config.speaker
+        defer { isDiscovering = false }
 
+        let statusBefore = menuBar.status
+        menuBar.set(.searching, reason: "discovery started: \(trigger)")
+
+        // If nothing is found, a failed speaker stays failed. Otherwise
+        // go back to what the config says.
+        let statusIfNotFound: () -> ConnectionStatus = { [unowned self] in
+            statusBefore == .error
+                ? .error
+                : .idle(isActive: self.isActive, speakerIP: self.config.speaker?.lastKnownIp)
+        }
+
+        do {
+            guard let updated = try await finder.rediscover(config.speaker) else {
+                menuBar.set(statusIfNotFound(), reason: "discovery found nothing")
+                return .notFound
+            }
+            saveSpeaker(updated)
+            reconnect(reason: "discovery found the speaker")
+            return .found(updated)
+        } catch {
+            logger.error("Discovery failed: \(error)")
+            menuBar.set(statusIfNotFound(), reason: "discovery failed")
+            return .failed("\(error)")
+        }
+    }
+
+    /// Run discovery without waiting, and show a HUD if it finds nothing.
+    private func discoverInBackground(trigger: String) {
         Task {
-            do {
-                let updated = try await finder.rediscover(saved)
-                await MainActor.run {
-                    self.isDiscovering = false
-                    guard let updated else {
-                        HUDOverlay.show(.error("Speaker not found"))
-                        return
-                    }
-                    self.saveSpeaker(updated)
-                    if self.isActive { self.connectToSpeaker() }
-                }
-            } catch {
-                logger.error("Discovery failed: \(error)")
-                await MainActor.run {
-                    self.isDiscovering = false
-                    HUDOverlay.show(.error("Discovery failed"))
-                }
+            switch await runDiscovery(trigger: trigger) {
+            case .notFound: HUDOverlay.show(.error("Speaker not found"))
+            case .failed: HUDOverlay.show(.error("Discovery failed"))
+            case .found, .alreadyRunning: break
             }
         }
     }
 
     private func saveSpeaker(_ speaker: AppConfig.SpeakerConfig) {
         config.speaker = speaker
+        menuBar.showSpeaker(speaker)
+        settingsModel.showSavedIP(speaker.lastKnownIp)
         do {
             try AppConfig.save(config, to: configFileURL)
             logger.info("Saved speaker at \(speaker.lastKnownIp ?? "unknown IP")")
         } catch {
             logger.error("Could not save config: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: - Command results
+
+    /// Record a command's result in the menu bar icon.
+    private func commandSucceeded(_ command: String) {
+        menuBar.set(.ok, reason: "\(command) succeeded")
+    }
+
+    private func commandFailed(_ command: String) {
+        menuBar.set(.error, reason: "\(command) failed")
     }
 
     // MARK: - Media key callbacks
@@ -291,12 +366,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                             }
                         }
                     }
+                    await MainActor.run { self.commandSucceeded("\(action)") }
                 } catch {
                     self.logger.error(
                         "Media key command failed: \(error.localizedDescription)"
                     )
                     await MainActor.run {
                         HUDOverlay.show(.error("Command failed"))
+                        self.commandFailed("\(action)")
                     }
                     self.handleCommandError(error)
                 }
@@ -316,6 +393,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     try await controller.powerOn()
                     await MainActor.run {
                         HUDOverlay.show(.powerOn)
+                        self.commandSucceeded("power on")
                     }
                 } catch {
                     self.logger.error(
@@ -323,6 +401,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     )
                     await MainActor.run {
                         HUDOverlay.show(.error("Power on failed"))
+                        self.commandFailed("power on")
                     }
                     self.handleCommandError(error)
                 }
@@ -337,6 +416,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     try await controller.powerOff()
                     await MainActor.run {
                         HUDOverlay.show(.powerOff)
+                        self.commandSucceeded("power off")
                     }
                 } catch {
                     self.logger.error(
@@ -344,6 +424,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     )
                     await MainActor.run {
                         HUDOverlay.show(.error("Power off failed"))
+                        self.commandFailed("power off")
                     }
                     self.handleCommandError(error)
                 }
@@ -368,11 +449,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     try await controller.powerOn()
                     await MainActor.run {
                         HUDOverlay.show(.powerOn)
+                        self.commandSucceeded("wake power-on")
                     }
                 } catch {
                     self.logger.error(
                         "Wake power-on failed: \(error.localizedDescription)"
                     )
+                    await MainActor.run { self.commandFailed("wake power-on") }
                     self.handleCommandError(error)
                 }
             }
@@ -437,7 +520,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if let kefError = error as? KEFError, kefError.isConnectionFailure {
                 self.logger.info("Could not reach the speaker (\(kefError)) — rediscovering")
-                self.discoverSpeaker()
+                self.discoverInBackground(trigger: "speaker unreachable")
                 return
             }
 
