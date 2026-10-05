@@ -8,8 +8,9 @@ import SwiftUI
 /// Speaker      Discovery (Auto | Manual)
 ///   Auto:      Speaker LSX · IP 192.168.1.80 · Status Connected (Find again)
 ///   Manual:    IP [192.168.1.80] (Save)
-/// Media keys   Modifier [Control]
+/// Media keys   Modifier [Control]   "Control + the volume keys … changes the speaker"
 /// Shortcuts    Power on/off, Volume up, Volume down, Mute, Quit
+///              "Optional extra keys. They work alongside the volume keys above."
 /// ```
 struct SettingsView: View {
     @ObservedObject var model: SettingsModel
@@ -45,7 +46,8 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.menu)
 
-                Text("Hold this key with a volume or mute key to control the speaker instead of the Mac.")
+                // One line per way in: the modifier works with the keyboard's own keys.
+                Text("\(model.modifier.displayName) + the volume keys 🔉 🔊 🔇 changes the speaker, not the Mac.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -59,6 +61,11 @@ struct SettingsView: View {
                     )
                     .shortcutValidation { model.validateShortcut($0, for: action) }
                 }
+
+                // The other way in: extra keys, which work alongside the modifier.
+                Text("Optional extra keys. They work alongside the volume keys above.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
                 Text("Click a field, then press the new keys. Delete clears it.")
                     .font(.caption)
