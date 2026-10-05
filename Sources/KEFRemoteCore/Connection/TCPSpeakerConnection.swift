@@ -4,7 +4,8 @@ import Network
 /// Real TCP connection to a KEF speaker using Network.framework.
 ///
 /// Connects to the speaker on port 50001. Sets TCP_NODELAY for
-/// immediate command delivery. Connection and read timeouts are 3 seconds.
+/// immediate command delivery. Connecting times out after 3 seconds;
+/// reading a reply has no timeout of its own.
 ///
 /// This class is not used in tests — tests use MockSpeakerConnection.
 public class TCPSpeakerConnection: SpeakerConnection {
