@@ -1,4 +1,5 @@
 import Foundation
+import KEFRemoteCore
 import os
 
 /// Triple-output logger for KEF Remote.
@@ -23,7 +24,7 @@ import os
 /// tail -50 ~/.kef-remote/logs/kef-remote.log # last 50 lines
 /// tail -f ~/.kef-remote/logs/kef-remote.log  # live stream
 /// ```
-struct AppLogger {
+struct AppLogger: KEFLog {
 
     let category: String
     private let logger: Logger

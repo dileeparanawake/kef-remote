@@ -39,7 +39,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Logger for discovery: what it sent, heard, kept and dropped.
+    private let discoveryLogger = AppLogger(
+        subsystem: "com.kef-remote",
+        category: "discovery"
+    )
+
     // MARK: - Components
+
+    private lazy var finder = SpeakerFinder.onNetwork(log: discoveryLogger)
+    private var isDiscovering = false
 
     private var controller: SpeakerController?
     private var connection: TCPSpeakerConnection?
@@ -206,36 +215,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller = nil
     }
 
-    /// Run SSDP discovery to find a speaker on the local network.
-    /// If found, saves the IP to config and connects.
+    /// Find the speaker with SSDP, save its IP (and MAC, if none was saved),
+    /// then connect. Runs when no IP is saved, and when connecting fails,
+    /// since the speaker may have a new IP.
     private func discoverSpeaker() {
+        guard !isDiscovering else {
+            logger.info("Discovery already running")
+            return
+        }
+        isDiscovering = true
+        let finder = self.finder
+        let saved = config.speaker
+
         Task {
             do {
-                let results = try await SSDPDiscovery.discover(timeout: 5)
-                guard let first = results.first else {
-                    logger.warning("No speakers found on network")
-                    await MainActor.run {
-                        HUDOverlay.show(.error("No speakers found"))
-                    }
-                    return
-                }
-
+                let updated = try await finder.rediscover(saved)
                 await MainActor.run {
-                    // Save the discovered IP.
-                    if config.speaker == nil {
-                        config.speaker = AppConfig.SpeakerConfig()
+                    self.isDiscovering = false
+                    guard let updated else {
+                        HUDOverlay.show(.error("Speaker not found"))
+                        return
                     }
-                    config.speaker?.lastKnownIp = first.ip
-                    try? AppConfig.save(config, to: configFileURL)
-
-                    connectToSpeaker()
+                    self.saveSpeaker(updated)
+                    if self.isActive { self.connectToSpeaker() }
                 }
             } catch {
-                logger.error("Discovery failed: \(error.localizedDescription)")
+                logger.error("Discovery failed: \(error)")
                 await MainActor.run {
+                    self.isDiscovering = false
                     HUDOverlay.show(.error("Discovery failed"))
                 }
             }
+        }
+    }
+
+    private func saveSpeaker(_ speaker: AppConfig.SpeakerConfig) {
+        config.speaker = speaker
+        do {
+            try AppConfig.save(config, to: configFileURL)
+            logger.info("Saved speaker at \(speaker.lastKnownIp ?? "unknown IP")")
+        } catch {
+            logger.error("Could not save config: \(error.localizedDescription)")
         }
     }
 
@@ -278,7 +298,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     await MainActor.run {
                         HUDOverlay.show(.error("Command failed"))
                     }
-                    self.handleCommandError()
+                    self.handleCommandError(error)
                 }
             }
         }
@@ -304,6 +324,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     await MainActor.run {
                         HUDOverlay.show(.error("Power on failed"))
                     }
+                    self.handleCommandError(error)
                 }
             }
         }
@@ -324,6 +345,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     await MainActor.run {
                         HUDOverlay.show(.error("Power off failed"))
                     }
+                    self.handleCommandError(error)
                 }
             }
         }
@@ -351,6 +373,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.logger.error(
                         "Wake power-on failed: \(error.localizedDescription)"
                     )
+                    self.handleCommandError(error)
                 }
             }
         }
@@ -402,20 +425,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Error handling
 
-    /// Simple error recovery: disconnect and reconnect after a brief delay.
+    /// Recover from a failed command.
     ///
-    /// On command failure, we tear down the current connection and attempt
-    /// to reconnect after 2 seconds. If the speaker has changed IP, a
-    /// future enhancement could trigger re-discovery here.
-    private func handleCommandError() {
-        logger.info("Command error — disconnecting and reconnecting in 2s")
-        disconnectSpeaker()
+    /// If the speaker could not be reached, it may have a new IP, so run
+    /// discovery (which saves the new IP and reconnects). Otherwise
+    /// disconnect and reconnect to the same IP after 2 seconds.
+    private func handleCommandError(_ error: Error) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.disconnectSpeaker()
 
-        // Try to reconnect after a brief delay.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-            guard let self, self.isActive else { return }
-            self.logger.info("Reconnecting to speaker")
-            self.connectToSpeaker()
+            if let kefError = error as? KEFError, kefError.isConnectionFailure {
+                self.logger.info("Could not reach the speaker (\(kefError)) — rediscovering")
+                self.discoverSpeaker()
+                return
+            }
+
+            self.logger.info("Command error — disconnecting and reconnecting in 2s")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+                guard let self, self.isActive else { return }
+                self.logger.info("Reconnecting to speaker")
+                self.connectToSpeaker()
+            }
         }
     }
 }
