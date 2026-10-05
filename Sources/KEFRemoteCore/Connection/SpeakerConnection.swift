@@ -9,6 +9,19 @@ public enum KEFError: Error, Equatable {
     case speakerUnreachable
 }
 
+extension KEFError {
+    /// True when the speaker could not be reached, so it may have a new IP.
+    /// False when it answered with something unexpected.
+    public var isConnectionFailure: Bool {
+        switch self {
+        case .connectionFailed, .notConnected, .speakerUnreachable, .commandTimeout:
+            return true
+        case .invalidResponse:
+            return false
+        }
+    }
+}
+
 /// Abstraction over the TCP connection to a KEF speaker.
 ///
 /// This protocol exists so the command layer can be tested without
