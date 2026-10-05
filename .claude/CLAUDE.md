@@ -71,6 +71,27 @@ Use `make <target>` for common operations. Key targets:
 - Hardware verification: manual testing against a real speaker
 - Run all tests: `swift test --disable-sandbox`
 
+## Code quality checklist
+
+Check every change against these before committing.
+
+**Testable**
+- [ ] New logic (decisions, parsing, mapping) lives in `KEFRemoteCore`, not the app target.
+- [ ] It takes its dependencies (connection, socket, log, clock) through a protocol or closure, and has tests.
+
+**Debuggable**
+- [ ] Each command, decision and failure logs one plain line, with the reason; nothing fails silently.
+- [ ] Bytes on the wire log at `.debug`; `make logs-recent` / `logs-errors` show what happened.
+
+**Modular and extendable**
+- [ ] One job per type; app classes only watch the system and fire callbacks.
+- [ ] No copy-paste: a third copy becomes a helper.
+
+**Readable**
+- [ ] Names say what a thing is or does (`getSourceByte`, not `getPowerState`); no aliases or dead code.
+- [ ] Comments say why, and match the code; no magic numbers.
+- [ ] `swift test --disable-sandbox` passes and a Debug `xcodebuild` builds with no new warnings.
+
 ## Git workflow
 
 - Commit when a unit of work is done.
