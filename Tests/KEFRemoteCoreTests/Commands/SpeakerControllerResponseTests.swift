@@ -2,7 +2,7 @@ import Testing
 import Foundation
 @testable import KEFRemoteCore
 
-struct SpeakerControllerLayer2Tests {
+struct SpeakerControllerResponseTests {
 
     // MARK: - Helpers
 
@@ -144,25 +144,25 @@ struct SpeakerControllerLayer2Tests {
         #expect(mock.sentCommands == [KEFCommand.getVolume()])
     }
 
-    // MARK: - getPowerState
+    // MARK: - getSourceByte
 
-    @Test func testGetPowerStateReturnsDecodedSourceByte() async throws {
+    @Test func testGetSourceByteReturnsDecodedSourceByte() async throws {
         let mock = MockSpeakerConnection()
         let source = SourceByte(isPoweredOn: true, isInversed: false, standby: .never, input: .optical)
         mock.responses = [Data([0x52, 0x30, 0x81, source.encode(), 0x00])]
         let controller = makeController(mock: mock)
-        let result = try await controller.getPowerState()
+        let result = try await controller.getSourceByte()
         #expect(result.isPoweredOn == true)
         #expect(result.input == .optical)
         #expect(result.standby == .never)
     }
 
-    @Test func testGetPowerStateSendsGetSourceCommand() async throws {
+    @Test func testGetSourceByteSendsGetSourceCommand() async throws {
         let mock = MockSpeakerConnection()
         let source = SourceByte(isPoweredOn: true, isInversed: false, standby: .never, input: .optical)
         mock.responses = [Data([0x52, 0x30, 0x81, source.encode(), 0x00])]
         let controller = makeController(mock: mock)
-        _ = try await controller.getPowerState()
+        _ = try await controller.getSourceByte()
         #expect(mock.sentCommands == [KEFCommand.getSource()])
     }
 
@@ -215,9 +215,9 @@ struct SpeakerControllerLayer2Tests {
         #expect(state.input == .bluetoothPaired)
     }
 
-    // MARK: - getVolumeState and getPowerState are independently usable
+    // MARK: - getVolumeState and getSourceByte are independently usable
 
-    @Test func testGetVolumeStateWorksWithoutGetPowerState() async throws {
+    @Test func testGetVolumeStateWorksWithoutGetSourceByte() async throws {
         let mock = MockSpeakerConnection()
         mock.responses = [Data([0x52, 0x25, 0x81, 55, 0x00])]
         let controller = makeController(mock: mock)
@@ -226,12 +226,12 @@ struct SpeakerControllerLayer2Tests {
         #expect(mock.sentCommands.count == 1)
     }
 
-    @Test func testGetPowerStateWorksWithoutGetVolumeState() async throws {
+    @Test func testGetSourceByteWorksWithoutGetVolumeState() async throws {
         let mock = MockSpeakerConnection()
         let source = SourceByte(isPoweredOn: true, isInversed: false, standby: .never, input: .wifi)
         mock.responses = [Data([0x52, 0x30, 0x81, source.encode(), 0x00])]
         let controller = makeController(mock: mock)
-        let result = try await controller.getPowerState()
+        let result = try await controller.getSourceByte()
         #expect(result.input == .wifi)
         #expect(mock.sentCommands.count == 1)
     }

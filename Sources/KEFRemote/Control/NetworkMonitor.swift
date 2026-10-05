@@ -1,6 +1,6 @@
 import CoreWLAN
 import Foundation
-import os
+import KEFRemoteCore
 
 /// Monitors Wi-Fi network changes and publishes active/dormant state.
 ///
@@ -13,7 +13,8 @@ import os
 /// If ``homeSSID`` is `nil` (not configured yet), the monitor defaults
 /// to ``NetworkState/active`` — the assumption is that the user hasn't
 /// configured network awareness yet, so we allow the app to work
-/// everywhere.
+/// everywhere. The decision itself is ``NetworkState/on(currentSSID:homeSSID:)``
+/// in the core library, where it is tested.
 ///
 /// Usage:
 /// ```swift
@@ -25,32 +26,14 @@ import os
 /// try monitor.start()
 /// ```
 ///
-/// The actual integration with hotkeys and lifecycle hooks is NOT wired
-/// here — that happens in the integration task (Task 22). This class
-/// only provides the monitoring infrastructure and state publishing.
+/// This class only watches the network and publishes state.
+/// `AppDelegate` activates or deactivates hotkeys and lifecycle hooks
+/// in response.
 final class NetworkMonitor: NSObject {
-
-    // MARK: - Types
-
-    /// Whether the app should be active or dormant based on the current
-    /// Wi-Fi network.
-    enum NetworkState: Equatable, CustomStringConvertible {
-        /// On the home network (or homeSSID not configured).
-        case active
-        /// On a different network or disconnected from Wi-Fi.
-        case dormant
-
-        var description: String {
-            switch self {
-            case .active: "active"
-            case .dormant: "dormant"
-            }
-        }
-    }
 
     // MARK: - Properties
 
-    private let logger = Logger(
+    private let logger = AppLogger(
         subsystem: "com.kef-remote",
         category: "NetworkMonitor"
     )
@@ -155,32 +138,11 @@ final class NetworkMonitor: NSObject {
     /// after the user changes the homeSSID in settings).
     func checkCurrentNetwork() {
         let currentSSID = wifiClient.interface()?.ssid()
-        let newState = evaluateState(currentSSID: currentSSID)
+        let newState = NetworkState.on(currentSSID: currentSSID, homeSSID: homeSSID)
 
-        logger.info("Network check: SSID=\(currentSSID ?? "<none>", privacy: .public), homeSSID=\(self.homeSSID ?? "<not set>", privacy: .public), state=\(newState.description, privacy: .public)")
+        logger.info("Network check: SSID=\(currentSSID ?? "<none>"), homeSSID=\(homeSSID ?? "<not set>"), state=\(newState)")
 
         updateState(newState)
-    }
-
-    /// Determine what the network state should be given the current SSID.
-    ///
-    /// - Parameter currentSSID: The SSID from CoreWLAN, or `nil` if
-    ///   disconnected.
-    /// - Returns: The evaluated network state.
-    private func evaluateState(currentSSID: String?) -> NetworkState {
-        // If no home SSID is configured, default to active (don't
-        // restrict functionality until the user sets up network awareness).
-        guard let homeSSID = homeSSID else {
-            return .active
-        }
-
-        // If we can't read the SSID (disconnected from Wi-Fi), go dormant.
-        guard let currentSSID = currentSSID else {
-            return .dormant
-        }
-
-        // Case-sensitive comparison against the home SSID.
-        return currentSSID == homeSSID ? .active : .dormant
     }
 
     /// Update the stored state and notify the callback if it changed.
@@ -193,9 +155,7 @@ final class NetworkMonitor: NSObject {
             let oldState = self.state
             self.state = newState
             if oldState != newState {
-                self.logger.info(
-                    "Network state changed: \(oldState.description) -> \(newState.description)"
-                )
+                self.logger.info("Network state changed: \(oldState) -> \(newState)")
                 self.onStateChange?(newState)
             }
         }
@@ -216,7 +176,7 @@ extension NetworkMonitor: CWEventDelegate {
     /// This method is called on an arbitrary thread. We dispatch the
     /// state evaluation to the main thread via ``updateState(_:)``.
     func ssidDidChangeForWiFiInterface(withName interfaceName: String) {
-        logger.debug("SSID change detected on interface: \(interfaceName, privacy: .public)")
+        logger.debug("SSID change detected on interface: \(interfaceName)")
         checkCurrentNetwork()
     }
 }

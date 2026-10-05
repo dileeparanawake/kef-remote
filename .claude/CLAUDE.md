@@ -1,13 +1,15 @@
 # KEF Remote
 
-Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) over TCP. Runs as a background agent (LSUIElement=true) with no dock or menu bar icon, intercepting media keys and providing a HUD overlay for volume/source feedback.
+Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) over TCP. Runs as a background agent (LSUIElement=true) with no Dock icon. A menu bar icon shows whether the speaker is connected (it answered the last exchange), with a red dot when something needs the user, a brief green dot on connecting and a pulsing orange dot while it looks for the speaker. It offers Find speaker when it isn't connected, and opens Settings (a plain `NSWindow`). It intercepts media keys and shows a HUD overlay for volume/source feedback. Menu and settings actions log under the `menubar` and `settings` categories.
 
 ## Codebase
 
-Two targets in a Swift package:
+Three targets in a Swift package, plus tests:
 
-- **KEFRemoteCore** (library) — Testable protocol, command, and controller logic. No UI, no system frameworks beyond Foundation.
-- **KEFRemote** (executable) — macOS app with HUD overlay, hotkey interception, settings window, and system integration.
+- **KEFRemoteCore** (library) — Testable protocol, command, and controller logic. No UI, no system frameworks beyond Foundation and Network.
+- **KEFRemoteCore** folders: `Protocol/` (byte encoding), `Commands/` (`SpeakerController`, the connection check), `Connection/` (TCP, reply timeout), `Config/` (`config.json`, Auto/Manual discovery), `Discovery/` (SSDP), `Logging/`, `MenuBar/` and `HUD/` (what the icon and HUD show), `Network/` (home-network rule, Local Network permission), `Shortcuts/` (what each global shortcut does), `Utilities/`.
+- **KEFRemote** (executable) — macOS app: HUD overlay (`UI/`), media keys and global shortcuts, wake/sleep and Wi-Fi watching (`Control/`), menu bar (`MenuBar/`), settings window (`Settings/`), logging to file (`Logging/`). `AppDelegate` wires them together.
+- **kef-discover** (executable) — runs discovery once and prints each step (`make discover`).
 
 **Tech stack:** Swift, macOS 14+, SPM + Xcode project, Network.framework (TCP), CoreWLAN, KeyboardShortcuts, CGEvent tap, Swift Testing.
 
@@ -26,26 +28,35 @@ Use `make <target>` for common operations. Key targets:
 | Target | Purpose |
 |--------|---------|
 | `make test` | Run test suite (`swift test --disable-sandbox`) |
+| `make discover` | Find the speaker over SSDP and print every step (`MAC=...` to match one) |
+| `make app-icon` | Redraw the app icon PNGs from `Design/AppIcon.svg` |
 | `make run` | Launch most recently built debug app |
+| `make test-build` | Quit the running app, build this branch with `xcodebuild`, and launch it for a hand test |
+| `make package` | Zip the latest Release build into `dist/KEFRemote-<version>.zip` (`ditto --norsrc --keepParent`) |
 | `make kill` | Stop all running KEFRemote instances |
 | `make logs-recent` | Last 200 lines from log file (quick agent snapshot) |
 | `make logs-tail` | Live stream from log file |
-| `make logs` | Unified logging stream (standalone only) |
-| `make logs-debug` | Full trace including bytes on the wire (standalone only) |
-| `make logs-errors` | Errors only (standalone only) |
+| `make logs-errors` | Errors only, from the log file |
+| `make logs-warnings` | Warnings and errors, from the log file |
+| `make logs-debug` | Debug lines (bytes on the wire), from the log file |
+| `make logs-stream` | Unified logging stream (standalone app, interactive terminal only) |
+| `make logs-stream-debug` | Unified logging, full trace (standalone app, interactive terminal only) |
+| `make logs-stream-errors` | Unified logging, errors only (standalone app, interactive terminal only) |
 | `make kef-on/off/status` | Hardware control via kefctl (for manual testing) |
 | `make kef-raw-volume VOL=70` | Set volume directly via kefctl |
 
 ## Project structure
 
-- `Package.swift` — Swift package manifest (two targets)
+- `Package.swift` — Swift package manifest (three targets, one test target)
 - `KEFRemote.xcodeproj/` — Xcode project for bundling, signing, running
 - `Sources/KEFRemoteCore/` — Core library (protocol, commands, controller)
 - `Sources/KEFRemote/` — macOS app (UI, hotkeys, lifecycle, integration)
 - `Sources/KEFRemote/Info.plist` — App metadata (bundle ID, LSUIElement)
+- `Sources/KEFRemote/Assets.xcassets/` — App icon (`AppIcon`), drawn from `Design/AppIcon.svg` by `make app-icon`
+- `Design/` — Icon source SVG and the script that renders it
 - `Sources/KEFRemote/KEFRemote.entitlements` — Permission declarations
 - `Tests/KEFRemoteCoreTests/` — Unit tests for core library
-- `~/.kef-remote/config.json` — User config (speaker IP, MAC, preferences)
+- `~/.kef-remote/config.json` — User config (speaker IP, MAC, `discovery`: `auto` or `manual`, preferences). Shortcuts are saved by KeyboardShortcuts in UserDefaults
 
 ## KEF speaker protocol
 
@@ -63,6 +74,27 @@ Use `make <target>` for common operations. Key targets:
 - Controller logic: unit tests with mocked connection layer
 - Hardware verification: manual testing against a real speaker
 - Run all tests: `swift test --disable-sandbox`
+
+## Code quality checklist
+
+Check every change against these before committing.
+
+**Testable**
+- [ ] New logic (decisions, parsing, mapping) lives in `KEFRemoteCore`, not the app target.
+- [ ] It takes its dependencies (connection, socket, log, clock) through a protocol or closure, and has tests.
+
+**Debuggable**
+- [ ] Each command, decision and failure logs one plain line, with the reason; nothing fails silently.
+- [ ] Bytes on the wire log at `.debug`; `make logs-recent` / `logs-errors` show what happened.
+
+**Modular and extendable**
+- [ ] One job per type; app classes only watch the system and fire callbacks.
+- [ ] No copy-paste: a third copy becomes a helper.
+
+**Readable**
+- [ ] Names say what a thing is or does (`getSourceByte`, not `getPowerState`); no aliases or dead code.
+- [ ] Comments say why, and match the code; no magic numbers.
+- [ ] `swift test --disable-sandbox` passes and a Debug `xcodebuild` builds with no new warnings.
 
 ## Git workflow
 

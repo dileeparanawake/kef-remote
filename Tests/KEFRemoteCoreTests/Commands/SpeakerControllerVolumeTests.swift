@@ -11,11 +11,11 @@ struct SpeakerControllerVolumeTests {
         controller = SpeakerController(connection: mock)
     }
 
-    // MARK: - getVolume
+    // MARK: - getVolumeState
 
     @Test func testGetVolumeReturnsDecodedState() async throws {
         mock.responses = [Data([0x52, 0x25, 0x81, 70, 0x00])]
-        let state = try await controller.getVolume()
+        let state = try await controller.getVolumeState()
         #expect(state.level == 70)
         #expect(!state.isMuted)
         #expect(mock.sentCommands == [KEFCommand.getVolume()])
@@ -23,7 +23,7 @@ struct SpeakerControllerVolumeTests {
 
     @Test func testGetVolumeMuted() async throws {
         mock.responses = [Data([0x52, 0x25, 0x81, 198, 0x00])]  // 128 + 70
-        let state = try await controller.getVolume()
+        let state = try await controller.getVolumeState()
         #expect(state.level == 70)
         #expect(state.isMuted)
     }

@@ -87,4 +87,44 @@ struct SpeakerControllerPowerTests {
         try await controller.powerOff()
         #expect(mock.sentCommands.count == 2)
     }
+
+    // MARK: - togglePower
+
+    @Test func togglePowerTurnsAnOffSpeakerOn() async throws {
+        let off = SourceByte(isPoweredOn: false, isInversed: false, standby: .never, input: .optical)
+        mock.responses = [
+            Data([0x52, 0x30, 0x81, off.encode(), 0x00]),  // GET source
+            Data([0x52, 0x11, 0xFF]),                      // SET power on
+        ]
+        let isOn = try await controller.togglePower()
+        #expect(isOn)
+        #expect(mock.sentCommands.count == 2)  // one read, one write
+        #expect(mock.sentCommands[1] == KEFCommand.setSource(off.with(isPoweredOn: true).encode()))
+    }
+
+    @Test func togglePowerTurnsAnOnSpeakerOff() async throws {
+        let on = SourceByte(isPoweredOn: true, isInversed: false, standby: .sixtyMinutes, input: .usb)
+        mock.responses = [
+            Data([0x52, 0x30, 0x81, on.encode(), 0x00]),
+            Data([0x52, 0x11, 0xFF]),
+        ]
+        let isOn = try await controller.togglePower()
+        #expect(!isOn)
+        #expect(mock.sentCommands.count == 2)
+        #expect(mock.sentCommands[1] == KEFCommand.setSource(on.with(isPoweredOn: false).encode()))
+    }
+
+    @Test func togglePowerOffKeepsTheTwentyMinuteStandbyWorkaround() async throws {
+        let on = SourceByte(isPoweredOn: true, isInversed: false, standby: .twentyMinutes, input: .optical)
+        mock.responses = [
+            Data([0x52, 0x30, 0x81, on.encode(), 0x00]),
+            Data([0x52, 0x11, 0xFF]),  // SET standby to 60min
+            Data([0x52, 0x11, 0xFF]),  // SET power off
+        ]
+        let isOn = try await controller.togglePower()
+        #expect(!isOn)
+        let standbyFix = on.with(standby: .sixtyMinutes)
+        #expect(mock.sentCommands[1] == KEFCommand.setSource(standbyFix.encode()))
+        #expect(mock.sentCommands[2] == KEFCommand.setSource(standbyFix.with(isPoweredOn: false).encode()))
+    }
 }

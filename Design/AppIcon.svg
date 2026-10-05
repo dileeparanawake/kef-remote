@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs><filter id="sh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#000" flood-opacity="0.28"/></filter>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b3a5c"/><stop offset="1" stop-color="#0f1628"/></linearGradient>
+<linearGradient id="lvl" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#3ee0c5"/><stop offset="1" stop-color="#2fa8ff"/></linearGradient>
+<linearGradient id="lvlh" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3ee0c5"/><stop offset="1" stop-color="#2fa8ff"/></linearGradient>
+<linearGradient id="knob" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2f4f7"/><stop offset="1" stop-color="#9097a2"/></linearGradient>
+<linearGradient id="face" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c9ced6"/><stop offset="1" stop-color="#eef0f3"/></linearGradient>
+<linearGradient id="cab" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f6f9"/><stop offset="1" stop-color="#b9bfc9"/></linearGradient>
+<radialGradient id="cone" cx="0.5" cy="0.45" r="0.6"><stop offset="0" stop-color="#3a4d78"/><stop offset="1" stop-color="#0d1424"/></radialGradient>
+<radialGradient id="dome" cx="0.4" cy="0.35" r="0.7"><stop offset="0" stop-color="#7ff0dc"/><stop offset="0.5" stop-color="#3ee0c5"/><stop offset="1" stop-color="#2fa8ff"/></radialGradient>
+</defs>
+<rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)" filter="url(#sh)"/>
+<path d="M278.7 745.3 A330 330 0 1 1 745.3 745.3" fill="none" stroke="#fff" stroke-opacity="0.14" stroke-width="46" stroke-linecap="round"/>
+<path d="M278.7 745.3 A330 330 0 0 1 726.3 261.1" fill="none" stroke="url(#lvl)" stroke-width="46" stroke-linecap="round"/>
+<rect x="372.0" y="324.0" width="280.0" height="400.0" rx="42" fill="#000" fill-opacity="0.35"/>
+<rect x="372.0" y="312.0" width="280.0" height="400.0" rx="42" fill="url(#cab)"/>
+<circle cx="512.0" cy="408.0" r="54.0" fill="#1d2a44"/><circle cx="512.0" cy="408.0" r="31.3" fill="url(#dome)"/>
+<circle cx="512.0" cy="576.0" r="100.0" fill="#1d2a44"/><circle cx="512.0" cy="576.0" r="80.0" fill="url(#cone)"/><circle cx="512.0" cy="576.0" r="30.0" fill="url(#knob)"/>
+</svg>

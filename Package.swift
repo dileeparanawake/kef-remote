@@ -8,7 +8,7 @@ let package = Package(
         .library(name: "KEFRemoteCore", targets: ["KEFRemoteCore"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.0.0"),
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "3.1.0"),
     ],
     targets: [
         .target(
@@ -22,7 +22,12 @@ let package = Package(
                 .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
             ],
             path: "Sources/KEFRemote",
-            exclude: ["Info.plist", "KEFRemote.entitlements"]
+            exclude: ["Info.plist", "KEFRemote.entitlements", "Assets.xcassets"]
+        ),
+        .executableTarget(
+            name: "kef-discover",
+            dependencies: ["KEFRemoteCore"],
+            path: "Sources/kef-discover"
         ),
         .testTarget(
             name: "KEFRemoteCoreTests",

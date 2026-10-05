@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="230" viewBox="0 0 760 230" role="img" aria-labelledby="title desc">
+  <title id="title">How KEF Remote works</title>
+  <desc id="desc">A key press goes to the KEF Remote app, which sends the command to the KEF speaker over TCP on port 50001. To find the speaker, the app sends an SSDP search on the local network and the speaker replies with its IP.</desc>
+  <style>
+    .box { fill: #f6f8fa; stroke: #8c959f; stroke-width: 1.5; }
+    .name { fill: #1f2328; font: 600 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .note { fill: #59636e; font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .line { stroke: #8c959f; stroke-width: 2; fill: none; }
+    .dash { stroke-dasharray: 6 5; }
+    .head { fill: #8c959f; }
+    .label { fill: #8c959f; font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    @media (prefers-color-scheme: dark) {
+      .box { fill: #151b23; stroke: #656c76; }
+      .name { fill: #f0f6fc; }
+      .note { fill: #9198a1; }
+    }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path class="head" d="M0 0 L10 5 L0 10 z"/>
+    </marker>
+  </defs>
+
+  <!-- Key press -->
+  <rect class="box" x="10" y="30" width="180" height="70" rx="10"/>
+  <text class="name" x="100" y="60" text-anchor="middle">Key press</text>
+  <text class="note" x="100" y="82" text-anchor="middle">Control + volume up</text>
+
+  <!-- App -->
+  <rect class="box" x="290" y="30" width="180" height="70" rx="10"/>
+  <text class="name" x="380" y="60" text-anchor="middle">KEF Remote</text>
+  <text class="note" x="380" y="82" text-anchor="middle">menu bar app</text>
+
+  <!-- Speaker -->
+  <rect class="box" x="570" y="30" width="180" height="70" rx="10"/>
+  <text class="name" x="660" y="60" text-anchor="middle">KEF speaker</text>
+  <text class="note" x="660" y="82" text-anchor="middle">LSX on your network</text>
+
+  <!-- Key press to app -->
+  <line class="line" x1="190" y1="65" x2="286" y2="65" marker-end="url(#arrow)"/>
+
+  <!-- App to speaker over TCP -->
+  <text class="label" x="520" y="55" text-anchor="middle">TCP :50001</text>
+  <line class="line" x1="470" y1="65" x2="566" y2="65" marker-end="url(#arrow)"/>
+
+  <!-- Discovery over SSDP -->
+  <path class="line dash" d="M380 100 V160 H660 V104" marker-end="url(#arrow)"/>
+  <path class="line dash" d="M640 104 V140 H400 V104" marker-end="url(#arrow)"/>
+  <text class="label" x="520" y="134" text-anchor="middle">speaker replies with its IP</text>
+  <text class="label" x="520" y="182" text-anchor="middle">Discovery: SSDP search on the local network</text>
+
+  <text class="label" x="380" y="215" text-anchor="middle">The app finds the speaker once, saves its IP, and looks again if the IP changes.</text>
+</svg>

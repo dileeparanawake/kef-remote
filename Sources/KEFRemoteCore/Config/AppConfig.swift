@@ -2,13 +2,15 @@ import Foundation
 
 /// Persisted app configuration. Stored as JSON at ~/.kef-remote/config.json.
 ///
-/// See design doc Section 5.3 for the full schema.
+/// The nested structs below are the full schema.
 public struct AppConfig: Codable, Equatable {
     public var speaker: SpeakerConfig?
     public var defaults: DefaultsConfig
     public var lifecycle: LifecycleConfig
     public var network: NetworkConfig
     public var app: AppBehaviourConfig
+    /// Auto or Manual. A file from before 0.2.0 has none: that means Auto.
+    public var discovery: DiscoveryMode
 
     public init() {
         self.speaker = nil
@@ -16,9 +18,21 @@ public struct AppConfig: Codable, Equatable {
         self.lifecycle = LifecycleConfig()
         self.network = NetworkConfig()
         self.app = AppBehaviourConfig()
+        self.discovery = .auto
     }
 
-    public struct SpeakerConfig: Codable, Equatable {
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        speaker = try container.decodeIfPresent(SpeakerConfig.self, forKey: .speaker)
+        defaults = try container.decode(DefaultsConfig.self, forKey: .defaults)
+        lifecycle = try container.decode(LifecycleConfig.self, forKey: .lifecycle)
+        network = try container.decode(NetworkConfig.self, forKey: .network)
+        app = try container.decode(AppBehaviourConfig.self, forKey: .app)
+        // Added in 0.2.0: an older file keeps finding the speaker by itself.
+        discovery = try container.decodeIfPresent(DiscoveryMode.self, forKey: .discovery) ?? .auto
+    }
+
+    public struct SpeakerConfig: Codable, Equatable, Sendable {
         public var name: String?
         public var mac: String?
         public var lastKnownIp: String?
@@ -70,8 +84,20 @@ public struct AppConfig: Codable, Equatable {
 
     // MARK: - Persistence
 
+    /// The app's config file: `~/.kef-remote/config.json`.
+    public static var defaultFileURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".kef-remote")
+            .appendingPathComponent("config.json")
+    }
+
     /// Save the configuration as pretty-printed JSON to the given file URL.
+    /// Makes the folder first if it is missing.
     public static func save(_ config: AppConfig, to url: URL) throws {
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(config)
