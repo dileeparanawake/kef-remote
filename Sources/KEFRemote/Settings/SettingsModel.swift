@@ -11,10 +11,12 @@ struct SettingsActions {
     var discoverSpeaker: () async -> DiscoveryOutcome
     /// Use a new modifier key for the media keys.
     var applyModifier: (MediaKeyModifier) -> Void
+    /// Find the speaker by itself (Auto) or only use the typed IP (Manual).
+    var applyDiscovery: (DiscoveryMode) -> Void
 }
 
-/// State for the settings window: the IP field, discovery, and the
-/// media key modifier. Shortcuts are stored by the KeyboardShortcuts
+/// State for the settings window: the discovery mode, the IP field,
+/// discovery, and the media key modifier. Shortcuts are stored by the KeyboardShortcuts
 /// recorders themselves; the model only logs each change.
 ///
 /// Every action is logged under the `settings` category.
@@ -28,13 +30,15 @@ final class SettingsModel: ObservableObject {
     @Published private(set) var note: String?
     @Published private(set) var isDiscovering = false
     @Published private(set) var modifier: MediaKeyModifier
+    @Published private(set) var discovery: DiscoveryMode
 
     private let actions: SettingsActions
     private let log = AppLogger(subsystem: "com.kef-remote", category: "settings")
 
-    init(savedIP: String?, actions: SettingsActions) {
+    init(savedIP: String?, discovery: DiscoveryMode, actions: SettingsActions) {
         self.savedIP = savedIP
         self.ipText = savedIP ?? ""
+        self.discovery = discovery
         self.modifier = MediaKeyModifier.stored
         self.actions = actions
     }
@@ -67,6 +71,14 @@ final class SettingsModel: ObservableObject {
         isDiscovering = false
         note = outcome.message
         log.info("Discover result: \(outcome.message)")
+    }
+
+    func setDiscovery(_ mode: DiscoveryMode) {
+        guard mode != discovery else { return }
+        log.info("discovery \(discovery.rawValue) -> \(mode.rawValue)")
+        discovery = mode
+        note = nil
+        actions.applyDiscovery(mode)
     }
 
     func setModifier(_ choice: MediaKeyModifier) {

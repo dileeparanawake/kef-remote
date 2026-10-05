@@ -10,9 +10,9 @@ import os
 /// 3. When active: sets up the speaker connection (it opens on the
 ///    first command), registers hotkeys, starts lifecycle hooks
 /// 4. Hotkey triggers flow through SpeakerController and produce HUD feedback
-/// 5. On a failed check of the saved IP, or a failed command: rediscovers
-///    if the speaker was unreachable (it may have a new IP), otherwise
-///    reconnects after 2 seconds
+/// 5. On a failed check of the saved IP, or a failed command: in Auto
+///    discovery, rediscovers if the speaker was unreachable (it may have a
+///    new IP); otherwise reconnects after 2 seconds
 /// 6. Keeps the menu bar's connected state live (``MenuBarModel``):
 ///    every exchange with the speaker reports whether it answered
 /// 7. Opens the settings window from the menu, or when the app is
@@ -58,6 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private lazy var settingsModel = SettingsModel(
         savedIP: config.speaker?.lastKnownIp,
+        discovery: config.discovery,
         actions: SettingsActions(
             saveSpeakerIP: { [weak self] ip in self?.saveSpeakerIP(ip) },
             discoverSpeaker: { [weak self] in
@@ -66,11 +67,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             applyModifier: { [weak self] choice in
                 self?.mediaKeys.modifier = choice.eventFlags
                 self?.logger.info("Media key modifier is now \(choice.rawValue)")
-            }
+            },
+            applyDiscovery: { [weak self] mode in self?.applyDiscovery(mode) }
         )
     )
 
-    private lazy var settingsWindow = SettingsWindowController(model: settingsModel)
+    private lazy var settingsWindow = SettingsWindowController(model: settingsModel, menuBar: menuBar)
 
     // MARK: - Components
 
@@ -243,6 +245,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///   answer starts discovery, so the first key press finds the speaker.
     private func connectToSpeaker(_ origin: CheckOrigin) {
         guard let ip = config.speaker?.lastKnownIp else {
+            guard config.discovery.searchesBySelf else {
+                logger.warning("No speaker IP configured, and discovery is Manual: waiting for an IP in Settings")
+                return
+            }
             logger.warning("No speaker IP configured — attempting discovery")
             discoverInBackground(trigger: "no IP saved")
             return
@@ -267,7 +273,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// for the speaker now rather than on the first key press.
     private func checkSpeaker(_ controller: SpeakerController, on conn: TCPSpeakerConnection, origin: CheckOrigin) {
         Task {
-            let outcome = await controller.checkConnection(origin)
+            let outcome = await controller.checkConnection(origin, discovery: config.discovery)
             guard outcome == .rediscover else { return }
             guard conn === connection else {
                 logger.info("Check failed, but a newer connection has taken over; not rediscovering")
@@ -394,9 +400,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         config.speaker = speaker
         menuBar.showSpeaker(speaker)
         settingsModel.showSavedIP(speaker.lastKnownIp)
+        saveConfig(what: "speaker at \(speaker.lastKnownIp ?? "unknown IP")")
+    }
+
+    /// Use Auto or Manual discovery from now on, and save it. Switching to
+    /// Auto while the speaker isn't answering looks for it straight away.
+    private func applyDiscovery(_ mode: DiscoveryMode) {
+        guard mode != config.discovery else { return }
+        logger.info("Discovery mode \(config.discovery.rawValue) -> \(mode.rawValue)")
+        config.discovery = mode
+        saveConfig(what: "discovery mode \(mode.rawValue)")
+        if mode.searchesBySelf, isActive, menuBar.status != .connected {
+            discoverInBackground(trigger: "switched to Auto discovery")
+        }
+    }
+
+    private func saveConfig(what: String) {
         do {
             try AppConfig.save(config, to: configFileURL)
-            logger.info("Saved speaker at \(speaker.lastKnownIp ?? "unknown IP")")
+            logger.info("Saved \(what)")
         } catch {
             logger.error("Could not save config: \(error.localizedDescription)")
         }
@@ -557,13 +579,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Recover from a failed command.
     ///
-    /// If the speaker could not be reached, it may have a new IP, so run
-    /// discovery (which saves the new IP and reconnects). Otherwise
-    /// disconnect and reconnect to the same IP after 2 seconds.
+    /// If the speaker could not be reached, it may have a new IP, so in
+    /// Auto discovery run discovery (which saves the new IP and reconnects).
+    /// Otherwise disconnect and reconnect to the same IP after 2 seconds.
     private func handleCommandError(_ error: Error) {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            if let kefError = error as? KEFError, kefError.isConnectionFailure {
+            if let kefError = error as? KEFError, kefError.isConnectionFailure, self.config.discovery.searchesBySelf {
                 self.rediscover(reason: "\(kefError)")
                 return
             }

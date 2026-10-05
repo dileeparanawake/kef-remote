@@ -26,12 +26,14 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     private let model: SettingsModel
+    private let menuBar: MenuBarModel
     private var window: NSWindow?
     private let log = AppLogger(subsystem: "com.kef-remote", category: "menubar")
     private static let activationCheckDelay: TimeInterval = 0.3
 
-    init(model: SettingsModel) {
+    init(model: SettingsModel, menuBar: MenuBarModel) {
         self.model = model
+        self.menuBar = menuBar
     }
 
     func show(source: Source) {
@@ -68,7 +70,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     private func makeWindow() -> NSWindow {
-        let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(model: model)))
+        let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(model: model, menuBar: menuBar)))
         window.title = "KEF Remote Settings"
         window.styleMask = [.titled, .closable]
         window.isReleasedWhenClosed = false

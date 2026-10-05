@@ -15,6 +15,7 @@ This is an early release with real rough edges. Read [Known limitations](#known-
 ## What's new in 0.2.0
 
 - **Finds the speaker by itself.** It searches the network when it starts, and again if the speaker's IP changes. No Terminal step.
+- **Auto or Manual discovery.** Settings shows the speaker it found and its IP. Choose Manual to type the IP yourself.
 - **Menu bar menu.** Settings… and Quit, plus a settings window for the speaker's IP, the modifier key and the shortcuts.
 - **Shows when it's connected.** A filled speaker icon and "Connected to LSX", or "Not connected" with the reason and a Find speaker item.
 - **One power shortcut.** Cmd+Shift+O turns the speaker on or off, whichever it isn't.
@@ -80,11 +81,11 @@ If the menu says "Not connected", click Find speaker. If you've just allowed loc
 
 ### If it can't find the speaker
 
-Set the IP by hand. Click the menu bar icon, choose Settings…, type the speaker's IP under Speaker, and click Save.
+Set the IP by hand. Click the menu bar icon, choose Settings…, set Discovery to Manual under Speaker, type the speaker's IP and click Save. In Manual, KEF Remote uses that IP and never looks for the speaker by itself. Switch back to Auto to let it find the speaker again.
 
 To find the IP, look in KEF's own app on your phone: it shows the speaker's IP in the speaker's settings while it's connected. Or open your router's admin page and look at its list of connected devices for one named LSX or KEF.
 
-The IP is saved in `~/.kef-remote/config.json`. A config file from 0.1.0 keeps working.
+The IP and the discovery mode are saved in `~/.kef-remote/config.json`. A config file from 0.1.0 keeps working, with discovery on Auto.
 
 ## Shortcuts
 
@@ -141,7 +142,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 173 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, discovery against a mock socket, the menu bar's states and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 216 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, discovery against a mock socket, the menu bar's states and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 ## How it works
 

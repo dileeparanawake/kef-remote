@@ -5,47 +5,33 @@ import SwiftUI
 /// The settings window: only fields that change something now.
 ///
 /// ```
-/// Speaker      IP [192.168.1.80] (Save) (Discover)
-///              Found LSX at 192.168.1.80
+/// Speaker      Discovery (Auto | Manual)
+///   Auto:      Speaker LSX · IP 192.168.1.80 · Status Connected (Find again)
+///   Manual:    IP [192.168.1.80] (Save)
 /// Media keys   Modifier [Control]
 /// Shortcuts    Power on/off, Volume up, Volume down, Mute, Quit
 /// ```
 struct SettingsView: View {
     @ObservedObject var model: SettingsModel
+    /// The live speaker and connection, as the menu bar shows them.
+    @ObservedObject var menuBar: MenuBarModel
 
     var body: some View {
         Form {
             Section("Speaker") {
-                LabeledContent("IP address") {
-                    HStack {
-                        TextField("IP address", text: $model.ipText, prompt: Text("192.168.1.80"))
-                            .labelsHidden()
-                            .frame(width: 150)
-                            .onSubmit { model.saveIP() }
-                        Button("Save") { model.saveIP() }
-                            .disabled(!model.canSaveIP)
-                    }
+                Picker("Discovery", selection: Binding(
+                    get: { model.discovery },
+                    set: { model.setDiscovery($0) }
+                )) {
+                    Text("Auto").tag(DiscoveryMode.auto)
+                    Text("Manual").tag(DiscoveryMode.manual)
                 }
+                .pickerStyle(.segmented)
 
-                HStack {
-                    Button("Discover") {
-                        Task { await model.discover() }
-                    }
-                    .disabled(model.isDiscovering)
-
-                    if model.isDiscovering {
-                        ProgressView().controlSize(.small)
-                    }
-
-                    if let note = model.note {
-                        Text(note)
-                            .foregroundStyle(.secondary)
-                    }
+                switch model.discovery {
+                case .auto: autoDiscovery
+                case .manual: manualIP
                 }
-
-                Text("Discover finds the speaker on this network and saves its IP.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
             Section("Media keys") {
@@ -81,5 +67,58 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 440)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// Auto: the speaker the app found, read-only, and a way to look again.
+    @ViewBuilder private var autoDiscovery: some View {
+        LabeledContent("Speaker", value: menuBar.speakerName ?? "Not found yet")
+        LabeledContent("IP address") {
+            Text(menuBar.speakerIP ?? "None yet").textSelection(.enabled)
+        }
+        LabeledContent("Status", value: menuBar.presentation.isConnected ? "Connected" : menuBar.presentation.detail)
+
+        HStack {
+            Button("Find again") {
+                Task { await model.discover() }
+            }
+            .disabled(model.isDiscovering)
+            discoveryNote
+        }
+
+        Text("KEF Remote finds the speaker on this network, and finds it again if its IP changes.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+    }
+
+    /// Manual: the IP the user types. The app never looks for another.
+    @ViewBuilder private var manualIP: some View {
+        LabeledContent("IP address") {
+            HStack {
+                TextField("IP address", text: $model.ipText, prompt: Text("192.168.1.80"))
+                    .labelsHidden()
+                    .frame(width: 150)
+                    .onSubmit { model.saveIP() }
+                Button("Save") { model.saveIP() }
+                    .disabled(!model.canSaveIP)
+            }
+        }
+
+        if let note = model.note {
+            Text(note).foregroundStyle(.secondary)
+        }
+
+        Text("KEF Remote uses this IP and never looks for the speaker by itself.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
+    }
+
+    /// A spinner while looking, then the last result.
+    @ViewBuilder private var discoveryNote: some View {
+        if model.isDiscovering {
+            ProgressView().controlSize(.small)
+        }
+        if let note = model.note {
+            Text(note).foregroundStyle(.secondary)
+        }
     }
 }
