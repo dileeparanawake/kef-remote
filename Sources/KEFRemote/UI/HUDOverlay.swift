@@ -1,22 +1,6 @@
 import AppKit
-import os
+import KEFRemoteCore
 import SwiftUI
-
-// MARK: - HUD State
-
-/// Represents the different states the HUD overlay can display.
-///
-/// Each state maps to a distinct visual presentation with an appropriate
-/// SF Symbol icon and optional supplementary information (volume level,
-/// error message).
-enum HUDState {
-    case volume(level: Int)
-    case muted
-    case powerOn
-    case powerOff
-    case waking
-    case error(String)
-}
 
 // MARK: - Non-activating Panel
 
@@ -215,6 +199,9 @@ private struct VisualEffectView: NSViewRepresentable {
 private struct HUDContentView: View {
     let state: HUDState
 
+    /// The icon and label, decided in core (``HUDPresentation``).
+    private var shown: HUDPresentation { HUDPresentation(state) }
+
     var body: some View {
         ZStack {
             // Frosted-glass background.
@@ -227,12 +214,12 @@ private struct HUDContentView: View {
                 Spacer()
 
                 // Icon
-                Image(systemName: iconName)
+                Image(systemName: shown.symbolName)
                     .font(.system(size: 56, weight: .thin))
                     .foregroundStyle(.primary)
 
                 // Label
-                Text(label)
+                Text(shown.label)
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(.primary)
 
@@ -248,50 +235,6 @@ private struct HUDContentView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
         .frame(width: 220, height: 220)
-    }
-
-    // MARK: - State-derived properties
-
-    private var iconName: String {
-        switch state {
-        case .volume(let level):
-            if level == 0 {
-                return "speaker.fill"
-            } else if level < 33 {
-                return "speaker.wave.1.fill"
-            } else if level < 66 {
-                return "speaker.wave.2.fill"
-            } else {
-                return "speaker.wave.3.fill"
-            }
-        case .muted:
-            return "speaker.slash.fill"
-        case .powerOn:
-            return "power"
-        case .powerOff:
-            return "power"
-        case .waking:
-            return "antenna.radiowaves.left.and.right"
-        case .error:
-            return "exclamationmark.triangle.fill"
-        }
-    }
-
-    private var label: String {
-        switch state {
-        case .volume(let level):
-            return "\(level)%"
-        case .muted:
-            return "Muted"
-        case .powerOn:
-            return "Power On"
-        case .powerOff:
-            return "Power Off"
-        case .waking:
-            return "Waking..."
-        case .error(let message):
-            return message
-        }
     }
 
     // MARK: - Volume bar
