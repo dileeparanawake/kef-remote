@@ -19,6 +19,24 @@ run:
 	@echo "Launching: $(APP_BUNDLE)"
 	open "$(APP_BUNDLE)"
 
+# --- Release packaging ---
+
+RELEASE_APP = $(shell ls -td $(DERIVED_DATA)/KEFRemote-*/Build/Products/Release/KEFRemote.app 2>/dev/null | head -1)
+DIST_DIR = dist
+
+# Zip the most recent Release .app into dist/KEFRemote-<version>.zip.
+# Builds nothing: archive or build Release in Xcode first. The version
+# is read from the built app's Info.plist (CFBundleShortVersionString).
+package:
+	@if [ -z "$(RELEASE_APP)" ]; then echo "No Release build found — build Release in Xcode first (Product > Build For > Profiling, or Archive)"; exit 1; fi
+	@VERSION=$$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$(RELEASE_APP)/Contents/Info.plist"); \
+	ZIP="$(DIST_DIR)/KEFRemote-$$VERSION.zip"; \
+	mkdir -p "$(DIST_DIR)"; \
+	rm -f "$$ZIP"; \
+	echo "Packaging: $(RELEASE_APP)"; \
+	ditto -c -k --norsrc --keepParent "$(RELEASE_APP)" "$$ZIP"; \
+	echo "Wrote $$ZIP"
+
 # Kill all running KEFRemote instances (prevents stale background agents).
 # Handles both standalone and Xcode-debugged processes. When Xcode's
 # debugserver is the parent, the child can't be killed directly — we
@@ -132,4 +150,4 @@ kef-raw-standby:
 	@test -n "$(MIN)" || (echo "Usage: make kef-raw-standby MIN=<0|20|60>"; exit 1)
 	$(KEFCTL) --standby $(MIN)
 
-.PHONY: test run kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
+.PHONY: test run package kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
