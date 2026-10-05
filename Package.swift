@@ -24,6 +24,11 @@ let package = Package(
             path: "Sources/KEFRemote",
             exclude: ["Info.plist", "KEFRemote.entitlements"]
         ),
+        .executableTarget(
+            name: "kef-discover",
+            dependencies: ["KEFRemoteCore"],
+            path: "Sources/kef-discover"
+        ),
         .testTarget(
             name: "KEFRemoteCoreTests",
             dependencies: ["KEFRemoteCore"],

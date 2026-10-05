@@ -27,6 +27,7 @@ Use `make <target>` for common operations. Key targets:
 | Target | Purpose |
 |--------|---------|
 | `make test` | Run test suite (`swift test --disable-sandbox`) |
+| `make discover` | Find the speaker over SSDP and print every step (`MAC=...` to match one) |
 | `make run` | Launch most recently built debug app |
 | `make package` | Zip the latest Release build into `dist/KEFRemote-<version>.zip` (`ditto --norsrc --keepParent`) |
 | `make kill` | Stop all running KEFRemote instances |

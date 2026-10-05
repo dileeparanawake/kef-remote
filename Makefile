@@ -8,6 +8,10 @@ LOG_FILE = $(HOME)/.kef-remote/logs/kef-remote.log
 test:
 	swift test --disable-sandbox
 
+# Find the speaker on the network and print every step (MAC=... to match one)
+discover:
+	swift run --disable-sandbox kef-discover $(if $(MAC),--mac $(MAC))
+
 # --- App launch ---
 
 DERIVED_DATA = $(HOME)/Library/Developer/Xcode/DerivedData
@@ -150,4 +154,4 @@ kef-raw-standby:
 	@test -n "$(MIN)" || (echo "Usage: make kef-raw-standby MIN=<0|20|60>"; exit 1)
 	$(KEFCTL) --standby $(MIN)
 
-.PHONY: test run package kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
+.PHONY: test discover run package kill logs-tail logs-recent logs-full logs logs-debug logs-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
