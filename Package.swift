@@ -8,7 +8,7 @@ let package = Package(
         .library(name: "KEFRemoteCore", targets: ["KEFRemoteCore"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.0.0"),
+        .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "3.1.0"),
     ],
     targets: [
         .target(

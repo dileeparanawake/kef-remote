@@ -4,13 +4,13 @@ import KeyboardShortcuts
 
 extension KeyboardShortcuts.Name {
     /// Power on the speaker. Default: Cmd+Shift+O.
-    static let powerOn = Self("powerOn", default: .init(.o, modifiers: [.command, .shift]))
+    static let powerOn = Self("powerOn", initial: .init(.o, modifiers: [.command, .shift]))
 
     /// Power off the speaker. Default: Cmd+Shift+P.
-    static let powerOff = Self("powerOff", default: .init(.p, modifiers: [.command, .shift]))
+    static let powerOff = Self("powerOff", initial: .init(.p, modifiers: [.command, .shift]))
 
     /// Quit the app. Default: Cmd+Shift+Q.
-    static let quit = Self("quit", default: .init(.q, modifiers: [.command, .shift]))
+    static let quit = Self("quit", initial: .init(.q, modifiers: [.command, .shift]))
 }
 
 // MARK: - PowerShortcuts
@@ -34,6 +34,7 @@ extension KeyboardShortcuts.Name {
 /// shortcuts.onQuit = { NSApp.terminate(nil) }
 /// shortcuts.register()
 /// ```
+@MainActor
 final class PowerShortcuts {
 
     // MARK: - Callbacks
@@ -74,9 +75,5 @@ final class PowerShortcuts {
         KeyboardShortcuts.disable(.powerOn)
         KeyboardShortcuts.disable(.powerOff)
         KeyboardShortcuts.disable(.quit)
-    }
-
-    deinit {
-        unregister()
     }
 }
