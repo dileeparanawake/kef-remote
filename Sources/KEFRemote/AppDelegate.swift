@@ -327,6 +327,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Command results
 
+    /// The speaker controller, or nil with a log line saying the command
+    /// was skipped (no IP yet, off the home network, or reconnecting).
+    private func controller(for command: String) -> SpeakerController? {
+        guard let controller else {
+            logger.warning("Skipped \(command): no speaker connection")
+            return nil
+        }
+        return controller
+    }
+
     /// Record a command's result in the menu bar icon.
     private func commandSucceeded(_ command: String) {
         menuBar.set(.ok, reason: "\(command) succeeded")
@@ -343,7 +353,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupMediaKeyCallbacks() {
         mediaKeys.onMediaKey = { [weak self] action in
-            guard let self, let controller = self.controller else { return }
+            guard let self, let controller = self.controller(for: "\(action)") else { return }
 
             Task {
                 do {
@@ -390,7 +400,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupPowerShortcutCallbacks() {
         powerShortcuts.onPowerOn = { [weak self] in
-            guard let self, let controller = self.controller else { return }
+            guard let self, let controller = self.controller(for: "power on") else { return }
 
             HUDOverlay.show(.waking)
             Task {
@@ -414,7 +424,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         powerShortcuts.onPowerOff = { [weak self] in
-            guard let self, let controller = self.controller else { return }
+            guard let self, let controller = self.controller(for: "power off") else { return }
 
             Task {
                 do {
@@ -445,8 +455,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupLifecycleCallbacks() {
         lifecycle.onWake = { [weak self] in
-            guard let self, let controller = self.controller else { return }
-            guard self.config.lifecycle.powerOnWake else { return }
+            guard let self, self.config.lifecycle.powerOnWake else { return }
+            guard let controller = self.controller(for: "wake power-on") else { return }
 
             HUDOverlay.show(.waking)
             Task {
@@ -467,8 +477,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         lifecycle.onSleep = { [weak self] in
-            guard let self, let controller = self.controller else { return }
-            guard self.config.lifecycle.powerOffSleep else { return }
+            guard let self, self.config.lifecycle.powerOffSleep else { return }
+            guard let controller = self.controller(for: "sleep power-off") else { return }
 
             Task {
                 do {
@@ -482,7 +492,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         lifecycle.onStandbyChange = { [weak self] mode in
-            guard let self, let controller = self.controller else { return }
+            guard let self, let controller = self.controller(for: "standby \(mode)") else { return }
 
             Task {
                 do {
