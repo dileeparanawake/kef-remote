@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="Sources/KEFRemote/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png" width="128" height="128" alt="KEF Remote app icon: a speaker inside a volume arc">
-</p>
-
 # KEF Remote
 
 A small macOS app that puts a KEF LSX speaker on your keyboard. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Cmd+Shift+O turns the speaker on, or off if it's on.
