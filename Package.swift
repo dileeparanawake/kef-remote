@@ -22,7 +22,7 @@ let package = Package(
                 .product(name: "KeyboardShortcuts", package: "KeyboardShortcuts"),
             ],
             path: "Sources/KEFRemote",
-            exclude: ["Info.plist", "KEFRemote.entitlements"]
+            exclude: ["Info.plist", "KEFRemote.entitlements", "Assets.xcassets"]
         ),
         .executableTarget(
             name: "kef-discover",

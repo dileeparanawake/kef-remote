@@ -12,6 +12,11 @@ test:
 discover:
 	swift run --disable-sandbox kef-discover $(if $(MAC),--mac $(MAC))
 
+# Redraw the app icon's PNGs from Design/AppIcon.svg (commit the results)
+APP_ICON_SET = Sources/KEFRemote/Assets.xcassets/AppIcon.appiconset
+app-icon:
+	swift Design/render-app-icon.swift Design/AppIcon.svg $(APP_ICON_SET)
+
 # --- App launch ---
 
 DERIVED_DATA = $(HOME)/Library/Developer/Xcode/DerivedData
@@ -170,4 +175,4 @@ kef-raw-standby:
 	@test -n "$(MIN)" || (echo "Usage: make kef-raw-standby MIN=<0|20|60>"; exit 1)
 	$(KEFCTL) --standby $(MIN)
 
-.PHONY: test discover run package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
+.PHONY: test discover app-icon run package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby

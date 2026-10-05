@@ -29,6 +29,7 @@ Use `make <target>` for common operations. Key targets:
 |--------|---------|
 | `make test` | Run test suite (`swift test --disable-sandbox`) |
 | `make discover` | Find the speaker over SSDP and print every step (`MAC=...` to match one) |
+| `make app-icon` | Redraw the app icon PNGs from `Design/AppIcon.svg` |
 | `make run` | Launch most recently built debug app |
 | `make package` | Zip the latest Release build into `dist/KEFRemote-<version>.zip` (`ditto --norsrc --keepParent`) |
 | `make kill` | Stop all running KEFRemote instances |
@@ -50,6 +51,8 @@ Use `make <target>` for common operations. Key targets:
 - `Sources/KEFRemoteCore/` — Core library (protocol, commands, controller)
 - `Sources/KEFRemote/` — macOS app (UI, hotkeys, lifecycle, integration)
 - `Sources/KEFRemote/Info.plist` — App metadata (bundle ID, LSUIElement)
+- `Sources/KEFRemote/Assets.xcassets/` — App icon (`AppIcon`), drawn from `Design/AppIcon.svg` by `make app-icon`
+- `Design/` — Icon source SVG and the script that renders it
 - `Sources/KEFRemote/KEFRemote.entitlements` — Permission declarations
 - `Tests/KEFRemoteCoreTests/` — Unit tests for core library
 - `~/.kef-remote/config.json` — User config (speaker IP, MAC, preferences)
