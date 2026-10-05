@@ -59,7 +59,7 @@ struct SpeakerControllerStatusTests {
             Data([0x52, 0x25, 0x81, 70, 0x00]),               // GET volume
             Data([0x52, 0x30, 0x81, source.encode(), 0x00]),   // GET source
         ]
-        let status = try await controller.getStatus()
+        let status = try await controller.getState()
         #expect(status.volume.level == 70)
         #expect(!status.volume.isMuted)
         #expect(status.isPoweredOn)

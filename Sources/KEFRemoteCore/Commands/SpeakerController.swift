@@ -80,8 +80,8 @@ public class SpeakerController {
         return state
     }
 
-    /// Read the current source byte (power, input, standby, inverse) from the speaker.
-    public func getPowerState() async throws -> SourceByte {
+    /// Read the whole source byte (power, input, standby, inverse) from the speaker.
+    public func getSourceByte() async throws -> SourceByte {
         let response = try await sendAndReceive(KEFCommand.getSource(), expectResponseBytes: KEFCommand.getResponseSize)
         guard let byte = KEFCommand.parseResponse(response) else {
             throw KEFError.invalidResponse
@@ -98,7 +98,7 @@ public class SpeakerController {
     public func getState() async throws -> SpeakerStatus {
         log(.info, "getState: reading volume and source")
         let volume = try await getVolumeState()
-        let source = try await getPowerState()
+        let source = try await getSourceByte()
         return SpeakerStatus(
             volume: volume,
             isPoweredOn: source.isPoweredOn,
@@ -109,12 +109,6 @@ public class SpeakerController {
     }
 
     // MARK: - Volume
-
-    /// Read the current volume level and mute state from the speaker.
-    /// Calls `getVolumeState()` — kept for compatibility with existing callers.
-    public func getVolume() async throws -> VolumeState {
-        try await getVolumeState()
-    }
 
     /// Set the volume to an absolute level (0-100). Clamped.
     public func setVolume(_ level: Int) async throws {
@@ -183,7 +177,7 @@ public class SpeakerController {
     /// Preserves all other source byte fields (input, standby, inverse).
     public func powerOn() async throws {
         log(.info, "powerOn")
-        let source = try await getPowerState()
+        let source = try await getSourceByte()
         let modified = source.with(isPoweredOn: true)
         _ = try await sendAndReceive(KEFCommand.setSource(modified.encode()), expectResponseBytes: KEFCommand.setResponseSize)
     }
@@ -197,7 +191,7 @@ public class SpeakerController {
     /// Reference: Perl `kefctl` lines 222-229.
     public func powerOff() async throws {
         log(.info, "powerOff")
-        var source = try await getPowerState()
+        var source = try await getSourceByte()
 
         // Workaround: 20-minute standby crashes the speaker on power-off.
         // Switch to 60 minutes first, then power off.
@@ -216,7 +210,7 @@ public class SpeakerController {
 
     /// Read the current input source.
     public func getInput() async throws -> InputSource {
-        let source = try await getPowerState()
+        let source = try await getSourceByte()
         log(.info, "input: \(source.input)")
         return source.input
     }
@@ -224,7 +218,7 @@ public class SpeakerController {
     /// Set the input source. Preserves power, standby, and inverse settings.
     public func setInput(_ input: InputSource) async throws {
         log(.info, "setInput: \(input)")
-        let source = try await getPowerState()
+        let source = try await getSourceByte()
         let modified = source.with(input: input)
         _ = try await sendAndReceive(KEFCommand.setSource(modified.encode()), expectResponseBytes: KEFCommand.setResponseSize)
     }
@@ -233,7 +227,7 @@ public class SpeakerController {
 
     /// Read the current standby timeout mode.
     public func getStandby() async throws -> StandbyMode {
-        let source = try await getPowerState()
+        let source = try await getSourceByte()
         log(.info, "standby: \(source.standby)")
         return source.standby
     }
@@ -241,15 +235,8 @@ public class SpeakerController {
     /// Set the standby timeout mode. Preserves other source byte fields.
     public func setStandby(_ mode: StandbyMode) async throws {
         log(.info, "setStandby: \(mode)")
-        let source = try await getPowerState()
+        let source = try await getSourceByte()
         let modified = source.with(standby: mode)
         _ = try await sendAndReceive(KEFCommand.setSource(modified.encode()), expectResponseBytes: KEFCommand.setResponseSize)
-    }
-
-    // MARK: - Status
-
-    /// Read the full speaker status. Calls `getState()` — kept for compatibility.
-    public func getStatus() async throws -> SpeakerStatus {
-        try await getState()
     }
 }

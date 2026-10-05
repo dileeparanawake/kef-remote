@@ -351,19 +351,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     switch action {
                     case .volumeUp:
                         try await controller.raiseVolume(by: 5)
-                        let state = try await controller.getVolume()
+                        let state = try await controller.getVolumeState()
                         await MainActor.run {
                             HUDOverlay.show(.volume(level: state.level))
                         }
                     case .volumeDown:
                         try await controller.lowerVolume(by: 5)
-                        let state = try await controller.getVolume()
+                        let state = try await controller.getVolumeState()
                         await MainActor.run {
                             HUDOverlay.show(.volume(level: state.level))
                         }
                     case .mute:
                         try await controller.toggleMute()
-                        let state = try await controller.getVolume()
+                        let state = try await controller.getVolumeState()
                         await MainActor.run {
                             if state.isMuted {
                                 HUDOverlay.show(.muted)
