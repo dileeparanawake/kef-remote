@@ -169,7 +169,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Config
 
     private func loadConfig() {
-        config = (try? AppConfig.load(from: configFileURL)) ?? AppConfig()
+        do {
+            config = try AppConfig.load(from: configFileURL)
+            logger.info("Loaded config from \(configFileURL.path)")
+        } catch {
+            // A broken file falls back to defaults, as before, but says so.
+            logger.error("Could not read \(configFileURL.path), using defaults: \(error)")
+            config = AppConfig()
+        }
         menuBar.showSpeaker(config.speaker)
         applyConfig()
     }
