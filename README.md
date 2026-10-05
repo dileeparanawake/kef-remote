@@ -1,10 +1,25 @@
+<p align="center">
+  <img src="Sources/KEFRemote/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png" width="128" height="128" alt="KEF Remote app icon: a speaker inside a volume arc">
+</p>
+
 # KEF Remote
 
 A small macOS app that puts a KEF LSX speaker on your keyboard. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Two more shortcuts turn the speaker on and off.
 
-It runs in the background with no Dock icon. A small speaker icon in the menu bar shows it's running, and opens Settings.
+![Control plus the volume key changes the speaker's volume; Cmd, Shift and O turns it on](docs/images/cover.png)
+
+It runs in the background with no Dock icon. A small speaker icon in the menu bar shows whether it's connected to the speaker, and opens Settings.
 
 This is an early release with real rough edges. Read [Known limitations](#known-limitations) before you install it.
+
+## What's new in 0.2.0
+
+- **Finds the speaker by itself.** It searches the network when it starts, and again if the speaker's IP changes. No Terminal step.
+- **Menu bar menu.** Settings… and Quit, plus a settings window for the speaker's IP, the modifier key and the shortcuts.
+- **Shows when it's connected.** A filled speaker icon and "Connected to LSX", or "Not connected" with the reason and a Find speaker item.
+- **An app icon.**
+- **Logging.** Each command, decision and failure writes one plain line to `~/.kef-remote/logs/kef-remote.log`.
+- **Code quality.** Tests went from 97 to 173, and a review pass tidied names, comments and logging.
 
 ## Requirements
 
@@ -20,34 +35,7 @@ I've only tested it on an original LSX. The LS50 Wireless uses the same control 
 
 Download the zip from the [Releases](https://github.com/dileeparanawake/kef-remote/releases) page, unzip it by double-clicking it in Finder, and move `KEFRemote.app` to your Applications folder.
 
-### 2. Tell it where the speaker is
-
-KEF Remote can't find the speaker by itself yet, so you give it the speaker's IP address before you open it.
-
-To find the IP, look in KEF's own app on your phone: it shows the speaker's IP in the speaker's settings while it's connected. Or open your router's admin page and look at its list of connected devices for one named LSX or KEF. While you're there, reserve that IP for the speaker (routers often call this a DHCP reservation), because KEF Remote won't notice if the speaker's IP changes.
-
-Then copy the block below into Terminal. First change the IP on the first line to your speaker's: open a text editor, paste the block, edit the first line, then copy it into Terminal. It works in zsh, the macOS default shell; if you use another shell, such as fish, type `zsh` first.
-
-```sh
-KEF_IP=192.168.1.50
-mkdir -p ~/.kef-remote
-cat > ~/.kef-remote/config.json <<EOF
-{
-  "app": { "launchAtLogin": false },
-  "defaults": { "input": 11, "standby": 2 },
-  "lifecycle": { "powerOffDelay": 60, "powerOffSleep": false, "powerOnWake": false },
-  "network": {},
-  "speaker": { "lastKnownIp": "$KEF_IP" }
-}
-EOF
-plutil -extract speaker.lastKnownIp raw ~/.kef-remote/config.json && echo "Saved. If KEF Remote is open, quit it (Cmd+Shift+Q) and open it again."
-```
-
-It prints the IP it saved, then "Saved". If you see an error instead, the file isn't valid: run the block again.
-
-**The app reads this file only when it starts.** After any change, quit KEF Remote (Cmd+Shift+Q) and open it again.
-
-### 3. Open it the first time
+### 2. Open it the first time
 
 #### macOS 15 (Sequoia) and later
 
@@ -70,19 +58,31 @@ xattr -dr com.apple.quarantine /Applications/KEFRemote.app
 
 You only need to do this once. If it says "No such xattr", the flag is already gone.
 
+### 3. Allow local network access
+
+On macOS 15 and later, macOS asks whether KEF Remote can find and connect to devices on your local network. Click Allow, or it can't find or reach the speaker. If you missed the prompt, turn it on in System Settings > Privacy & Security > Local Network.
+
 ### 4. Allow Accessibility
 
 On first open, macOS asks to give KEF Remote Accessibility access. Open System Settings from the prompt and turn KEFRemote on under Privacy & Security > Accessibility.
 
 Then quit KEF Remote (Cmd+Shift+Q) and open it again. It only starts listening for the volume keys at launch, so the permission takes effect after a restart.
 
-### 5. Allow local network access
+### 5. Check it's connected
 
-On macOS 15 and later, macOS asks whether KEF Remote can find and connect to devices on your local network. Click Allow, or it can't reach the speaker. If you missed the prompt, turn it on in System Settings > Privacy & Security > Local Network.
+When it opens, KEF Remote looks for the speaker on your network and saves its IP. Click the speaker icon in the menu bar: it should say "Connected to LSX".
 
-### 6. Check it's running
+Then press Cmd+Shift+O to turn the speaker on, then Control + volume up: a small panel in the middle of the screen shows the volume.
 
-A speaker icon appears in the menu bar. Click it to see the speaker's status. Then press Cmd+Shift+O to turn the speaker on, then Control + volume up: a small panel in the middle of the screen shows the volume. If nothing happens, check the IP (step 2) and that you reopened the app after granting Accessibility (step 4).
+If the menu says "Not connected", click Find speaker. If you've just allowed local network access, this is the fix.
+
+### If it can't find the speaker
+
+Set the IP by hand. Click the menu bar icon, choose Settings…, type the speaker's IP under Speaker, and click Save.
+
+To find the IP, look in KEF's own app on your phone: it shows the speaker's IP in the speaker's settings while it's connected. Or open your router's admin page and look at its list of connected devices for one named LSX or KEF.
+
+The IP is saved in `~/.kef-remote/config.json`. A config file from 0.1.0 keeps working.
 
 ## Shortcuts
 
@@ -120,11 +120,11 @@ The menu's first line says "Connected to LSX" or "Not connected", with the IP or
 
 | Limitation | What to do for now |
 |---|---|
-| It can't find the speaker on the network by itself. | Set the speaker's IP in `~/.kef-remote/config.json` (see [Install](#2-tell-it-where-the-speaker-is)). |
-| If the speaker's IP changes, it keeps trying the old one. | Reserve an IP for the speaker in your router, or update the config and restart. |
+| Finding the speaker needs the Mac and the speaker on the same network, with local network access allowed. | Set the IP in Settings (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). |
 | It doesn't start at login. | Add it in System Settings > General > Login Items. |
 | Fast repeated key presses can get lost. After an error, presses are ignored for about two seconds while it reconnects. | Press the keys one at a time. |
-| Turning the speaker on at wake and off at sleep is in the code, but off by default and untested. | Leave `powerOnWake` and `powerOffSleep` set to `false`. |
+| After the Mac sleeps, the icon can still say connected until the next key press. | Press a volume key; the icon updates. |
+| Turning the speaker on at wake and off at sleep is in the code, but off by default and untested. | Leave `powerOnWake` and `powerOffSleep` set to `false` in the config file. |
 
 ## Build from source
 
@@ -140,16 +140,21 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 97 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, and the speaker commands against a mock connection. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 173 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, discovery against a mock socket, the menu bar's states and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 ## How it works
 
+![A key press goes to KEF Remote, which sends the command to the speaker over TCP port 50001. An SSDP search on the local network finds the speaker, which replies with its IP.](docs/images/how-it-works.svg)
+
 The app talks to the speaker over TCP on port 50001, the protocol the KEF Control app uses. Volume and mute live in one register, and power, input and standby are packed into the bits of another.
 
-The code is a Swift package with two targets:
+To find the speaker, it sends an SSDP search (the same one UPnP devices answer) and reads each reply's description to pick out the KEF. It saves the IP, and searches again if the speaker stops answering there.
 
-- **KEFRemoteCore**: the protocol, speaker commands, TCP connection and config, with no UI.
-- **KEFRemote**: the macOS app, with volume key interception, the on-screen display and the shortcuts.
+The code is a Swift package with three targets:
+
+- **KEFRemoteCore**: the protocol, speaker commands, TCP connection, discovery, config and logging, with no UI.
+- **KEFRemote**: the macOS app, with volume key interception, the on-screen display, the menu bar, settings and the shortcuts.
+- **kef-discover**: runs discovery once and prints each step (`make discover`).
 
 ## Credits
 
