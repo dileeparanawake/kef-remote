@@ -30,4 +30,28 @@ struct ShortcutActionTests {
         }
         #expect(ShortcutAction.powerToggle.label == "Power on/off")
     }
+
+    // MARK: - No shortcut does two things
+
+    /// Live test, 5 Oct: ⇧⌘O was both Power on/off and Volume down, so
+    /// one press did both.
+    @Test func aComboAnotherActionUsesIsAConflict() {
+        let saved: [ShortcutAction: String] = [.powerToggle: "⇧⌘O", .quit: "⇧⌘Q"]
+        #expect(ShortcutAction.volumeDown.conflict(with: "⇧⌘O", in: { saved[$0] }) == .powerToggle)
+    }
+
+    @Test func aFreeComboHasNoConflict() {
+        let saved: [ShortcutAction: String] = [.powerToggle: "⇧⌘O"]
+        #expect(ShortcutAction.volumeDown.conflict(with: "⌃⌥↓", in: { saved[$0] }) == nil)
+    }
+
+    /// Recording the same combo again on its own action is fine.
+    @Test func anActionNeverConflictsWithItself() {
+        let saved: [ShortcutAction: String] = [.powerToggle: "⇧⌘O"]
+        #expect(ShortcutAction.powerToggle.conflict(with: "⇧⌘O", in: { saved[$0] }) == nil)
+    }
+
+    @Test func theRefusalNamesTheActionThatHasIt() {
+        #expect(ShortcutAction.powerToggle.alreadyUsedMessage == "Already used for Power on/off")
+    }
 }

@@ -57,6 +57,7 @@ struct SettingsView: View {
                         name: action.name,
                         onChange: { model.shortcutRecorded(action, as: $0) }
                     )
+                    .shortcutValidation { model.validateShortcut($0, for: action) }
                 }
 
                 Text("Click a field, then press the new keys. Delete clears it.")

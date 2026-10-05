@@ -33,3 +33,19 @@ public enum ShortcutAction: CaseIterable, Sendable {
         }
     }
 }
+
+extension ShortcutAction {
+    /// The other action already using `shortcut`, if any, so one press
+    /// never does two things.
+    ///
+    /// - Parameter savedShortcut: Each action's saved shortcut, or nil.
+    public func conflict<Shortcut: Equatable>(
+        with shortcut: Shortcut,
+        in savedShortcut: (ShortcutAction) -> Shortcut?
+    ) -> ShortcutAction? {
+        Self.allCases.first { $0 != self && savedShortcut($0) == shortcut }
+    }
+
+    /// Why a recording was refused, when this action already has the combo.
+    public var alreadyUsedMessage: String { "Already used for \(label)" }
+}

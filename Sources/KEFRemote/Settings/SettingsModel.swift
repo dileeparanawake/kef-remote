@@ -89,6 +89,16 @@ final class SettingsModel: ObservableObject {
         actions.applyModifier(choice)
     }
 
+    /// Refuse a combo another action already uses, so one press never
+    /// does two things. The recorder shows the reason and keeps the old one.
+    func validateShortcut(_ shortcut: KeyboardShortcuts.Shortcut, for action: ShortcutAction) -> KeyboardShortcuts.ValidationResult {
+        guard let other = action.conflict(with: shortcut, in: { KeyboardShortcuts.getShortcut(for: $0.name) }) else {
+            return .allow
+        }
+        log.info("shortcut refused: \(action.label) = \(shortcut), already used for \(other.label)")
+        return .disallow(reason: other.alreadyUsedMessage)
+    }
+
     /// A recorder saved a new shortcut (nil: cleared). KeyboardShortcuts
     /// has already stored it and swapped the hot key, so it works now.
     func shortcutRecorded(_ action: ShortcutAction, as shortcut: KeyboardShortcuts.Shortcut?) {
