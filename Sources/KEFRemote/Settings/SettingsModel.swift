@@ -1,4 +1,5 @@
 import KEFRemoteCore
+import KeyboardShortcuts
 import SwiftUI
 
 /// What the settings window can ask the app to do. `AppDelegate` fills
@@ -14,7 +15,7 @@ struct SettingsActions {
 
 /// State for the settings window: the IP field, discovery, and the
 /// media key modifier. Shortcuts are stored by the KeyboardShortcuts
-/// recorders themselves.
+/// recorders themselves; the model only logs each change.
 ///
 /// Every action is logged under the `settings` category.
 @MainActor
@@ -74,6 +75,12 @@ final class SettingsModel: ObservableObject {
         modifier = choice
         MediaKeyModifier.store(choice)
         actions.applyModifier(choice)
+    }
+
+    /// A recorder saved a new shortcut (nil: cleared). KeyboardShortcuts
+    /// has already stored it and swapped the hot key, so it works now.
+    func shortcutRecorded(_ action: ShortcutAction, as shortcut: KeyboardShortcuts.Shortcut?) {
+        log.info("shortcut recorded: \(action.label) = \(shortcut.map { "\($0)" } ?? "cleared")")
     }
 
     /// Show an IP the app saved itself (after discovery). Leaves the

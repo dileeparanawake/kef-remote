@@ -80,7 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: SpeakerController?
     private var connection: TCPSpeakerConnection?
     private let mediaKeys = MediaKeyInterceptor()
-    private let powerShortcuts = PowerShortcuts()
+    private let shortcuts = GlobalShortcuts()
     private let lifecycle = LifecycleManager()
     private let networkMonitor = NetworkMonitor()
 
@@ -111,7 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // 3. Set up all component callbacks.
         setupMediaKeyCallbacks()
-        setupPowerShortcutCallbacks()
+        setupShortcuts()
         setupLifecycleCallbacks()
         setupNetworkCallbacks()
 
@@ -214,7 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.set(.idle(isActive: true, speakerIP: config.speaker?.lastKnownIp), reason: "on home network")
         connectToSpeaker(.savedIP)
         mediaKeys.start()
-        powerShortcuts.register()
+        shortcuts.setEnabled(true, reason: "on home network")
         lifecycle.start()
     }
 
@@ -229,7 +229,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.set(.dormant, reason: "off home network")
 
         mediaKeys.stop()
-        powerShortcuts.unregister()
+        shortcuts.setEnabled(false, reason: "off home network")
         lifecycle.stop()
         disconnectSpeaker()
     }
@@ -414,102 +414,76 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return controller
     }
 
-    // MARK: - Media key callbacks
+    // MARK: - Volume commands
 
     /// How many percent one volume key press moves the speaker.
     private static let volumeStep = 5
 
     private func setupMediaKeyCallbacks() {
         mediaKeys.onMediaKey = { [weak self] action in
-            guard let self, let controller = self.controller(for: "\(action)") else { return }
+            self?.runVolumeCommand(action)
+        }
+    }
 
-            Task {
-                do {
-                    switch action {
-                    case .volumeUp:
-                        try await controller.raiseVolume(by: Self.volumeStep)
-                        let state = try await controller.getVolumeState()
-                        await MainActor.run {
-                            HUDOverlay.show(.volume(level: state.level))
-                        }
-                    case .volumeDown:
-                        try await controller.lowerVolume(by: Self.volumeStep)
-                        let state = try await controller.getVolumeState()
-                        await MainActor.run {
-                            HUDOverlay.show(.volume(level: state.level))
-                        }
-                    case .mute:
-                        try await controller.toggleMute()
-                        let state = try await controller.getVolumeState()
-                        await MainActor.run {
-                            if state.isMuted {
-                                HUDOverlay.show(.muted)
-                            } else {
-                                HUDOverlay.show(.volume(level: state.level))
-                            }
-                        }
-                    }
-                } catch {
-                    self.logger.error(
-                        "Media key command failed: \(error.localizedDescription)"
-                    )
-                    await MainActor.run {
-                        HUDOverlay.show(.error("Command failed"))
-                    }
-                    self.handleCommandError(error)
+    /// Volume up, down or mute: from a modifier + media key, or from a
+    /// recorded shortcut. The HUD shows the new level, or Muted.
+    private func runVolumeCommand(_ action: MediaKeyInterceptor.MediaKeyAction) {
+        guard let controller = controller(for: "\(action)") else { return }
+
+        Task {
+            do {
+                switch action {
+                case .volumeUp:
+                    try await controller.raiseVolume(by: Self.volumeStep)
+                case .volumeDown:
+                    try await controller.lowerVolume(by: Self.volumeStep)
+                case .mute:
+                    try await controller.toggleMute()
                 }
+                let state = try await controller.getVolumeState()
+                // Volume keys show the level even while muted; mute shows which way it went.
+                HUDOverlay.show(action == .mute && state.isMuted ? .muted : .volume(level: state.level))
+            } catch {
+                logger.error("Volume command failed: \(error.localizedDescription)")
+                HUDOverlay.show(.error("Command failed"))
+                handleCommandError(error)
             }
         }
     }
 
-    // MARK: - Power shortcut callbacks
+    // MARK: - Shortcuts
 
-    private func setupPowerShortcutCallbacks() {
-        powerShortcuts.onPowerOn = { [weak self] in
-            guard let self, let controller = self.controller(for: "power on") else { return }
-
-            HUDOverlay.show(.waking)
-            Task {
-                do {
-                    try await controller.powerOn()
-                    await MainActor.run {
-                        HUDOverlay.show(.powerOn)
-                    }
-                } catch {
-                    self.logger.error(
-                        "Power on failed: \(error.localizedDescription)"
-                    )
-                    await MainActor.run {
-                        HUDOverlay.show(.error("Power on failed"))
-                    }
-                    self.handleCommandError(error)
-                }
+    /// Turn each shortcut press into a command, and start listening. The
+    /// shortcuts stay off until ``activate()`` (on the home network).
+    private func setupShortcuts() {
+        shortcuts.onAction = { [weak self] action in
+            guard let self else { return }
+            switch action {
+            case .powerToggle: self.togglePower()
+            case .volumeUp: self.runVolumeCommand(.volumeUp)
+            case .volumeDown: self.runVolumeCommand(.volumeDown)
+            case .mute: self.runVolumeCommand(.mute)
+            case .quit: NSApplication.shared.terminate(nil)
             }
         }
+        shortcuts.listen()
+        shortcuts.setEnabled(false, reason: "until on the home network")
+    }
 
-        powerShortcuts.onPowerOff = { [weak self] in
-            guard let self, let controller = self.controller(for: "power off") else { return }
+    /// Read whether the speaker is on, then flip it. The HUD shows which
+    /// way it went.
+    private func togglePower() {
+        guard let controller = controller(for: "power toggle") else { return }
 
-            Task {
-                do {
-                    try await controller.powerOff()
-                    await MainActor.run {
-                        HUDOverlay.show(.powerOff)
-                    }
-                } catch {
-                    self.logger.error(
-                        "Power off failed: \(error.localizedDescription)"
-                    )
-                    await MainActor.run {
-                        HUDOverlay.show(.error("Power off failed"))
-                    }
-                    self.handleCommandError(error)
-                }
+        Task {
+            do {
+                let isOn = try await controller.togglePower()
+                HUDOverlay.show(isOn ? .powerOn : .powerOff)
+            } catch {
+                logger.error("Power toggle failed: \(error.localizedDescription)")
+                HUDOverlay.show(.error("Power failed"))
+                handleCommandError(error)
             }
-        }
-
-        powerShortcuts.onQuit = {
-            NSApplication.shared.terminate(nil)
         }
     }
 

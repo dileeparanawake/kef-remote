@@ -1,3 +1,4 @@
+import KEFRemoteCore
 import KeyboardShortcuts
 import SwiftUI
 
@@ -7,7 +8,7 @@ import SwiftUI
 /// Speaker      IP [192.168.1.80] (Save) (Discover)
 ///              Found LSX at 192.168.1.80
 /// Media keys   Modifier [Control]
-/// Shortcuts    Power On / Power Off / Quit
+/// Shortcuts    Power on/off, Volume up, Volume down, Mute, Quit
 /// ```
 struct SettingsView: View {
     @ObservedObject var model: SettingsModel
@@ -64,9 +65,17 @@ struct SettingsView: View {
             }
 
             Section("Shortcuts") {
-                KeyboardShortcuts.Recorder("Power on:", name: .powerOn)
-                KeyboardShortcuts.Recorder("Power off:", name: .powerOff)
-                KeyboardShortcuts.Recorder("Quit:", name: .quit)
+                ForEach(ShortcutAction.allCases, id: \.self) { action in
+                    KeyboardShortcuts.Recorder(
+                        "\(action.label):",
+                        name: action.name,
+                        onChange: { model.shortcutRecorded(action, as: $0) }
+                    )
+                }
+
+                Text("Click a field, then press the new keys. Delete clears it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

@@ -4,7 +4,7 @@
 
 # KEF Remote
 
-A small macOS app that puts a KEF LSX speaker on your keyboard. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Two more shortcuts turn the speaker on and off.
+A small macOS app that puts a KEF LSX speaker on your keyboard. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Cmd+Shift+O turns the speaker on, or off if it's on.
 
 ![Control plus the volume key changes the speaker's volume; Cmd, Shift and O turns it on](docs/images/cover.png)
 
@@ -17,6 +17,8 @@ This is an early release with real rough edges. Read [Known limitations](#known-
 - **Finds the speaker by itself.** It searches the network when it starts, and again if the speaker's IP changes. No Terminal step.
 - **Menu bar menu.** Settings… and Quit, plus a settings window for the speaker's IP, the modifier key and the shortcuts.
 - **Shows when it's connected.** A filled speaker icon and "Connected to LSX", or "Not connected" with the reason and a Find speaker item.
+- **One power shortcut.** Cmd+Shift+O turns the speaker on or off, whichever it isn't.
+- **Your own shortcuts.** Record new keys for power, volume up, volume down, mute and quit in Settings.
 - **An app icon.**
 - **Logging.** Each command, decision and failure writes one plain line to `~/.kef-remote/logs/kef-remote.log`.
 - **Code quality.** Tests went from 97 to 173, and a review pass tidied names, comments and logging.
@@ -91,15 +93,14 @@ The IP is saved in `~/.kef-remote/config.json`. A config file from 0.1.0 keeps w
 | Control + Volume Up (F12) | Speaker volume up by 5 |
 | Control + Volume Down (F11) | Speaker volume down by 5 |
 | Control + Mute (F10) | Mute or unmute the speaker |
-| Cmd + Shift + O | Turn the speaker on |
-| Cmd + Shift + P | Turn the speaker off |
+| Cmd + Shift + O | Turn the speaker on, or off if it's on |
 | Cmd + Shift + Q | Quit KEF Remote |
 
 If your function keys are set to work as standard F keys, hold Fn as well for the volume keys.
 
 Cmd+Shift+Q is also the macOS shortcut for Log Out. While KEF Remote is running it should get the shortcut first. If macOS asks whether you want to log out instead, click Cancel and quit KEF Remote from Activity Monitor.
 
-To use a different key from Control, or change the shortcuts, open Settings from the menu bar icon. Changes apply straight away.
+To use a different key from Control, or change the shortcuts, open Settings from the menu bar icon. To change a shortcut, click its field and press the new keys; Delete clears it. Volume up, volume down and mute have no shortcut until you record one. Changes apply straight away.
 
 ## Menu bar icon
 
