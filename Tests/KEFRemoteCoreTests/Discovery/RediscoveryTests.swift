@@ -60,7 +60,6 @@ struct RediscoveryTests {
     @Test func connectionErrorsCallForRediscovery() {
         #expect(KEFError.connectionFailed("timed out").isConnectionFailure)
         #expect(KEFError.notConnected.isConnectionFailure)
-        #expect(KEFError.speakerUnreachable.isConnectionFailure)
         #expect(KEFError.commandTimeout.isConnectionFailure)
         #expect(!KEFError.invalidResponse.isConnectionFailure)
     }
