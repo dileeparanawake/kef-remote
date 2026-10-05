@@ -495,8 +495,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Network callbacks
 
     private func setupNetworkCallbacks() {
-        networkMonitor.homeSSID = config.network.homeSSID
-
         networkMonitor.onStateChange = { [weak self] state in
             switch state {
             case .active:
