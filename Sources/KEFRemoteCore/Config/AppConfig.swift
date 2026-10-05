@@ -70,8 +70,20 @@ public struct AppConfig: Codable, Equatable {
 
     // MARK: - Persistence
 
+    /// The app's config file: `~/.kef-remote/config.json`.
+    public static var defaultFileURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".kef-remote")
+            .appendingPathComponent("config.json")
+    }
+
     /// Save the configuration as pretty-printed JSON to the given file URL.
+    /// Makes the folder first if it is missing.
     public static func save(_ config: AppConfig, to url: URL) throws {
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(config)

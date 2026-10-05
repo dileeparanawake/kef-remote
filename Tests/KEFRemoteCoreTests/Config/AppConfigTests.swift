@@ -35,6 +35,21 @@ struct AppConfigTests {
         #expect(loaded.network.homeSSID == "TestNetwork")
     }
 
+    @Test func saveMakesAMissingFolder() throws {
+        let testDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("kef-remote-test-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: testDir) }
+
+        let filePath = testDir.appendingPathComponent("nested/config.json")
+        try AppConfig.save(AppConfig(), to: filePath)
+
+        #expect(try AppConfig.load(from: filePath) == AppConfig())
+    }
+
+    @Test func theDefaultFileIsConfigJSONInTheDotFolder() {
+        #expect(AppConfig.defaultFileURL.path.hasSuffix("/.kef-remote/config.json"))
+    }
+
     @Test func loadReturnsDefaultWhenFileDoesNotExist() throws {
         let testDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("kef-remote-test-\(UUID().uuidString)")

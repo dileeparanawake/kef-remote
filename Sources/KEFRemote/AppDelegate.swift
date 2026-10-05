@@ -195,14 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mediaKeys.modifier = MediaKeyModifier.stored.eventFlags
     }
 
-    private var configFileURL: URL {
-        let dir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".kef-remote")
-        try? FileManager.default.createDirectory(
-            at: dir, withIntermediateDirectories: true
-        )
-        return dir.appendingPathComponent("config.json")
-    }
+    private let configFileURL = AppConfig.defaultFileURL
 
     // MARK: - Activation (on home network)
 
