@@ -32,7 +32,7 @@ public struct SpeakerStatus: Equatable {
 /// await response).
 public class SpeakerController {
     private let connection: SpeakerConnection
-    private let log: KEFLogHandler
+    let log: KEFLogHandler
     private let onReply: (SpeakerReply) -> Void
 
     /// - Parameter onReply: Called after every send, on the caller's
@@ -121,13 +121,6 @@ public class SpeakerController {
         let source = SourceByte(byte: byte)
         log(.info, "source: power=\(source.isPoweredOn ? "on" : "off") input=\(source.input) standby=\(source.standby)")
         return source
-    }
-
-    /// Check the speaker answers, by reading its source byte. The result
-    /// reaches `onReply` like any other exchange.
-    public func checkConnection() async throws {
-        log(.info, "Checking the speaker answers")
-        _ = try await getSourceByte()
     }
 
     /// Read the full speaker state: volume then source, sequentially.

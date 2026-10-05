@@ -21,6 +21,11 @@ final class MockKEFLog: KEFLog, @unchecked Sendable {
         entries.filter { $0.level == level }.map(\.message)
     }
 
+    /// The same log as a closure, for code that takes a `KEFLogHandler`.
+    var handler: KEFLogHandler {
+        { [self] level, message in record(level, message) }
+    }
+
     func debug(_ message: String) { record(.debug, message) }
     func info(_ message: String) { record(.info, message) }
     func warning(_ message: String) { record(.warning, message) }

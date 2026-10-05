@@ -53,12 +53,12 @@ struct SpeakerControllerReplyTests {
         #expect(replies().isEmpty)
     }
 
-    @Test func checkingTheConnectionReadsTheSourceByteOnce() async throws {
+    @Test func checkingTheConnectionReadsTheSourceByteOnce() async {
         let mock = MockSpeakerConnection()
         mock.responses = [Data([0x52, 0x30, 0x81, 0x82, 0x00])]
         let (controller, replies) = recordingController(mock: mock)
 
-        try await controller.checkConnection()
+        #expect(await controller.checkConnection(.savedIP) == .answered)
 
         #expect(mock.sentCommands == [KEFCommand.getSource()])
         #expect(replies() == [.answered])

@@ -10,8 +10,9 @@ import os
 /// 3. When active: sets up the speaker connection (it opens on the
 ///    first command), registers hotkeys, starts lifecycle hooks
 /// 4. Hotkey triggers flow through SpeakerController and produce HUD feedback
-/// 5. On command failure: rediscovers if the speaker was unreachable
-///    (it may have a new IP), otherwise reconnects after 2 seconds
+/// 5. On a failed check of the saved IP, or a failed command: rediscovers
+///    if the speaker was unreachable (it may have a new IP), otherwise
+///    reconnects after 2 seconds
 /// 6. Keeps the menu bar's connected state live (``MenuBarModel``):
 ///    every exchange with the speaker reports whether it answered
 /// 7. Opens the settings window from the menu, or when the app is
@@ -211,7 +212,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         logger.info("Activating — on home network")
 
         menuBar.set(.idle(isActive: true, speakerIP: config.speaker?.lastKnownIp), reason: "on home network")
-        connectToSpeaker()
+        connectToSpeaker(.savedIP)
         mediaKeys.start()
         powerShortcuts.register()
         lifecycle.start()
@@ -237,7 +238,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Connect to the speaker using the stored IP address, or trigger
     /// discovery if no IP is configured.
-    private func connectToSpeaker() {
+    ///
+    /// - Parameter origin: Where the IP came from. A saved IP that doesn't
+    ///   answer starts discovery, so the first key press finds the speaker.
+    private func connectToSpeaker(_ origin: CheckOrigin) {
         guard let ip = config.speaker?.lastKnownIp else {
             logger.warning("No speaker IP configured — attempting discovery")
             discoverInBackground(trigger: "no IP saved")
@@ -256,16 +260,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.controller = controller
         logger.info("Speaker configured at \(ip) — checking it answers")
         menuBar.set(.connecting, reason: "checking \(ip)")
+        checkSpeaker(controller, on: conn, origin: origin)
+    }
 
+    /// Check the speaker answers. If the saved IP has gone stale, look
+    /// for the speaker now rather than on the first key press.
+    private func checkSpeaker(_ controller: SpeakerController, on conn: TCPSpeakerConnection, origin: CheckOrigin) {
         Task {
-            do {
-                try await controller.checkConnection()
-            } catch {
-                // Not rediscovered here: a speaker that is off at the wall
-                // would loop. "Find speaker" in the menu runs discovery.
-                logger.warning("Speaker at \(ip) did not answer the check: \(error)")
+            let outcome = await controller.checkConnection(origin)
+            guard outcome == .rediscover else { return }
+            guard conn === connection else {
+                logger.info("Check failed, but a newer connection has taken over; not rediscovering")
+                return
             }
+            rediscover(reason: "the saved IP did not answer the check")
         }
+    }
+
+    /// The speaker could not be reached, so it may have a new IP. Drop the
+    /// connection and run discovery, which saves the new IP and reconnects.
+    private func rediscover(reason: String) {
+        disconnectSpeaker()
+        logger.info("Could not reach the speaker (\(reason)) — rediscovering")
+        discoverInBackground(trigger: "speaker unreachable")
     }
 
     /// Show whether the speaker answered, unless the reply came from a
@@ -293,14 +310,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var speaker = config.speaker ?? AppConfig.SpeakerConfig()
         speaker.lastKnownIp = ip
         saveSpeaker(speaker)
-        reconnect(reason: "IP changed in settings")
+        reconnect(.typedInSettings, reason: "IP changed in settings")
     }
 
     /// Drop the current connection and connect to the saved IP.
-    private func reconnect(reason: String) {
+    private func reconnect(_ origin: CheckOrigin, reason: String) {
         disconnectSpeaker()
         menuBar.set(.idle(isActive: isActive, speakerIP: config.speaker?.lastKnownIp), reason: reason)
-        if isActive { connectToSpeaker() }
+        if isActive { connectToSpeaker(origin) }
     }
 
     /// Find the speaker with SSDP, save its IP (and MAC, if none was saved),
@@ -323,7 +340,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return .notFound
             }
             saveSpeaker(updated)
-            reconnect(reason: "discovery found the speaker")
+            reconnect(.afterDiscovery, reason: "discovery found the speaker")
             return .found(updated)
         } catch {
             logger.error("Discovery failed: \(error)")
@@ -338,7 +355,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func recheckSavedSpeaker(reason: String) {
         let idle = ConnectionStatus.idle(isActive: isActive, speakerIP: config.speaker?.lastKnownIp)
         if idle == .connecting {
-            reconnect(reason: reason)
+            reconnect(.afterDiscovery, reason: reason)
         } else {
             menuBar.set(idle, reason: reason)
         }
@@ -554,19 +571,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func handleCommandError(_ error: Error) {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            self.disconnectSpeaker()
-
             if let kefError = error as? KEFError, kefError.isConnectionFailure {
-                self.logger.info("Could not reach the speaker (\(kefError)) — rediscovering")
-                self.discoverInBackground(trigger: "speaker unreachable")
+                self.rediscover(reason: "\(kefError)")
                 return
             }
 
+            self.disconnectSpeaker()
             self.logger.info("Command error — disconnecting and reconnecting in 2s")
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
                 guard let self, self.isActive else { return }
                 self.logger.info("Reconnecting to speaker")
-                self.connectToSpeaker()
+                self.connectToSpeaker(.savedIP)
             }
         }
     }
