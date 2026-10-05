@@ -18,7 +18,7 @@ public struct AppConfig: Codable, Equatable {
         self.app = AppBehaviourConfig()
     }
 
-    public struct SpeakerConfig: Codable, Equatable {
+    public struct SpeakerConfig: Codable, Equatable, Sendable {
         public var name: String?
         public var mac: String?
         public var lastKnownIp: String?
