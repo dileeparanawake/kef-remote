@@ -205,9 +205,7 @@ public class SpeakerController {
     /// Preserves all other source byte fields (input, standby, inverse).
     public func powerOn() async throws {
         log(.info, "powerOn")
-        let source = try await getSourceByte()
-        let modified = source.with(isPoweredOn: true)
-        try await writeSource(modified)
+        try await writePowerOn(from: try await getSourceByte())
     }
 
     /// Power off the speaker.
@@ -219,8 +217,32 @@ public class SpeakerController {
     /// Reference: Perl `kefctl` lines 222-229.
     public func powerOff() async throws {
         log(.info, "powerOff")
-        var source = try await getSourceByte()
+        try await writePowerOff(from: try await getSourceByte())
+    }
 
+    /// Turn the speaker off if it is on, or on if it is off. Reads the
+    /// source byte once and decides from its power bit, so the power-off
+    /// side keeps the 20-minute standby workaround.
+    ///
+    /// - Returns: Whether the speaker is now on.
+    @discardableResult
+    public func togglePower() async throws -> Bool {
+        let source = try await getSourceByte()
+        log(.info, "togglePower: \(source.isPoweredOn ? "on → off" : "off → on")")
+        if source.isPoweredOn {
+            try await writePowerOff(from: source)
+            return false
+        }
+        try await writePowerOn(from: source)
+        return true
+    }
+
+    private func writePowerOn(from source: SourceByte) async throws {
+        try await writeSource(source.with(isPoweredOn: true))
+    }
+
+    private func writePowerOff(from source: SourceByte) async throws {
+        var source = source
         // Workaround: 20-minute standby crashes the speaker on power-off.
         // Switch to 60 minutes first, then power off.
         if source.standby == .twentyMinutes {
@@ -229,9 +251,7 @@ public class SpeakerController {
             try await writeSource(standbyFix)
             source = standbyFix
         }
-
-        let modified = source.with(isPoweredOn: false)
-        try await writeSource(modified)
+        try await writeSource(source.with(isPoweredOn: false))
     }
 
     // MARK: - Input
