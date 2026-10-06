@@ -25,6 +25,8 @@ import os
 ///    the last source byte the controller read or wrote; swaps left and
 ///    right from Settings, shown from the same byte
 /// 10. Writes feedback from Send feedback… in the menu (``FeedbackSender``)
+/// 11. While macOS blocks Local Network, asks again every few seconds and
+///     tries the speaker once it's allowed (``LocalNetworkRetry``)
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -98,6 +100,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var connectionWatch: AnyCancellable?
     /// Feeds each Accessibility status to ``menuBar`` (the red dot).
     private var accessibilityWatch: AnyCancellable?
+    /// Starts ``localNetworkRetry`` when macOS blocks the app.
+    private var localNetworkBlockWatch: AnyCancellable?
+    /// Asks macOS again every few seconds while Local Network is blocked.
+    private var localNetworkRetry: Task<Void, Never>?
+    private let localNetworkProbe = LocalNetworkProbe.onNetwork()
 
     // MARK: - Components
 
@@ -225,6 +232,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         permissions.watchAccessibility()
         permissions.onAccessibilityGranted = { [weak self] in
             self?.startMediaKeysAfterAccessibilityGranted()
+        }
+        localNetworkBlockWatch = menuBar.$status.sink { [weak self] status in
+            if status == .localNetworkBlocked { self?.retryWhileLocalNetworkBlocked() }
+        }
+    }
+
+    /// Nothing else tries again after macOS blocks the app, so allowing
+    /// Local Network would change nothing until the next key press. Every
+    /// ``LocalNetworkRetry/interval``, ask macOS with a probe; once it's
+    /// allowed, try the speaker (``LocalNetworkRetry`` decides how). Stops
+    /// when the menu bar shows any answer but blocked.
+    private func retryWhileLocalNetworkBlocked() {
+        guard localNetworkRetry == nil else { return }
+        logger.info("Local Network blocked: asking macOS again every \(LocalNetworkRetry.interval) until it's allowed")
+        localNetworkRetry = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: LocalNetworkRetry.interval)
+                guard let self, !Task.isCancelled else { return }
+                switch LocalNetworkRetry.tick(after: menuBar.status) {
+                case .wait: continue
+                case .stop:
+                    logger.info("Local Network retry stopped: status is \(menuBar.status.rawValue)")
+                    localNetworkRetry = nil
+                    return
+                case .probe:
+                    retryLocalNetworkOnce()
+                }
+            }
+        }
+    }
+
+    /// One tick while blocked: one log line, and a full attempt only once
+    /// a packet gets out.
+    private func retryLocalNetworkOnce() {
+        let result = localNetworkProbe.run()
+        permissions.showProbe(result)
+        switch LocalNetworkRetry.afterProbe(result, discovery: config.discovery) {
+        case .keepWaiting:
+            // Debug: it repeats every few seconds while he hasn't allowed it.
+            logger.debug("Local Network still blocked; asking again in \(LocalNetworkRetry.interval)")
+        case .rediscover:
+            logger.info("Local Network probe: \(result); looking for the speaker again")
+            Task { _ = await runDiscovery(trigger: "Local Network allowed") }
+        case .reconnect:
+            logger.info("Local Network probe: \(result); checking the saved IP again")
+            reconnect(.savedIP, reason: "Local Network allowed")
         }
     }
 

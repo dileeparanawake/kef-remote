@@ -57,7 +57,7 @@ You only need to do this once. If it says "No such xattr", the flag is already g
 When it opens, KEF Remote shows a small window with the two permissions it needs. Each has a button that opens System Settings, and gets a tick once it's allowed.
 
 - **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote. On macOS 27 this list is called Device Control and Data Access.
-- **Local Network** (macOS 15 and later), so the app can find the speaker. macOS asks the first time the app looks for the speaker: click Allow. If you missed it, click Open Settings, then Local Network, and turn on KEF Remote. Its tick shows once the speaker answers.
+- **Local Network** (macOS 15 and later), so the app can find the speaker. macOS asks the first time the app looks for the speaker: click Allow. If you missed it, click Open Settings, then Local Network, and turn on KEF Remote. Its tick shows within a few seconds of allowing it.
 
 To open the window again, click the speaker icon in the menu bar, then Permissions….
 

@@ -16,6 +16,7 @@ import KEFRemoteCore
 /// [permissions] Accessibility: Open Settings clicked, opened x-apple.systempreferences:…
 /// [permissions] accessibility notGranted -> granted (guide open)
 /// [permissions] local network notCheckedYet -> granted (connection connected)
+/// [permissions] local network notGranted -> granted (probe)
 /// ```
 @MainActor
 final class PermissionsModel: ObservableObject {
@@ -78,6 +79,15 @@ final class PermissionsModel: ObservableObject {
         let seen = localNetwork.localNetwork(after: status)
         guard seen != localNetwork else { return }
         log.info("local network \(localNetwork.rawValue) -> \(seen.rawValue) (connection \(status.rawValue))")
+        localNetwork = seen
+    }
+
+    /// Read Local Network from a probe while it's blocked: a packet that
+    /// got out means allowed, before the speaker has answered.
+    func showProbe(_ result: LocalNetworkProbe.Result) {
+        let seen = localNetwork.localNetwork(after: result)
+        guard seen != localNetwork else { return }
+        log.info("local network \(localNetwork.rawValue) -> \(seen.rawValue) (probe)")
         localNetwork = seen
     }
 
