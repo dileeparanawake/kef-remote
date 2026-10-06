@@ -120,13 +120,13 @@ Your config file from 0.1.0 keeps working, with discovery on Auto.
 
 ## Set the speaker up
 
-Under Speaker defaults, on the Speaker tab of Settings, three settings set the speaker up for you. Input on turn-on and Standby start at Don't change, so KEF Remote leaves the speaker as it is until you pick something.
+Under Speaker, on the Speaker tab of Settings, three settings set the speaker up for you. Each row says under it when it applies. Input on turn-on and Standby start at Don't change, so KEF Remote leaves the speaker as it is until you pick something.
 
-| Setting | What it does |
-|---|---|
-| Input on turn-on | The input the speaker switches to when KEF Remote turns it on: Optical, Wi-Fi, Bluetooth, Aux or USB (the LS50 Wireless only: the LSX has no USB input). It doesn't apply when you turn it on with KEF's own remote, or if it's already on. |
-| Standby | How long the speaker waits with no sound before it goes to standby: 20 min, 60 min or Never. KEF Remote sets it when you choose it, and each time it connects. |
-| Swap left and right | Swaps which speaker plays the left channel. The switch shows how the speaker is set now, and changes it straight away. The speaker remembers it, so KEF Remote doesn't save it. It's greyed out while KEF Remote isn't connected. |
+| Setting | When it applies | What it does |
+|---|---|---|
+| Input on turn-on | When KEF Remote turns the speaker on. | The input the speaker switches to when KEF Remote turns it on: Optical, Wi-Fi, Bluetooth, Aux or USB (the LS50 Wireless only: the LSX has no USB input). It doesn't apply when you turn it on with KEF's own remote, or if it's already on. |
+| Standby | Now, and each time KEF Remote connects. | How long the speaker waits with no sound before it goes to standby: 20 min, 60 min or Never. KEF Remote sets it when you choose it, and each time it connects. |
+| Swap left and right | Now. The speaker remembers it. | Swaps which speaker plays the left channel. The switch shows how the speaker is set now, and changes it straight away. The speaker remembers it, so KEF Remote doesn't save it. It's greyed out while KEF Remote isn't connected. |
 
 ## Shortcuts
 
@@ -180,7 +180,7 @@ Settings… has three tabs, so it fits a 13-inch screen:
 
 | Tab | What's on it |
 |---|---|
-| Speaker | Discovery (Auto or Manual), the speaker it found, and Speaker defaults |
+| Speaker | Connection: Discovery (Auto or Manual) and the speaker it found. Speaker: Input on turn-on, Standby and Swap left and right |
 | Keys | The modifier for the media keys, and the shortcuts |
 | About | The version, Made by Dileepa, Send feedback… and the privacy notice |
 
@@ -210,7 +210,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 642 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, the Dock icon while a window is open, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network, and searches again by itself after a miss), the connection check, the menu bar's states, its Input menu, its Turn speaker on/off item and when opening it reads the speaker again, the Settings tabs, the volume keys line in setup, play/pause and which inputs it works on, the media keys, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 645 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, the Dock icon while a window is open, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network, and searches again by itself after a miss), the connection check, the menu bar's states, its Input menu, its Turn speaker on/off item and when opening it reads the speaker again, the Settings tabs, the volume keys line in setup, play/pause and which inputs it works on, the media keys, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening. It takes a few minutes, as it waits for the speaker to power on and off.
 

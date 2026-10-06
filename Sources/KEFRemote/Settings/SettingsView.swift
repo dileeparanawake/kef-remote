@@ -8,14 +8,15 @@ import SwiftUI
 /// ```
 /// [ Speaker ]  [ Keys ]  [ About ]
 ///
-/// Speaker   Speaker      Discovery (Auto | Manual)
+/// Speaker   Connection   Discovery (Auto | Manual)
 ///             Auto:      Speaker LSX · IP 192.168.1.80 · Status Connected (Find again)
 ///             Manual:    IP [192.168.1.80] (Save)
-///           Speaker defaults
-///                        Input on turn-on [Don't change]
+///           Speaker      Input on turn-on [Don't change]
+///                          "When KEF Remote turns the speaker on."
 ///                        Standby [Don't change]
+///                          "Now, and each time KEF Remote connects."
 ///                        Swap left and right [off]
-///                        "Input on turn-on applies when KEF Remote turns the speaker on. …"
+///                          "Now. The speaker remembers it."
 /// Keys      Media keys   Modifier [Control]   "Control + the volume and play keys …"
 ///           Shortcuts    Power on/off, Volume up, … Quit
 ///                        "Optional extra keys. They work alongside the keys above."
@@ -65,7 +66,8 @@ struct SettingsView: View {
 
     private var speakerTab: some View {
         Form {
-            Section("Speaker") {
+            // "Connection", so it doesn't share the Speaker section's name.
+            Section("Connection") {
                 Picker("Discovery", selection: Binding(
                     get: { model.discovery },
                     set: { model.setDiscovery($0) }
@@ -81,37 +83,37 @@ struct SettingsView: View {
                 }
             }
 
-            // Its own section, so the choices read as defaults, apart
-            // from how the app finds the speaker (hand test, 6 Oct).
-            Section("Speaker defaults") {
-                Picker("Input on turn-on", selection: Binding(
+            // Its own section, apart from how the app finds the speaker.
+            // Each row applies at a different time, so each says when
+            // under its title (a second Text in a grouped Form's label).
+            Section("Speaker") {
+                Picker(selection: Binding(
                     get: { model.powerOnInput },
                     set: { model.setPowerOnInput($0) }
                 )) {
                     ForEach(model.powerOnInputChoices, id: \.self) { choice in
                         Text(choice.label).tag(choice)
                     }
+                } label: {
+                    Text("Input on turn-on")
+                    Text(PowerOnInput.settingsCaption)
                 }
                 .pickerStyle(.menu)
 
-                Picker("Standby", selection: Binding(
+                Picker(selection: Binding(
                     get: { model.standby },
                     set: { model.setStandby($0) }
                 )) {
                     ForEach(StandbyChoice.allCases, id: \.self) { choice in
                         Text(choice.label).tag(choice)
                     }
+                } label: {
+                    Text("Standby")
+                    Text(StandbyChoice.settingsCaption)
                 }
                 .pickerStyle(.menu)
 
                 swapLeftRight
-
-                // Not every choice here is a turn-on default: standby is
-                // also written on each connect, and the swap is the
-                // speaker's own setting. The caption says when each applies.
-                Text("Input on turn-on applies when KEF Remote turns the speaker on. Standby applies when you choose it and each time KEF Remote connects. Swap left and right applies straight away.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -192,10 +194,13 @@ struct SettingsView: View {
             isConnected: menuBar.presentation.isConnected,
             requested: model.requestedSwap
         )
-        Toggle(SwapLeftRightSwitch.title, isOn: Binding(
+        Toggle(isOn: Binding(
             get: { shown.isOn },
             set: { isSwapped in Task { await model.setLeftRightSwapped(isSwapped) } }
-        ))
+        )) {
+            Text(SwapLeftRightSwitch.title)
+            Text(SwapLeftRightSwitch.settingsCaption)
+        }
         .toggleStyle(.switch)
         .disabled(!shown.isEnabled)
 

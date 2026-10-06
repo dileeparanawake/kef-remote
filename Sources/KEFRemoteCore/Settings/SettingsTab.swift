@@ -6,7 +6,7 @@ import Foundation
 ///
 /// ```
 /// [ Speaker ]  [ Keys ]  [ About ]
-///   Speaker:  Discovery, the speaker found, Speaker defaults
+///   Speaker:  Connection (discovery, the speaker found), Speaker (its settings)
 ///   Keys:     Modifier, the shortcut recorders
 ///   About:    Version, Made by Dileepa, Send feedback…, Privacy
 /// ```

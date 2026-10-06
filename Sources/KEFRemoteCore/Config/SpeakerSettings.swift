@@ -90,11 +90,19 @@ public enum StandbyChoice: String, Codable, CaseIterable, Sendable {
     public var label: String {
         mode?.label ?? "Don't change"
     }
+
+    /// Under the row in Settings: when the choice reaches the speaker
+    /// (``SpeakerController/applyStandby(_:for:)``).
+    public static let settingsCaption = "Now, and each time KEF Remote connects."
 }
 
 /// The input the speaker switches to when the app turns it on. Saved by
 /// name (`"optical"`), not by the speaker's 4-bit code.
 public enum PowerOnInput: String, Codable, CaseIterable, Sendable {
+    /// Under the row in Settings: only the app's own turn-on applies it,
+    /// not KEF's remote.
+    public static let settingsCaption = "When KEF Remote turns the speaker on."
+
     case dontChange
     case optical
     case wifi

@@ -1,6 +1,6 @@
 import Foundation
 
-/// How the Swap left and right switch in Settings > Speaker defaults
+/// How the Swap left and right switch in Settings > Speaker
 /// looks. Unlike the other choices there, it is the speaker's own
 /// setting, applied when clicked and never saved in config.json: the
 /// speaker keeps it.
@@ -14,6 +14,9 @@ public struct SwapLeftRightSwitch: Equatable, Sendable {
     public let isEnabled: Bool
 
     public static let title = "Swap left and right"
+
+    /// Under the row in Settings: written when clicked, kept by the speaker.
+    public static let settingsCaption = "Now. The speaker remembers it."
 
     /// - Parameters:
     ///   - speakerSource: The speaker's last source byte read or written,
