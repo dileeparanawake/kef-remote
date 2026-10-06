@@ -55,11 +55,23 @@ final class OnboardingModel: ObservableObject {
     private let actions: OnboardingActions
     private let log = AppLogger(subsystem: "com.kef-remote", category: "onboarding")
 
+    /// Passes on each change to the models the steps read.
+    private var sourcesWatch: AnyCancellable?
+
     init(permissions: PermissionsModel, settings: SettingsModel, menuBar: MenuBarModel, actions: OnboardingActions) {
         self.permissions = permissions
         self.settings = settings
         self.menuBar = menuBar
         self.actions = actions
+        // Step 2's line, its Find speaker button and Continue are read
+        // from this model but come from the others. SwiftUI redraws a
+        // step only when a model it observes changes, so step 2 kept
+        // "Connecting…" after the speaker answered (hand test round 7).
+        // Any change to them is a change to this model too.
+        sourcesWatch = Publishers.Merge3(
+            permissions.objectWillChange, settings.objectWillChange, menuBar.objectWillChange
+        )
+        .sink { [weak self] _ in self?.objectWillChange.send() }
     }
 
     /// The step last shown with all the steps, where Finish setup… goes back to.

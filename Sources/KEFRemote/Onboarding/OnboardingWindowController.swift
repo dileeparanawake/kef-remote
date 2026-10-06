@@ -76,12 +76,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
 
     private func makeWindow() -> NSWindow {
         let window = AgentWindowPresenter.makeWindow(
-            NSHostingController(rootView: OnboardingView(
-                model: model,
-                permissions: model.permissions,
-                settings: model.settings,
-                menuBar: model.menuBar
-            )),
+            NSHostingController(rootView: OnboardingView(model: model)),
             delegate: self
         )
         self.window = window

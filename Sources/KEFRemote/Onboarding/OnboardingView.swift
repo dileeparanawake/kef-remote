@@ -14,12 +14,10 @@ import SwiftUI
 ///
 /// What unlocks Continue and what each line says are decided in
 /// ``OnboardingStep`` and ``SpeakerSearchLine``; this only shows them.
+/// The model passes on every change to the permissions, settings and
+/// menu bar models, so each step redraws as the speaker answers.
 struct OnboardingView: View {
     @ObservedObject var model: OnboardingModel
-    // Observed too, so Continue and the lines follow each change.
-    @ObservedObject var permissions: PermissionsModel
-    @ObservedObject var settings: SettingsModel
-    @ObservedObject var menuBar: MenuBarModel
 
     private let log = AppLogger(subsystem: "com.kef-remote", category: "onboarding")
 
@@ -32,7 +30,7 @@ struct OnboardingView: View {
                 stepIndicator
                 switch model.step {
                 case .permissions: permissionsStep
-                case .findSpeaker: FindSpeakerStep(model: model, settings: settings)
+                case .findSpeaker: FindSpeakerStep(model: model, settings: model.settings)
                 case .done: youreSet
                 }
                 buttons
@@ -44,7 +42,7 @@ struct OnboardingView: View {
     }
 
     private var permissionsStep: some View {
-        PermissionsView(model: permissions, restart: model.restartClicked, restartLine: model.permissionsRestartLine)
+        PermissionsView(model: model.permissions, restart: model.restartClicked, restartLine: model.permissionsRestartLine)
     }
 
     /// Where he is: the current step bold, the others grey.
