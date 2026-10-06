@@ -10,7 +10,8 @@ import Foundation
 /// Input: Optical  ▸
 /// ```
 ///
-/// The words come from the last source byte. A click flips whatever the speaker is
+/// The words come from the last source byte, read again as the menu
+/// opens (``MenuOpenRead``). A click flips whatever the speaker is
 /// now, as the power shortcut does, so the input and standby defaults
 /// apply when it turns on.
 public struct PowerMenuItem: Equatable, Sendable {

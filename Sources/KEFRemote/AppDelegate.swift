@@ -24,7 +24,8 @@ import os
 ///    offers a restart if macOS still refuses them), and shows the red
 ///    dot in the menu bar while it isn't
 /// 9. Switches the speaker's input from Input ▸ in the menu, ticked from
-///    the last source byte the controller read or wrote; turns the
+///    the last source byte the controller read or wrote, and read again
+///    as the menu opens (``MenuOpenWatcher``); turns the
 ///    speaker on or off from the menu as the power shortcut does; swaps
 ///    left and right from Settings, shown from the same byte
 /// 10. Writes feedback from Send feedback… in the menu (``FeedbackSender``)
@@ -91,6 +92,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             swapLeftRight: { [weak self] isSwapped in try await self?.swapLeftRight(isSwapped) }
         )
     )
+
+    /// Reads the speaker's input again when the menu opens (``MenuOpenRead``).
+    private let menuOpenWatcher = MenuOpenWatcher()
+    private let menuBarLogger = AppLogger(subsystem: "com.kef-remote", category: "menubar")
 
     private lazy var settingsWindow = SettingsWindowController(
         model: settingsModel, menuBar: menuBar, sendFeedback: { [weak self] in self?.sendFeedback() }
@@ -169,6 +174,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupShortcuts()
         setupLifecycleCallbacks()
         setupNetworkCallbacks()
+        menuOpenWatcher.onOpen = { [weak self] in self?.menuOpened() }
+        menuOpenWatcher.start()
 
         // 4. Start network monitor — it will call activate() or deactivate()
         //    based on whether we are on the home network.
@@ -814,6 +821,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 logger.error("Input switch to \(input.label) failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Input failed"))
+                handleCommandError(error)
+            }
+        }
+    }
+
+    // MARK: - Menu open
+
+    /// The speaker changes input by itself (AirPlay switches it to Wi-Fi),
+    /// so read the source byte as the menu opens, when ``MenuOpenRead``
+    /// says to. Input ▸ and Turn speaker on/off follow the byte read.
+    private func menuOpened() {
+        guard let controller else {
+            menuBarLogger.info(MenuOpenRead.skipNotConnected.logLine)
+            return
+        }
+        let read = controller.menuOpenRead(isConnected: menuBar.presentation.isConnected)
+        menuBarLogger.info(read.logLine)
+        guard read.reads else { return }
+
+        Task {
+            do {
+                _ = try await controller.getSourceByte()
+            } catch {
+                logger.error("Menu-open read failed: \(error.localizedDescription)")
                 handleCommandError(error)
             }
         }

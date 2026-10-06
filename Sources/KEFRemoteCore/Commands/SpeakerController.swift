@@ -51,6 +51,12 @@ public class SpeakerController {
     /// The source byte last read, or written and acked: play/pause uses
     /// it to skip a read when it shows the speaker on Wi-Fi or Bluetooth.
     private var lastSourceByte: SourceByte?
+    /// When ``lastSourceByte`` was read or acked, on ``clock``.
+    private var lastSourceByteAt: Duration?
+    /// Sends still waiting for the speaker's reply. The connection reads
+    /// replies in order, so a second exchange on top would take the
+    /// first's reply: the menu-open read waits for none (``MenuOpenRead``).
+    private var exchangesInFlight = 0
 
     /// - Parameters:
     ///   - onReply: Called after every send, on the caller's task, with
@@ -84,6 +90,8 @@ public class SpeakerController {
     /// - Logs `.error` with full hex dump on validation failure, then throws
     private func sendAndReceive(_ command: Data, expectResponseBytes: Int) async throws -> Data {
         log(.debug, "SEND: \(command.hexString)")
+        exchangesInFlight += 1
+        defer { exchangesInFlight -= 1 }
         let response: Data
         do {
             response = try await connection.send(command, expectResponseBytes: expectResponseBytes)
@@ -132,7 +140,25 @@ public class SpeakerController {
     /// Keep the source byte the speaker has now, and pass it on to `onSourceByte`.
     private func noteSourceByte(_ source: SourceByte) {
         lastSourceByte = source
+        lastSourceByteAt = clock.now
         onSourceByte(source)
+    }
+
+    // MARK: - Menu open
+
+    /// Whether a command is waiting for the speaker's reply.
+    public var isExchangeInFlight: Bool { exchangesInFlight > 0 }
+
+    /// Time since the source byte was last read, or written and acked;
+    /// nil before the first.
+    public var sourceByteAge: Duration? { lastSourceByteAt.map { clock.now - $0 } }
+
+    /// Whether opening the menu should read the source byte now. The
+    /// caller logs the answer and, if it reads, calls ``getSourceByte()``.
+    ///
+    /// - Parameter isConnected: The speaker answered the last exchange.
+    public func menuOpenRead(isConnected: Bool) -> MenuOpenRead {
+        MenuOpenRead(isConnected: isConnected, isExchangeInFlight: isExchangeInFlight, sourceByteAge: sourceByteAge)
     }
 
     // MARK: - State reads

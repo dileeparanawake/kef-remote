@@ -73,6 +73,9 @@ struct MenuBarMenu: View {
 
     private let log = AppLogger(subsystem: "com.kef-remote", category: "menubar")
 
+    /// The last item. ``MenuOpenWatcher`` finds this menu by it.
+    static let quitTitle = "Quit KEF Remote"
+
     var body: some View {
         let shown = model.presentation
 
@@ -149,7 +152,7 @@ struct MenuBarMenu: View {
 
         Divider()
 
-        Button("Quit KEF Remote") {
+        Button(Self.quitTitle) {
             log.info("menu: Quit clicked")
             NSApplication.shared.terminate(nil)
         }
