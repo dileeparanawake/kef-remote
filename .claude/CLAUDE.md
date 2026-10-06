@@ -4,12 +4,13 @@ Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) o
 
 ## Codebase
 
-Three targets in a Swift package, plus tests:
+Four targets in a Swift package, plus tests:
 
 - **KEFRemoteCore** (library) — Testable protocol, command, and controller logic. No UI, no system frameworks beyond Foundation and Network.
-- **KEFRemoteCore** folders: `Protocol/` (byte encoding), `Commands/` (`SpeakerController`, the connection check), `Connection/` (TCP, reply timeout), `Config/` (`config.json`, Auto/Manual discovery), `Discovery/` (SSDP), `Logging/`, `MenuBar/` and `HUD/` (what the icon and HUD show), `Network/` (home-network rule, Local Network permission), `Permissions/` (each permission's row in the guide, its System Settings URL, when the guide opens), `Shortcuts/` (what each global shortcut does), `Utilities/`.
+- **KEFRemoteCore** folders: `Protocol/` (byte encoding), `Commands/` (`SpeakerController`, the connection check), `Connection/` (TCP, reply timeout), `Config/` (`config.json`, Auto/Manual discovery), `Discovery/` (SSDP), `Logging/`, `MenuBar/` and `HUD/` (what the icon and HUD show), `Network/` (home-network rule, Local Network permission), `Permissions/` (each permission's row in the guide, its System Settings URL, when the guide opens), `Shortcuts/` (what each global shortcut does), `Check/` (the speaker check: each step, read-back and putting the start back; a simulated speaker for its dry run and tests), `Utilities/`.
 - **KEFRemote** (executable) — macOS app: HUD overlay (`UI/`), media keys and global shortcuts, wake/sleep and Wi-Fi watching (`Control/`), menu bar (`MenuBar/`), settings window (`Settings/`), permissions guide window (`Permissions/`), logging to file (`Logging/`). `AppDelegate` wires them together.
 - **kef-discover** (executable) — runs discovery once and prints each step (`make discover`).
+- **kef-check** (executable) — runs every speaker command on the saved IP, reads each back, puts the start back (`make speaker-check`).
 
 **Tech stack:** Swift, macOS 14+, SPM + Xcode project, Network.framework (TCP), CoreWLAN, KeyboardShortcuts, CGEvent tap, Swift Testing.
 
@@ -29,6 +30,7 @@ Use `make <target>` for common operations. Key targets:
 |--------|---------|
 | `make test` | Run test suite (`swift test --disable-sandbox`) |
 | `make discover` | Find the speaker over SSDP and print every step (`MAC=...` to match one) |
+| `make speaker-check` | Run every speaker command, read each back, put the start back (`INPUTS=1` each input, `DRY_RUN=1` simulated). Changes what's playing: only when Dileepa is away; quit the app first |
 | `make app-icon` | Redraw the app icon PNGs from `Design/AppIcon.svg` |
 | `make run` | Launch most recently built debug app |
 | `make test-build` | Quit the running app, build this branch with `xcodebuild`, and launch it for a hand test |

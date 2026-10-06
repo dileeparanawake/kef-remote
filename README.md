@@ -185,6 +185,8 @@ swift test --disable-sandbox
 
 There are 351 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
 
+To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening.
+
 ## How it works
 
 ![A key press goes to KEF Remote, which sends the command to the speaker over TCP port 50001. An SSDP search on the local network finds the speaker, which replies with its IP.](docs/images/how-it-works.svg)
