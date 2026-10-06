@@ -4,6 +4,8 @@ import Foundation
 public enum HUDState: Equatable, Sendable {
     case volume(level: Int)
     case muted
+    /// The mute key turned sound back on, at this level.
+    case unmuted(level: Int)
     case powerOn
     case powerOff
     /// The speaker switched to this input.
@@ -46,6 +48,16 @@ extension HUDState {
 }
 
 extension HUDState {
+    /// The HUD after a volume key, from the volume read back after it.
+    /// The mute key says which way it went; the up and down keys show the
+    /// level, even while muted.
+    public static func afterVolumeCommand(_ command: VolumeCommand, now: VolumeState) -> HUDState {
+        guard command == .mute else { return .volume(level: now.level) }
+        return now.isMuted ? .muted : .unmuted(level: now.level)
+    }
+}
+
+extension HUDState {
     /// The HUD after Input ▸: the input the speaker read back, or why
     /// not. Never the input it only asked for.
     public static func afterInputSwitch(_ result: InputSwitchResult) -> HUDState {
@@ -74,6 +86,9 @@ public struct HUDPresentation: Equatable, Sendable {
         case .muted:
             symbolName = "speaker.slash.fill"
             label = "Muted"
+        case .unmuted(let level):
+            symbolName = Self.volumeSymbol(level)
+            label = "Unmuted · \(level)%"
         case .powerOn:
             symbolName = "power"
             label = "Power On"

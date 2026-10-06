@@ -115,4 +115,20 @@ struct HUDPresentationTests {
         #expect(HUDState.afterPowerMenu(.ignored(.tooSoon(sinceLast: .milliseconds(300)))) == nil)
     }
 
+
+    @Test func unmutingSaysUnmutedWithTheLevel() {
+        let shown = HUDPresentation(.unmuted(level: 42))
+        #expect(shown.label == "Unmuted · 42%")
+        #expect(shown.symbolName == HUDPresentation(.volume(level: 42)).symbolName)
+    }
+
+    @Test func theMuteKeySaysWhichWayItWent() {
+        #expect(HUDState.afterVolumeCommand(.mute, now: VolumeState(level: 42, isMuted: true)) == .muted)
+        #expect(HUDState.afterVolumeCommand(.mute, now: VolumeState(level: 42, isMuted: false)) == .unmuted(level: 42))
+    }
+
+    @Test func theVolumeKeysShowTheLevelEvenWhileMuted() {
+        #expect(HUDState.afterVolumeCommand(.up, now: VolumeState(level: 44, isMuted: true)) == .volume(level: 44))
+        #expect(HUDState.afterVolumeCommand(.down, now: VolumeState(level: 40, isMuted: false)) == .volume(level: 40))
+    }
 }

@@ -851,8 +851,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     try await controller.toggleMute()
                 }
                 let state = try await controller.getVolumeState()
-                // Volume keys show the level even while muted; mute shows which way it went.
-                HUDOverlay.show(command == .mute && state.isMuted ? .muted : .volume(level: state.level))
+                HUDOverlay.show(.afterVolumeCommand(command, now: state))
             } catch {
                 logger.error("Volume command failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Command failed"))
