@@ -28,14 +28,16 @@ let clock: SpeakerClock
 
 if isDryRun {
     print("Dry run: a simulated speaker on simulated time, nothing is sent and nothing is logged")
-    // Like the first real run: it starts off, and is slow to power on and off.
+    // Like the real runs: it starts off, is slow to power on and off, and
+    // reads muted for a moment as it comes on.
     let simulatedClock = SimulatedClock()
     connection = SimulatedSpeaker(
         volume: VolumeState(level: 30, isMuted: false),
         source: SourceByte(isPoweredOn: false, isInversed: false, standby: .sixtyMinutes, input: .optical),
         clock: simulatedClock,
         powerChangeTime: .seconds(7),
-        ignoresPowerChangesFor: .seconds(12)
+        ignoresPowerChangesFor: .seconds(12),
+        mutedAsItComesOnFor: .milliseconds(500)
     )
     log = HandlerLog { _, _ in }
     clock = simulatedClock

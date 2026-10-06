@@ -24,13 +24,15 @@ struct CheckStepTests {
         let plan = CheckStep.plan(from: start, includingInputs: false)
         #expect(plan.map(\.name) == [
             "volume up", "volume down", "mute", "unmute",
-            "power off", "power on", "power off again", "power on to Optical", "input back to Wi-Fi",
+            "power off", "power on", "volume up right after power on",
+            "power off again", "power on to Optical", "input back to Wi-Fi",
             "standby 20 min", "standby 60 min", "standby never", "standby back to 60 min",
             "left/right swap", "left/right swap back",
         ])
         #expect(plan.map(\.action) == [
             .raiseVolume(by: 2), .lowerVolume(by: 2), .mute, .unmute,
-            .powerOff, .powerOn, .powerOff, .powerOnApplying(.optical), .setInput(.wifi),
+            .powerOff, .powerOn, .raiseVolumeRightAfterPowerOn(by: 2),
+            .powerOff, .powerOnApplying(.optical), .setInput(.wifi),
             .setStandby(.twentyMinutes), .setStandby(.sixtyMinutes), .setStandby(.never),
             .setStandby(.sixtyMinutes),
             .setLeftRightSwapped(true), .setLeftRightSwapped(false),
@@ -110,6 +112,15 @@ struct CheckStepTests {
             == .volume(VolumeState(level: 30, isMuted: false)))
     }
 
+    /// Pressed as power comes on, the speaker should end as muted or not
+    /// as it was before the power cycle.
+    @Test func volumeUpRightAfterPowerOnKeepsTheMuteItHadBefore() {
+        #expect(CheckAction.raiseVolumeRightAfterPowerOn(by: 2).expectation(before: status(isMuted: false))
+            == .muted(false))
+        #expect(CheckAction.raiseVolumeRightAfterPowerOn(by: 2).expectation(before: status(isMuted: true))
+            == .muted(true))
+    }
+
     @Test func sourceStepsExpectWhatTheySet() {
         #expect(CheckAction.powerOff.expectation(before: start) == .poweredOff)
         #expect(CheckAction.powerOn.expectation(before: start) == .poweredOn)
@@ -132,6 +143,16 @@ struct CheckStepTests {
         let comparison = CheckExpectation.volume(VolumeState(level: 42, isMuted: true))
             .compare(.volume(VolumeState(level: 42, isMuted: false)))
         #expect(comparison == CheckComparison(passed: false, detail: "expected 42% muted, read 42%"))
+    }
+
+    @Test func aMuteCheckComparesOnlyTheMute() {
+        #expect(CheckExpectation.muted(false).compare(.volume(VolumeState(level: 47, isMuted: false)))
+            == CheckComparison(passed: true, detail: "expected not muted, read 47%"))
+        #expect(CheckExpectation.muted(false).compare(.volume(VolumeState(level: 47, isMuted: true)))
+            == CheckComparison(
+                passed: false, detail: "expected not muted, read 47% muted",
+                why: "a press as power came on kept a mute the speaker showed for a moment"
+            ))
     }
 
     @Test func bluetoothPassesAsPairedOrUnpairedAndSaysWhich() {

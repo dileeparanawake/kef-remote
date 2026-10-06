@@ -4,6 +4,10 @@ import Foundation
 /// ``SpeakerController``, so the check sends what the app sends.
 public enum CheckAction: Equatable {
     case raiseVolume(by: Int)
+    /// Turn the speaker off and on, and press volume up the moment power
+    /// reads on, when the LSX shows muted for a moment
+    /// (``SpeakerCheck/pressAsPowerComesOn(_:before:since:)``).
+    case raiseVolumeRightAfterPowerOn(by: Int)
     case lowerVolume(by: Int)
     case mute
     case unmute
@@ -38,6 +42,7 @@ public struct CheckStep: Equatable {
     ///
     /// A speaker that starts off is turned on first: it ignores input,
     /// standby and left/right while off, so every other step runs with it
+    /// on. After the first power cycle comes a volume press as power comes
     /// on. The second power cycle tests the power-on write with an input
     /// in it, then switches back. Putting everything back is not a step:
     /// ``SpeakerCheck`` does that even when a step fails, and turns a
@@ -50,6 +55,9 @@ public struct CheckStep: Equatable {
         steps += volumeAndMute(from: start.volume, on: nil)
         steps.append(CheckStep(name: "power off", action: .powerOff))
         steps.append(CheckStep(name: "power on", action: .powerOn))
+        steps.append(CheckStep(
+            name: "volume up right after power on", action: .raiseVolumeRightAfterPowerOn(by: volumeStep)
+        ))
         let powerOnInput = powerOnInputToTry(from: start.input)
         steps.append(CheckStep(name: "power off again", action: .powerOff))
         steps.append(CheckStep(name: "power on to \(powerOnInput.label)", action: .powerOnApplying(powerOnInput)))
@@ -98,6 +106,9 @@ extension CheckAction {
         switch self {
         case .raiseVolume(let amount):
             return .volume(VolumeState(level: min(volume.level + amount, 100), isMuted: volume.isMuted))
+        case .raiseVolumeRightAfterPowerOn:
+            // The level moves as the speaker comes on: only the mute counts.
+            return .muted(volume.isMuted)
         case .lowerVolume(let amount):
             return .volume(VolumeState(level: max(volume.level - amount, 0), isMuted: volume.isMuted))
         case .mute:
@@ -154,7 +165,7 @@ extension CheckAction {
         switch self {
         case .powerOn, .powerOff, .powerOnApplying: return SpeakerCheck.powerChangeLimit
         case .setStandby, .setInput, .setLeftRightSwapped: return SpeakerCheck.sourceWriteLimit
-        case .raiseVolume, .lowerVolume, .mute, .unmute: return .zero
+        case .raiseVolume, .raiseVolumeRightAfterPowerOn, .lowerVolume, .mute, .unmute: return .zero
         }
     }
 }
@@ -162,6 +173,8 @@ extension CheckAction {
 /// What a step should read back.
 public enum CheckExpectation: Equatable {
     case volume(VolumeState)
+    /// Muted or not, whatever the level.
+    case muted(Bool)
     /// Off, and never with 20-minute standby.
     case poweredOff
     case poweredOn
@@ -174,8 +187,10 @@ public enum CheckExpectation: Equatable {
 
     /// Whether the read-back is the volume register, not the source byte.
     var readsVolume: Bool {
-        if case .volume = self { return true }
-        return false
+        switch self {
+        case .volume, .muted: return true
+        default: return false
+        }
     }
 
     /// Compare what the speaker read back with what was expected.
@@ -185,6 +200,13 @@ public enum CheckExpectation: Equatable {
             return CheckComparison(
                 passed: read == expected,
                 detail: "expected \(expected.checkName), read \(read.checkName)"
+            )
+        case (.muted(let expected), .volume(let read)):
+            return CheckComparison(
+                passed: read.isMuted == expected,
+                detail: "expected \(expected ? "muted" : "not muted"), read \(read.checkName)",
+                why: read.isMuted && !expected
+                    ? "a press as power came on kept a mute the speaker showed for a moment" : nil
             )
         case (.poweredOff, .source(let read)):
             if read.isPoweredOn {

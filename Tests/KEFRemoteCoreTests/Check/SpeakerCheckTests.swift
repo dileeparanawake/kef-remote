@@ -185,6 +185,65 @@ struct SpeakerCheckTests {
         #expect(report.steps.first?.verdict == .pass)
     }
 
+    // MARK: - Volume up right as power comes on
+
+    @Test func volumeUpRightAfterPowerOnEndsUnmutedAndSaysWhatThePressRead() async {
+        let clock = SimulatedClock()
+        let speaker = speakerThatFlashesMuted(wifiOn, clock: clock)
+
+        let (report, _) = await run(speaker, clock: clock)
+
+        let name = "volume up right after power on"
+        #expect(verdict(of: name, in: report) == .pass)
+        #expect(detail(of: name, in: report) == "expected not muted, read 42% once settled; "
+            + "the press read 40% muted, then 40% 1 s later (the speaker showed muted as it came on)")
+        // The volume goes back after the step.
+        #expect(report.passed)
+        #expect(speaker.volume == forty)
+    }
+
+    @Test func volumeUpRightAfterPowerOnSaysWhenNoMuteWasSeen() async {
+        let clock = SimulatedClock()
+        let speaker = slowSpeaker(wifiOn, clock: clock)
+
+        let (report, _) = await run(speaker, clock: clock)
+
+        #expect(detail(of: "volume up right after power on", in: report)
+            == "expected not muted, read 42% once settled; the press read 40%")
+    }
+
+    @Test func volumeUpRightAfterPowerOnFailsWhenThePressKeepsTheMute() async {
+        let clock = SimulatedClock()
+        let speaker = slowSpeaker(wifiOn, clock: clock)
+        let faulty = FaultySpeaker(speaker)
+        // Reads muted for 3 s as this step's power on lands (the second
+        // time it comes on): longer than the press waits to read again.
+        var wasOn = true
+        var timesOn = 0
+        var stepCameOnAt: Duration?
+        faulty.failsSend = { _ in
+            let isOn = speaker.source.isPoweredOn
+            if isOn && !wasOn {
+                timesOn += 1
+                if timesOn == 2 { stepCameOnAt = clock.now }
+            }
+            wasOn = isOn
+            return false
+        }
+        faulty.volumeRead = {
+            guard let stepCameOnAt, clock.now < stepCameOnAt + .seconds(3) else { return nil }
+            return VolumeState(level: speaker.volume.level, isMuted: true)
+        }
+
+        let (report, _) = await run(faulty, clock: clock)
+
+        let name = "volume up right after power on"
+        #expect(verdict(of: name, in: report) == .fail)
+        #expect(detail(of: name, in: report)?.contains("a press as power came on kept a mute") == true)
+        // Put back unmuted, as it started.
+        #expect(speaker.volume == forty)
+    }
+
     @Test func neverSendsInputStandbyOrSwapWhileTheSpeakerIsOff() async {
         let speaker = SimulatedSpeaker(volume: forty, source: wifiOn)
         let faulty = FaultySpeaker(speaker)
@@ -334,7 +393,7 @@ struct SpeakerCheckTests {
         #expect(lines.first == "Start: volume 40%, power on, input Wi-Fi, standby 60 min, left/right normal")
         #expect(lines.contains("PASS  volume up: expected 42%, read 42% [sent 53 25 81 2A, read 52 25 81 2A 00]"))
         #expect(lines.contains { $0.hasPrefix("PASS  put back: volume 40%, power on, input Wi-Fi, standby 60 min, left/right normal") })
-        #expect(lines.last == "Done: 15 passed, 0 failed. Starting state put back.")
+        #expect(lines.last == "Done: 16 passed, 0 failed. Starting state put back.")
         #expect(report.summary == lines.last)
     }
 
