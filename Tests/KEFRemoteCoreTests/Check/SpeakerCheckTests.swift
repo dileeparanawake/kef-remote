@@ -9,12 +9,12 @@ struct SpeakerCheckTests {
     /// Runs the check and keeps every line it shows. Pass the speaker's
     /// clock when its timing matters.
     private func run(
-        _ connection: SpeakerConnection, includingInputs: Bool = false, log: KEFLog = MockKEFLog(),
-        clock: SpeakerClock = SimulatedClock()
+        _ connection: SpeakerConnection, includingInputs: Bool = false, model: SpeakerModel = .other,
+        log: KEFLog = MockKEFLog(), clock: SpeakerClock = SimulatedClock()
     ) async -> (report: CheckReport, lines: [String]) {
         var lines: [String] = []
         let check = SpeakerCheck(connection: connection, log: log, clock: clock, onLine: { lines.append($0) })
-        let report = await check.run(includingInputs: includingInputs)
+        let report = await check.run(includingInputs: includingInputs, model: model)
         return (report, lines)
     }
 
@@ -78,6 +78,17 @@ struct SpeakerCheckTests {
         #expect(bluetooth?.verdict == .pass)
         #expect(bluetooth?.detail.contains("unpaired code 1111") == true)
         #expect(speaker.source.input == .wifi)
+    }
+
+    /// The second real check asked an LSX for USB, and it stayed on Aux.
+    @Test func withInputsOnAnLSXLeavesOutUSB() async {
+        let speaker = SimulatedSpeaker(volume: forty, source: wifiOn, hasUSBInput: false)
+
+        let (report, _) = await run(speaker, includingInputs: true, model: .lsx)
+
+        #expect(report.passed)
+        #expect(verdict(of: "input Aux", in: report) == .pass)
+        #expect(verdict(of: "input USB", in: report) == nil)
     }
 
     @Test func aSpeakerThatStartsOffEndsOff() async {

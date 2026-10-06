@@ -21,7 +21,7 @@ struct CheckStepTests {
     // MARK: - The plan
 
     @Test func runsEverySpeakerCommandInOrder() {
-        let plan = CheckStep.plan(from: start, includingInputs: false)
+        let plan = CheckStep.plan(from: start, includingInputs: false, model: .other)
         #expect(plan.map(\.name) == [
             "volume up", "volume down", "mute", "unmute",
             "power off", "power on", "volume up right after power on",
@@ -40,7 +40,7 @@ struct CheckStepTests {
     }
 
     @Test func turnsTheSpeakerOnFirstWhenItStartsOff() {
-        let plan = CheckStep.plan(from: status(isPoweredOn: false), includingInputs: false)
+        let plan = CheckStep.plan(from: status(isPoweredOn: false), includingInputs: false, model: .other)
         #expect(plan.first == CheckStep(name: "power on (it was off)", action: .powerOn))
     }
 
@@ -54,17 +54,17 @@ struct CheckStepTests {
         let swapped = SpeakerStatus(
             volume: start.volume, isPoweredOn: true, isInversed: true, input: .wifi, standby: .sixtyMinutes
         )
-        let plan = CheckStep.plan(from: swapped, includingInputs: false)
+        let plan = CheckStep.plan(from: swapped, includingInputs: false, model: .other)
         #expect(plan.suffix(2).map(\.action) == [.setLeftRightSwapped(false), .setLeftRightSwapped(true)])
     }
 
     @Test func goesDownFirstNearTheTopSoBothStepsMove() {
-        let plan = CheckStep.plan(from: status(level: 99), includingInputs: false)
+        let plan = CheckStep.plan(from: status(level: 99), includingInputs: false, model: .other)
         #expect(plan.prefix(2).map(\.action) == [.lowerVolume(by: 2), .raiseVolume(by: 2)])
     }
 
     @Test func withInputsVisitsEachOneThenGoesBack() {
-        let plan = CheckStep.plan(from: status(input: .bluetoothUnpaired), includingInputs: true)
+        let plan = CheckStep.plan(from: status(input: .bluetoothUnpaired), includingInputs: true, model: .other)
         let inputSteps = plan.filter { if case .setInput = $0.action { return true }; return false }
         // The first is after the power-on-with-input step.
         #expect(inputSteps.map(\.name) == [
@@ -80,8 +80,14 @@ struct CheckStepTests {
         ])
     }
 
+    @Test func onAnLSXItLeavesOutUSB() {
+        let plan = CheckStep.plan(from: start, includingInputs: true, model: .lsx)
+        #expect(!plan.contains { $0.action == .setInput(.usb) })
+        #expect(plan.contains { $0.name == "input Aux" })
+    }
+
     @Test func repeatsVolumeAndMuteOnEachInput() {
-        let plan = CheckStep.plan(from: start, includingInputs: true)
+        let plan = CheckStep.plan(from: start, includingInputs: true, model: .other)
         let afterOptical = plan.drop { $0.name != "input Optical" }.dropFirst().prefix(4)
         #expect(afterOptical.map(\.name) == [
             "volume up on Optical", "volume down on Optical", "mute on Optical", "unmute on Optical",
@@ -89,7 +95,7 @@ struct CheckStepTests {
     }
 
     @Test func withoutTheFlagOnlySwitchesBackAfterPowerOn() {
-        let plan = CheckStep.plan(from: start, includingInputs: false)
+        let plan = CheckStep.plan(from: start, includingInputs: false, model: .other)
         let inputSteps = plan.filter { if case .setInput = $0.action { return true }; return false }
         #expect(inputSteps.map(\.name) == ["input back to Wi-Fi"])
     }

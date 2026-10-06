@@ -4,7 +4,7 @@ import Foundation
 /// `make speaker-check` does, so an agent can check the speaker end to
 /// end without Dileepa.
 ///
-/// It reads the starting state, runs the steps in ``CheckStep/plan(from:includingInputs:)``
+/// It reads the starting state, runs the steps in ``CheckStep/plan(from:includingInputs:model:)``
 /// through ``SpeakerController`` (so the 20-minute standby workaround
 /// applies), then puts the starting state back, even after a failure.
 /// A wrong read-back fails that step and the check carries on; an
@@ -76,8 +76,8 @@ public final class SpeakerCheck {
     }
 
     /// Run the check. With `includingInputs`, also switch to each input
-    /// and repeat the volume and mute steps there.
-    public func run(includingInputs: Bool) async -> CheckReport {
+    /// `model` has and repeat the volume and mute steps there.
+    public func run(includingInputs: Bool, model: SpeakerModel = .other) async -> CheckReport {
         let start: SpeakerStatus
         do {
             start = try await controller.getState()
@@ -96,7 +96,7 @@ public final class SpeakerCheck {
         }
 
         var results: [CheckStepResult] = []
-        for step in CheckStep.plan(from: start, includingInputs: includingInputs) {
+        for step in CheckStep.plan(from: start, includingInputs: includingInputs, model: model) {
             var (result, answered) = await perform(step)
             results.append(result)
             show(result)

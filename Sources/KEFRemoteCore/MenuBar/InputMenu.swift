@@ -11,10 +11,11 @@ import Foundation
 ///             Wi-Fi
 ///             Bluetooth
 ///             Aux
-///             USB
+///             USB      (not on an LSX)
 /// ```
 ///
-/// The inputs come in the same order as Input on turn-on in Settings.
+/// The inputs come in the same order as Input on turn-on in Settings,
+/// only those the speaker has (``SpeakerModel/inputs``).
 /// The tick comes from the speaker's last source byte, read on connect
 /// and written by each switch.
 public struct InputMenu: Equatable, Sendable {
@@ -41,14 +42,15 @@ public struct InputMenu: Equatable, Sendable {
     ///   - speakerInput: The input in the last source byte read or
     ///     written, or nil before the first read.
     ///   - isConnected: The speaker answered the last exchange.
-    public init(speakerInput: InputSource?, isConnected: Bool) {
+    ///   - inputs: The inputs the speaker has, in order.
+    public init(speakerInput: InputSource?, isConnected: Bool, inputs: [InputSource]) {
         isEnabled = isConnected
         // Once the speaker stops answering, its input may have changed
         // (KEF's remote, or its own app), so tick nothing. It reports
         // Bluetooth as unpaired while nothing is paired, but it's the
         // same Bluetooth item.
         let ticked = isConnected ? speakerInput?.codeToSelect : nil
-        items = PowerOnInput.allCases.compactMap(\.input).map { input in
+        items = inputs.map { input in
             Item(input: input, isTicked: input == ticked)
         }
     }

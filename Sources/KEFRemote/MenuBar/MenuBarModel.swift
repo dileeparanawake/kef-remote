@@ -20,6 +20,8 @@ final class MenuBarModel: ObservableObject {
     @Published private(set) var status: ConnectionStatus = .dormant
     @Published private(set) var speakerName: String?
     @Published private(set) var speakerIP: String?
+    /// Which speaker it is, for the inputs Input ▸ lists.
+    @Published private(set) var speakerModel: SpeakerModel = .other
     /// The speaker's source byte as last read or written, for the tick in
     /// Input ▸. Nil before the first read, and once the connection drops.
     @Published private(set) var speakerSource: SourceByte?
@@ -54,7 +56,7 @@ final class MenuBarModel: ObservableObject {
     }
 
     var inputMenu: InputMenu {
-        InputMenu(speakerInput: speakerSource?.input, isConnected: presentation.isConnected)
+        InputMenu(speakerInput: speakerSource?.input, isConnected: presentation.isConnected, inputs: speakerModel.inputs)
     }
 
     /// Show the speaker's source byte as the controller last saw it. Logs
@@ -109,9 +111,11 @@ final class MenuBarModel: ObservableObject {
 
     /// Show which speaker the app talks to.
     func showSpeaker(_ speaker: AppConfig.SpeakerConfig?) {
-        guard speaker?.name != speakerName || speaker?.lastKnownIp != speakerIP else { return }
+        let model = SpeakerModel(speaker)
+        guard speaker?.name != speakerName || speaker?.lastKnownIp != speakerIP || model != speakerModel else { return }
         speakerName = speaker?.name
         speakerIP = speaker?.lastKnownIp
-        log.info("speaker \(speakerName ?? "unnamed") at \(speakerIP ?? "no IP")")
+        speakerModel = model
+        log.info("speaker \(speakerName ?? "unnamed") at \(speakerIP ?? "no IP") (\(model.label))")
     }
 }

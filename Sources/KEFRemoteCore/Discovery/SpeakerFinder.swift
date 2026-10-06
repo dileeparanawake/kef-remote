@@ -6,11 +6,14 @@ public struct FoundSpeaker: Equatable, Sendable {
     /// The speaker's serial number, which is its MAC with no separators.
     public let mac: String
     public let name: String
+    /// The model name, such as "SP3994" for an LSX; nil when not given.
+    public let model: String?
 
-    public init(ip: String, mac: String, name: String) {
+    public init(ip: String, mac: String, name: String, model: String? = nil) {
         self.ip = ip
         self.mac = mac
         self.name = name
+        self.model = model
     }
 }
 
@@ -155,7 +158,7 @@ public struct SpeakerFinder: Sendable {
         let name = description.friendlyName ?? "KEF"
         let ip = response.host ?? from
         log.info("Discovery: kept \(ip): KEF \(name) (\(description.modelName ?? "unknown model")), serial \(serial)")
-        return FoundSpeaker(ip: ip, mac: serial, name: name)
+        return FoundSpeaker(ip: ip, mac: serial, name: name, model: description.modelName)
     }
 
     /// A reply on one line, for the debug log.

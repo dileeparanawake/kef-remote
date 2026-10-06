@@ -27,7 +27,7 @@ struct SpeakerFinderTests {
 
         let found = try await makeFinder(socket: socket, fetcher: fetcher).find(savedMAC: nil)
 
-        #expect(found == FoundSpeaker(ip: "192.168.1.80", mac: "A1B2C3D4E5F6", name: "LSX"))
+        #expect(found == FoundSpeaker(ip: "192.168.1.80", mac: "A1B2C3D4E5F6", name: "LSX", model: "SP3994"))
         #expect(fetcher.fetched == [URL(string: Self.kefLocation)!])
     }
 

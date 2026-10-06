@@ -67,6 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private lazy var settingsModel = SettingsModel(
         savedIP: config.speaker?.lastKnownIp,
+        speakerModel: SpeakerModel(config.speaker),
         discovery: config.discovery,
         speakerSettings: config.speakerSettings,
         actions: SettingsActions(
@@ -477,6 +478,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         config.speaker = speaker
         menuBar.showSpeaker(speaker)
         settingsModel.showSavedIP(speaker.lastKnownIp)
+        settingsModel.showSpeakerModel(SpeakerModel(speaker))
         saveConfig(what: "speaker at \(speaker.lastKnownIp ?? "unknown IP")")
     }
 

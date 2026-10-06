@@ -25,15 +25,17 @@ let isDryRun = arguments.contains("--dry-run")
 let connection: SpeakerConnection
 let log: KEFLog
 let clock: SpeakerClock
+let model: SpeakerModel
 
 if isDryRun {
     print("Dry run: a simulated speaker on simulated time, nothing is sent and nothing is logged")
-    // Like the real runs: it starts off, is slow to power on and off, and
-    // reads muted for a moment as it comes on.
+    // Like the real runs: an LSX (no USB input) that starts off, is slow
+    // to power on and off, and reads muted for a moment as it comes on.
     let simulatedClock = SimulatedClock()
     connection = SimulatedSpeaker(
         volume: VolumeState(level: 30, isMuted: false),
         source: SourceByte(isPoweredOn: false, isInversed: false, standby: .sixtyMinutes, input: .optical),
+        hasUSBInput: false,
         clock: simulatedClock,
         powerChangeTime: .seconds(7),
         ignoresPowerChangesFor: .seconds(12),
@@ -41,6 +43,7 @@ if isDryRun {
     )
     log = HandlerLog { _, _ in }
     clock = simulatedClock
+    model = .lsx
 } else {
     let config: AppConfig
     do {
@@ -58,11 +61,16 @@ if isDryRun {
     let fileLog = HandlerLog { level, message in writer.write(level, category: "check", message: message) }
     fileLog.info("kef-check: checking the speaker at \(ip)\(includingInputs ? ", with inputs" : "")")
     print("Checking the speaker at \(ip)\(includingInputs ? ", with inputs" : "")")
+    model = SpeakerModel(config.speaker)
     connection = TCPSpeakerConnection(host: ip, log: fileLog.write)
     log = fileLog
     clock = RealSpeakerClock()
 }
 
+if includingInputs {
+    print("Speaker: \(model.label)")
+    log.info("kef-check: speaker \(model.label)")
+}
 let check = SpeakerCheck(connection: connection, log: log, clock: clock, onLine: { print($0) })
-let report = await check.run(includingInputs: includingInputs)
+let report = await check.run(includingInputs: includingInputs, model: model)
 exit(report.passed ? 0 : 1)

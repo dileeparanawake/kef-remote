@@ -35,10 +35,9 @@ public struct CheckStep: Equatable {
     /// How far each volume step moves. Small, so it is barely heard.
     public static let volumeStep = 2
 
-    /// The inputs `--inputs` visits: the Input menu's, in its order.
-    public static let inputsToVisit: [InputSource] = PowerOnInput.allCases.compactMap(\.input)
-
-    /// Every step, in order, for a speaker that starts as `start`.
+    /// Every step, in order, for a speaker that starts as `start`. With
+    /// `includingInputs`, it visits each input `model` has (the Input
+    /// menu's), in its order.
     ///
     /// A speaker that starts off is turned on first: it ignores input,
     /// standby and left/right while off, so every other step runs with it
@@ -47,7 +46,7 @@ public struct CheckStep: Equatable {
     /// in it, then switches back. Putting everything back is not a step:
     /// ``SpeakerCheck`` does that even when a step fails, and turns a
     /// speaker that started off back off at the very end.
-    public static func plan(from start: SpeakerStatus, includingInputs: Bool) -> [CheckStep] {
+    public static func plan(from start: SpeakerStatus, includingInputs: Bool, model: SpeakerModel) -> [CheckStep] {
         var steps: [CheckStep] = []
         if !start.isPoweredOn {
             steps.append(CheckStep(name: "power on (it was off)", action: .powerOn))
@@ -69,7 +68,7 @@ public struct CheckStep: Equatable {
         steps.append(CheckStep(name: "left/right swap", action: .setLeftRightSwapped(!start.isInversed)))
         steps.append(CheckStep(name: "left/right swap back", action: .setLeftRightSwapped(start.isInversed)))
         if includingInputs {
-            for input in inputsToVisit {
+            for input in model.inputs {
                 steps.append(CheckStep(name: "input \(input.label)", action: .setInput(input)))
                 steps += volumeAndMute(from: start.volume, on: input)
             }
