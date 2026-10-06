@@ -22,10 +22,6 @@ Send feedback… in the menu opens an email in your own email app, addressed to 
 
 If you do, I get your email, including your email address and anything you attached. I use it only to reply and to fix the app. I delete it when it's no longer needed for that, or sooner if you ask.
 
-## If you pay for KEF Remote
-
-Payments go through Gumroad, which handles them under [its own privacy policy](https://gumroad.com/privacy). Gumroad shares some details of your purchase with me, such as your email address. I use them only for that purchase, such as a receipt question or a refund.
-
 ## Downloading
 
 KEF Remote is downloaded from GitHub, which has [its own privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement).
