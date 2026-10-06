@@ -136,6 +136,27 @@ struct SpeakerControllerMenuOpenTests {
         #expect(!controller.isExchangeInFlight)
     }
 
+    /// Presses that come together run on several threads at once. Each
+    /// exchange must count itself out again, or the menu would skip its
+    /// read as busy until the next reconnect.
+    @Test func manyExchangesAtOnceLeaveNoneInFlight() async throws {
+        let presses = 200
+        let volume = Data([0x52, 0x25, 0x81, 40, 0x00])
+        let gated = GatedSpeakerConnection(responses: Array(repeating: volume, count: presses))
+        let controller = SpeakerController(connection: gated)
+        gated.open()
+
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for _ in 0..<presses {
+                group.addTask { _ = try await controller.getVolumeState() }
+            }
+            try await group.waitForAll()
+        }
+
+        #expect(gated.sentCommands.count == presses)
+        #expect(!controller.isExchangeInFlight)
+    }
+
     @Test func theSourceByteRefreshUsesTheControllersState() async throws {
         let clock = SimulatedClock()
         let mock = MockSpeakerConnection()

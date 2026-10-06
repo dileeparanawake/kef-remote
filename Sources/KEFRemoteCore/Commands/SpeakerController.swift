@@ -41,6 +41,11 @@ public class SpeakerController {
     private let onReply: (SpeakerReply) -> Void
     private let onSourceByte: (SourceByte) -> Void
     private let clock: SpeakerClock
+    /// Guards ``powerOnMuteGuard``, ``lastSourceByteAt`` and
+    /// ``exchangesInFlight``. The methods are async and not on an actor,
+    /// so presses that come together run them on several threads at once,
+    /// and the menu reads ``isExchangeInFlight`` from the main thread.
+    private let stateLock = NSLock()
     private var powerOnMuteGuard = PowerOnMuteGuard()
     /// One power toggle at a time, and none straight after another. The
     /// lock is there because presses that come together call
@@ -87,8 +92,8 @@ public class SpeakerController {
     /// - Logs `.error` with full hex dump on validation failure, then throws
     private func sendAndReceive(_ command: Data, expectResponseBytes: Int) async throws -> Data {
         log(.debug, "SEND: \(command.hexString)")
-        exchangesInFlight += 1
-        defer { exchangesInFlight -= 1 }
+        stateLock.withLock { exchangesInFlight += 1 }
+        defer { stateLock.withLock { exchangesInFlight -= 1 } }
         let response: Data
         do {
             response = try await connection.send(command, expectResponseBytes: expectResponseBytes)
@@ -136,18 +141,22 @@ public class SpeakerController {
 
     /// Note when the source byte was known, and pass it on to `onSourceByte`.
     private func noteSourceByte(_ source: SourceByte) {
-        lastSourceByteAt = clock.now
+        let now = clock.now
+        stateLock.withLock { lastSourceByteAt = now }
         onSourceByte(source)
     }
 
     // MARK: - Menu open
 
     /// Whether a command is waiting for the speaker's reply.
-    public var isExchangeInFlight: Bool { exchangesInFlight > 0 }
+    public var isExchangeInFlight: Bool { stateLock.withLock { exchangesInFlight > 0 } }
 
     /// Time since the source byte was last read, or written and acked;
     /// nil before the first.
-    public var sourceByteAge: Duration? { lastSourceByteAt.map { clock.now - $0 } }
+    public var sourceByteAge: Duration? {
+        let now = clock.now
+        return stateLock.withLock { lastSourceByteAt.map { now - $0 } }
+    }
 
     /// Whether opening the menu should read the source byte now. The
     /// caller logs the answer and, if it reads, calls ``getSourceByte()``.
@@ -178,7 +187,8 @@ public class SpeakerController {
         }
         let source = SourceByte(byte: byte)
         log(.info, "source: power=\(source.isPoweredOn ? "on" : "off") input=\(source.input) standby=\(source.standby)")
-        powerOnMuteGuard.noteRead(source, at: clock.now)
+        let now = clock.now
+        stateLock.withLock { powerOnMuteGuard.noteRead(source, at: now) }
         noteSourceByte(source)
         return source
     }
@@ -189,8 +199,11 @@ public class SpeakerController {
     private func getVolumeStateForPress(_ command: String) async throws -> VolumeState {
         let first = try await getVolumeState()
         let now = clock.now
-        guard powerOnMuteGuard.shouldReadAgain(first, at: now) else { return first }
-        let since = powerOnMuteGuard.sincePowerOn(at: now).map { "\($0.components.seconds) s" } ?? "just"
+        let (readsAgain, sincePowerOn) = stateLock.withLock {
+            (powerOnMuteGuard.shouldReadAgain(first, at: now), powerOnMuteGuard.sincePowerOn(at: now))
+        }
+        guard readsAgain else { return first }
+        let since = sincePowerOn.map { "\($0.components.seconds) s" } ?? "just"
         log(.info, "\(command): read muted \(since) after power on; reading again in "
             + "\(PowerOnMuteGuard.readAgainAfter.components.seconds) s (the speaker can show muted for a moment as it comes on)")
         await clock.sleep(for: PowerOnMuteGuard.readAgainAfter)
@@ -367,7 +380,10 @@ public class SpeakerController {
 
     private func writePowerOn(from source: SourceByte, applying settings: SpeakerSettings) async throws {
         let byte = settings.powerOnByte(from: source)
-        if !source.isPoweredOn { powerOnMuteGuard.notePowerOnWrite(at: clock.now) }
+        if !source.isPoweredOn {
+            let now = clock.now
+            stateLock.withLock { powerOnMuteGuard.notePowerOnWrite(at: now) }
+        }
         log(.info, "powerOn: sending power=on input=\(byte.input) standby=\(byte.standby) "
             + "(was input=\(source.input) standby=\(source.standby); "
             + "power-on input: \(settings.powerOnInput.label), standby: \(settings.standby.label))")
