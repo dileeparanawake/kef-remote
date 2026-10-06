@@ -183,7 +183,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 351 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 401 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening.
 
@@ -195,11 +195,12 @@ The app talks to the speaker over TCP on port 50001, the protocol the KEF Contro
 
 To find the speaker, it sends an SSDP search (the same one UPnP devices answer) and reads each reply's description to pick out the KEF. It saves the IP, and searches again if the speaker stops answering there.
 
-The code is a Swift package with three targets:
+The code is a Swift package with four targets:
 
 - **KEFRemoteCore**: the protocol, speaker commands, TCP connection, discovery, config and logging, with no UI.
 - **KEFRemote**: the macOS app, with volume key interception, the on-screen display, the menu bar, settings and the shortcuts.
 - **kef-discover**: runs discovery once and prints each step (`make discover`).
+- **kef-check**: runs every speaker command, reads each back and puts the speaker back as it was (`make speaker-check`).
 
 ## Credits
 
