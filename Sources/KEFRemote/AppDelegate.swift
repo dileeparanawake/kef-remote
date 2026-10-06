@@ -723,18 +723,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let volumeStep = 5
 
     private func setupMediaKeyCallbacks() {
-        mediaKeys.onMediaKey = { [weak self] key in
-            switch key {
-            case .volume(let command): self?.runVolumeCommand(command)
-            case .playback(let command): self?.runPlayback(command)
-            }
-        }
+        mediaKeys.onVolumeKey = { [weak self] command in self?.runVolumeCommand(command) }
     }
 
     /// Volume up, down or mute: from a modifier + media key, or from a
     /// recorded shortcut. The HUD shows the new level, or Muted.
     private func runVolumeCommand(_ command: VolumeCommand) {
-        guard let controller = controller(for: "\(MediaKey.volume(command))") else { return }
+        guard let controller = controller(for: "\(command)") else { return }
 
         Task {
             do {
@@ -757,26 +752,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Playback commands
-
-    /// Play/pause, next or previous: from a modifier + media key, or from a
-    /// recorded shortcut. On Wi-Fi and Bluetooth the HUD shows the command;
-    /// on another input it says where it works.
-    private func runPlayback(_ command: PlaybackCommand) {
-        guard let controller = controller(for: command.name) else { return }
-
-        Task {
-            do {
-                let result = try await controller.sendPlayback(command)
-                HUDOverlay.show(.afterPlayback(command, result))
-            } catch {
-                logger.error("\(command.name) failed: \(error.localizedDescription)")
-                HUDOverlay.show(.failure(error, otherwise: "Command failed"))
-                handleCommandError(error)
-            }
-        }
-    }
-
     // MARK: - Shortcuts
 
     /// Turn each shortcut press into a command, and start listening. The
@@ -789,9 +764,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case .volumeUp: self.runVolumeCommand(.up)
             case .volumeDown: self.runVolumeCommand(.down)
             case .mute: self.runVolumeCommand(.mute)
-            case .playPause: self.runPlayback(.playPause)
-            case .nextTrack: self.runPlayback(.next)
-            case .previousTrack: self.runPlayback(.previous)
             case .quit: NSApplication.shared.terminate(nil)
             }
         }

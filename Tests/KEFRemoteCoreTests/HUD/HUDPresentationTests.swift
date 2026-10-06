@@ -115,30 +115,4 @@ struct HUDPresentationTests {
         #expect(HUDState.afterPowerMenu(.ignored(.tooSoon(sinceLast: .milliseconds(300)))) == nil)
     }
 
-    // MARK: - Play/pause, next and previous
-
-    /// It says what was sent, not that it worked: the speaker acks the
-    /// command, but on AirPlay from the Mac it can't pause the stream.
-    @Test func playbackShowsItsSymbolAndThatItWasSent() {
-        let shown = [PlaybackCommand.playPause, .next, .previous].map { HUDPresentation(.playback($0)) }
-        #expect(shown.map(\.symbolName) == ["playpause.fill", "forward.fill", "backward.fill"])
-        #expect(shown.map(\.label) == ["Play/Pause sent", "Next sent", "Previous sent"])
-    }
-
-    @Test func aSentPlaybackCommandShowsIt() {
-        #expect(HUDState.afterPlayback(.next, .sent) == .playback(.next))
-    }
-
-    /// Round 4 hand test: on AirPlay, play/pause showed nothing. On
-    /// Optical or Aux there is nothing for the speaker to play, so say where it works.
-    @Test func onOpticalOrAuxItSaysWherePlaybackWorks() {
-        let state = HUDState.afterPlayback(.playPause, .notOnThisInput(.optical))
-        #expect(state == .playbackNotOnThisInput(.playPause))
-        #expect(HUDPresentation(state).symbolName == "playpause.fill")
-        #expect(HUDPresentation(state).label == "Works on Wi-Fi and Bluetooth")
-    }
-
-    @Test func playbackToASpeakerThatIsOffSaysItIsOff() {
-        #expect(HUDState.afterPlayback(.playPause, .speakerOff) == .error("Speaker is off"))
-    }
 }

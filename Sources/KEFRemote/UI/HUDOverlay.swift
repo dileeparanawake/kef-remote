@@ -222,7 +222,7 @@ private struct HUDContentView: View {
                 Text(shown.label)
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(.primary)
-                    // "Works on Wi-Fi and Bluetooth" takes two lines.
+                    // A long error, like "Can't reach the speaker", may take two lines.
                     .multilineTextAlignment(.center)
 
                 // Volume bar (only for volume state)

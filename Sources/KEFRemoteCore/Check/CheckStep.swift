@@ -20,9 +20,6 @@ public enum CheckAction: Equatable {
     case setStandby(StandbyMode)
     case setInput(InputSource)
     case setLeftRightSwapped(Bool)
-    /// Play/pause: it can't be read back, so the step passes on the ack
-    /// (``SpeakerController/sendPlayback(_:)``).
-    case playPause
 }
 
 /// A named step of the check: send one action, read it back, compare.
@@ -40,10 +37,7 @@ public struct CheckStep: Equatable {
 
     /// Every step, in order, for a speaker that starts as `start`. With
     /// `includingInputs`, it visits each input `model` has (the Input
-    /// menu's), in its order. With `includingPlayback`, it presses
-    /// play/pause twice on Wi-Fi and Bluetooth (the start's input, and each
-    /// one visited), so what was playing ends as it was. It's off by
-    /// default: it starts music.
+    /// menu's), in its order.
     ///
     /// A speaker that starts off is turned on first: it ignores input,
     /// standby and left/right while off, so every other step runs with it
@@ -52,17 +46,12 @@ public struct CheckStep: Equatable {
     /// in it, then switches back. Putting everything back is not a step:
     /// ``SpeakerCheck`` does that even when a step fails, and turns a
     /// speaker that started off back off at the very end.
-    public static func plan(
-        from start: SpeakerStatus, includingInputs: Bool, includingPlayback: Bool = false, model: SpeakerModel
-    ) -> [CheckStep] {
+    public static func plan(from start: SpeakerStatus, includingInputs: Bool, model: SpeakerModel) -> [CheckStep] {
         var steps: [CheckStep] = []
         if !start.isPoweredOn {
             steps.append(CheckStep(name: "power on (it was off)", action: .powerOn))
         }
         steps += volumeAndMute(from: start.volume, on: nil)
-        if includingPlayback && start.input.hasPlayback {
-            steps += playPauseAndBack(on: nil)
-        }
         steps.append(CheckStep(name: "power off", action: .powerOff))
         steps.append(CheckStep(name: "power on", action: .powerOn))
         steps.append(CheckStep(
@@ -82,9 +71,6 @@ public struct CheckStep: Equatable {
             for input in model.inputs {
                 steps.append(CheckStep(name: "input \(input.label)", action: .setInput(input)))
                 steps += volumeAndMute(from: start.volume, on: input)
-                if includingPlayback && input.hasPlayback {
-                    steps += playPauseAndBack(on: input)
-                }
             }
             steps.append(CheckStep(name: "input back to \(start.input.label)", action: .setInput(start.input.codeToSelect)))
         }
@@ -96,15 +82,6 @@ public struct CheckStep: Equatable {
     /// Optical or Wi-Fi, which are always there to choose.
     static func powerOnInputToTry(from input: InputSource) -> PowerOnInput {
         input.isSameInput(as: .optical) ? .wifi : .optical
-    }
-
-    /// Play/pause, then again to put back what was playing or not.
-    private static func playPauseAndBack(on input: InputSource?) -> [CheckStep] {
-        let suffix = input.map { " on \($0.label)" } ?? ""
-        return [
-            CheckStep(name: "play/pause" + suffix, action: .playPause),
-            CheckStep(name: "play/pause back" + suffix, action: .playPause),
-        ]
     }
 
     private static func volumeAndMute(from volume: VolumeState, on input: InputSource?) -> [CheckStep] {
@@ -149,8 +126,6 @@ extension CheckAction {
             return .input(input)
         case .setLeftRightSwapped(let isSwapped):
             return .leftRightSwapped(isSwapped)
-        case .playPause:
-            return .acknowledged
         }
     }
 
@@ -189,7 +164,7 @@ extension CheckAction {
         switch self {
         case .powerOn, .powerOff, .powerOnApplying: return SpeakerCheck.powerChangeLimit
         case .setStandby, .setInput, .setLeftRightSwapped: return SpeakerCheck.sourceWriteLimit
-        case .raiseVolume, .raiseVolumeRightAfterPowerOn, .lowerVolume, .mute, .unmute, .playPause: return .zero
+        case .raiseVolume, .raiseVolumeRightAfterPowerOn, .lowerVolume, .mute, .unmute: return .zero
         }
     }
 }
@@ -208,9 +183,6 @@ public enum CheckExpectation: Equatable {
     /// Bluetooth passes as either code: see ``compare(_:)``.
     case input(InputSource)
     case leftRightSwapped(Bool)
-    /// Only the ack: playback can't be read back. ``SpeakerCheck`` passes
-    /// the step on ``SpeakerController/sendPlayback(_:)``'s result.
-    case acknowledged
 
     /// Whether the read-back is the volume register, not the source byte.
     var readsVolume: Bool {

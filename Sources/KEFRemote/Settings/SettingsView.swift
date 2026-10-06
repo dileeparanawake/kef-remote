@@ -17,7 +17,7 @@ import SwiftUI
 ///                          "Now, and each time KEF Remote connects."
 ///                        Swap left and right [off]
 ///                          "Now. The speaker remembers it."
-/// Keys      Media keys   Modifier [Control]   "Control + the volume and play keys …"
+/// Keys      Media keys   Modifier [Control]   "Control + the volume keys …"
 ///           Shortcuts    Power on/off, Volume up, … Quit
 ///                        "Optional extra keys. They work alongside the keys above."
 /// About     KEF Remote   Version 0.3.0 (3)
@@ -132,7 +132,7 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
 
                 // One line per way in: the modifier works with the keyboard's own keys.
-                Text("\(model.modifier.displayName) + the volume and play keys 🔉 🔊 🔇 ⏮ ⏯ ⏭ control the speaker, not the Mac.")
+                Text("\(model.modifier.displayName) + the volume keys 🔉 🔊 🔇 change the speaker, not the Mac.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

@@ -100,36 +100,6 @@ struct CheckStepTests {
         #expect(inputSteps.map(\.name) == ["input back to Wi-Fi"])
     }
 
-    // MARK: - Play/pause (PLAYBACK=1)
-
-    private func playPauseSteps(_ plan: [CheckStep]) -> [String] {
-        plan.filter { $0.action == .playPause }.map(\.name)
-    }
-
-    /// It starts music, so it is only in the plan when asked for.
-    @Test func withoutTheFlagThereIsNoPlayPause() {
-        #expect(playPauseSteps(CheckStep.plan(from: start, includingInputs: true, model: .other)).isEmpty)
-    }
-
-    /// Pressed twice, so whatever was playing (or not) is as it was.
-    @Test func onWiFiItPlaysOrPausesThenPutsItBack() {
-        let plan = CheckStep.plan(from: start, includingInputs: false, includingPlayback: true, model: .other)
-        #expect(playPauseSteps(plan) == ["play/pause", "play/pause back"])
-    }
-
-    @Test func onOpticalWithoutInputsThereIsNothingToPlay() {
-        let plan = CheckStep.plan(from: status(input: .optical), includingInputs: false, includingPlayback: true, model: .lsx)
-        #expect(playPauseSteps(plan).isEmpty)
-    }
-
-    @Test func withInputsItPlaysOnlyOnWiFiAndBluetooth() {
-        let plan = CheckStep.plan(from: status(input: .optical), includingInputs: true, includingPlayback: true, model: .lsx)
-        #expect(playPauseSteps(plan) == [
-            "play/pause on Wi-Fi", "play/pause back on Wi-Fi",
-            "play/pause on Bluetooth", "play/pause back on Bluetooth",
-        ])
-    }
-
     // MARK: - What each step should read back
 
     @Test func volumeUpAndDownKeepTheMuteAndStopAtTheEnds() {

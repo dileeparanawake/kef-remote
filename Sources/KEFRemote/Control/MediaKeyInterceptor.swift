@@ -7,14 +7,14 @@ import os
 /// Intercepts media key events when a modifier key is held.
 ///
 /// Uses a `CGEvent` tap to monitor system-defined events. When the
-/// configured modifier (default: Control) is held and a media key
-/// (volume up, volume down, mute, play/pause, next, previous) is
-/// pressed, the event is consumed and the appropriate callback is
-/// triggered instead of the system handling it. Without the modifier
-/// every key stays the Mac's, so play/pause still controls the Mac's own
-/// player. Which key a key code is lives in core (``MediaKey``), and
-/// which way each half of a press goes too (``MediaKeyPressRouter``):
-/// the key-down decides, so a press never goes half to each.
+/// configured modifier (default: Control) is held and a volume key
+/// (volume up, volume down, mute) is pressed, the event is consumed and
+/// the callback is triggered instead of the system handling it. Without
+/// the modifier every key stays the Mac's, and play/pause, next and
+/// previous always do. Which key a key code is lives in core
+/// (``VolumeCommand``), and which way each half of a press goes too
+/// (``MediaKeyPressRouter``): the key-down decides, so a press never goes
+/// half to each.
 ///
 /// **Accessibility permission** is required for the event tap to work.
 /// Call ``checkAccessibility(prompt:)`` at launch to verify permission
@@ -23,12 +23,7 @@ import os
 /// Usage:
 /// ```swift
 /// let interceptor = MediaKeyInterceptor()
-/// interceptor.onMediaKey = { key in
-///     switch key {
-///     case .volume(let command):   print("Volume \(command)")
-///     case .playback(let command): print("Playback \(command)")
-///     }
-/// }
+/// interceptor.onVolumeKey = { command in print("\(command)") }
 /// interceptor.start()
 /// ```
 ///
@@ -53,17 +48,17 @@ final class MediaKeyInterceptor {
         category: "MediaKeyInterceptor"
     )
 
-    /// Called when a media key is intercepted while the modifier is held.
+    /// Called when a volume key is intercepted while the modifier is held.
     ///
     /// This callback is invoked on the main thread (the run loop
     /// thread where the event tap is installed).
-    var onMediaKey: ((MediaKey) -> Void)?
+    var onVolumeKey: ((VolumeCommand) -> Void)?
 
     /// The modifier key that must be held to intercept media keys.
     ///
     /// Defaults to Control. When this modifier is held and a media key
     /// is pressed, the event is consumed (not passed to the system)
-    /// and ``onMediaKey`` is called.
+    /// and ``onVolumeKey`` is called.
     var modifier: CGEventFlags = MediaKeyModifier.defaultChoice.eventFlags
 
     /// The Mach port for the CGEvent tap.
@@ -207,13 +202,13 @@ final class MediaKeyInterceptor {
         // Bit 0 tells NX_KEYUP (11) from NX_KEYDOWN (10).
         let isKeyUp = (keyState & 0x01) != 0
 
-        // Check if this is a media key we care about.
-        guard let key = MediaKey(keyCode: keyCode) else {
+        // Check if this is a volume key; every other key stays the Mac's.
+        guard let key = VolumeCommand(mediaKeyCode: keyCode) else {
             return Unmanaged.passUnretained(event)
         }
 
         // Both halves go where the key-down went, so the Mac never gets
-        // half a press (a key-down alone starts its player).
+        // half a press (it acts on the key-down alone).
         let modifierHeld = event.flags.contains(modifier)
         let route = pressRouter.route(keyCode: keyCode, isKeyUp: isKeyUp, modifierHeld: modifierHeld)
         logger.debug("key \(isKeyUp ? "up" : "down"): \(key) (code \(keyCode)), "
@@ -231,7 +226,7 @@ final class MediaKeyInterceptor {
         case .keepAndSend:
             // The code is logged so a hand test shows which key a keyboard sends.
             logger.info("key: \(key) (code \(keyCode))")
-            onMediaKey?(key)
+            onVolumeKey?(key)
             return nil
         }
     }

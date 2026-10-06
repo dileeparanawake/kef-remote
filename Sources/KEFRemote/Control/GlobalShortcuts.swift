@@ -11,9 +11,6 @@ extension KeyboardShortcuts.Name {
     static let volumeUp = Self(ShortcutAction.volumeUp.storageName)
     static let volumeDown = Self(ShortcutAction.volumeDown.storageName)
     static let mute = Self(ShortcutAction.mute.storageName)
-    static let playPause = Self(ShortcutAction.playPause.storageName)
-    static let nextTrack = Self(ShortcutAction.nextTrack.storageName)
-    static let previousTrack = Self(ShortcutAction.previousTrack.storageName)
 
     /// Quit the app. Initial: Cmd+Shift+Q.
     static let quit = Self(ShortcutAction.quit.storageName, initial: .init(.q, modifiers: [.command, .shift]))
@@ -28,9 +25,6 @@ extension ShortcutAction {
         case .volumeUp: .volumeUp
         case .volumeDown: .volumeDown
         case .mute: .mute
-        case .playPause: .playPause
-        case .nextTrack: .nextTrack
-        case .previousTrack: .previousTrack
         case .quit: .quit
         }
     }
