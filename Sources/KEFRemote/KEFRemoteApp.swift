@@ -24,7 +24,7 @@ struct KEFRemoteApp: App {
                 permissions: appDelegate.permissions,
                 resumeSetup: { appDelegate.resumeSetup() },
                 findSpeaker: { appDelegate.findSpeaker() },
-                togglePower: { appDelegate.togglePower() },
+                runPowerAction: { appDelegate.runPowerMenuAction($0) },
                 switchInput: { appDelegate.switchInput(to: $0) },
                 openPermissions: { appDelegate.showPermissions(source: .menu) },
                 openSettings: { appDelegate.showSettings(source: .menu) },

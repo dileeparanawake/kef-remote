@@ -325,6 +325,30 @@ public class SpeakerController {
         return .turnedOn
     }
 
+    /// Turn speaker on / off from the menu: do what the label said, from
+    /// one read of the source byte (``PowerMenuAction/step(isPoweredOn:)``).
+    /// Turning on applies `settings`, and turning off keeps the 20-minute
+    /// standby workaround, as ``togglePower(applying:)`` does. A speaker
+    /// already that way is sent nothing.
+    @discardableResult
+    public func runPowerMenuAction(_ action: PowerMenuAction, applying settings: SpeakerSettings) async throws -> PowerMenuStep {
+        let source = try await getSourceByte()
+        let step = action.step(isPoweredOn: source.isPoweredOn)
+        switch step {
+        case .alreadyOn:
+            log(.info, "power menu: \(action.title), but the speaker is already on: nothing sent")
+        case .alreadyOff:
+            log(.info, "power menu: \(action.title), but the speaker is already off: nothing sent")
+        case .powerOn:
+            log(.info, "power menu: \(action.title): off → on")
+            try await writePowerOn(from: source, applying: settings)
+        case .powerOff:
+            log(.info, "power menu: \(action.title): on → off")
+            try await writePowerOff(from: source)
+        }
+        return step
+    }
+
     private func writePowerOn(from source: SourceByte, applying settings: SpeakerSettings) async throws {
         let byte = settings.powerOnByte(from: source)
         if !source.isPoweredOn { powerOnMuteGuard.notePowerOnWrite(at: clock.now) }

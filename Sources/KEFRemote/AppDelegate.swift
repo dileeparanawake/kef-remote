@@ -26,7 +26,7 @@ import os
 /// 9. Switches the speaker's input from Input ▸ in the menu, ticked from
 ///    the last source byte the controller read or wrote, and read again
 ///    as the menu opens (``MenuOpenWatcher``); turns the
-///    speaker on or off from the menu as the power shortcut does; swaps
+///    speaker on or off from the menu, as the label says; swaps
 ///    left and right from Settings, shown from the same byte
 /// 10. Writes feedback from Send feedback… in the menu (``FeedbackSender``)
 /// 11. While macOS blocks Local Network, asks again every few seconds and
@@ -796,10 +796,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Read whether the speaker is on, then flip it. The HUD shows which
-    /// way it went; a toggle ignored as a repeat shows nothing. From the
-    /// power shortcut, and from Turn speaker on/off in the menu, so the
-    /// input and standby defaults apply to both.
-    func togglePower() {
+    /// way it went; a toggle ignored as a repeat shows nothing.
+    private func togglePower() {
         guard let controller = controller(for: "power toggle") else { return }
 
         Task {
@@ -808,6 +806,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if let state = HUDState.afterPowerToggle(result) { HUDOverlay.show(state) }
             } catch {
                 logger.error("Power toggle failed: \(error.localizedDescription)")
+                HUDOverlay.show(.failure(error, otherwise: "Power failed"))
+                handleCommandError(error)
+            }
+        }
+    }
+
+    // MARK: - Power from the menu
+
+    /// Turn speaker on / off from the menu: what the label said
+    /// (``PowerMenuAction``), with the input and standby defaults on
+    /// turn-on. The HUD shows the new state; a speaker already that way
+    /// is sent nothing, and the controller logs it.
+    func runPowerMenuAction(_ action: PowerMenuAction) {
+        guard let controller = controller(for: action.title) else { return }
+
+        Task {
+            do {
+                switch try await controller.runPowerMenuAction(action, applying: config.speakerSettings) {
+                case .powerOn: HUDOverlay.show(.powerOn)
+                case .powerOff: HUDOverlay.show(.powerOff)
+                case .alreadyOn, .alreadyOff: break
+                }
+            } catch {
+                logger.error("\(action.title) failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Power failed"))
                 handleCommandError(error)
             }

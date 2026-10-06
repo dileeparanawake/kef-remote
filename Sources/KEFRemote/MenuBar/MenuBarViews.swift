@@ -53,8 +53,8 @@ struct MenuBarIcon: View {
 /// Find speaker shows under the first two lines when the speaker isn't
 /// connected (``MenuBarPresentation/offersFindSpeaker``). The
 /// Permissions… item says whether any permission needs him
-/// (``PermissionsGuide/menuItemTitle(rows:)``). Turn speaker on/off flips
-/// the power as the power shortcut does (``PowerMenuItem``). Input ▸
+/// (``PermissionsGuide/menuItemTitle(rows:)``). Turn speaker on/off does
+/// what it says, with the turn-on defaults (``PowerMenuItem``). Input ▸
 /// switches the speaker's input now, ticked on the one it's on (``InputMenu``).
 /// Both are greyed out while the speaker isn't connected.
 /// Support KEF Remote…
@@ -65,7 +65,7 @@ struct MenuBarMenu: View {
     @ObservedObject var permissions: PermissionsModel
     let resumeSetup: () -> Void
     let findSpeaker: () -> Void
-    let togglePower: () -> Void
+    let runPowerAction: (PowerMenuAction) -> Void
     let switchInput: (InputSource) -> Void
     let openPermissions: () -> Void
     let openSettings: () -> Void
@@ -103,7 +103,7 @@ struct MenuBarMenu: View {
         let powerItem = model.powerItem
         Button(powerItem.title) {
             log.info("menu: \(powerItem.title) clicked")
-            togglePower()
+            runPowerAction(powerItem.action)
         }
         .disabled(!powerItem.isEnabled)
 
