@@ -42,6 +42,7 @@ struct MenuBarIcon: View {
 /// Settings…        ⌘,       Settings…        ⌘,
 /// ─────────────             ─────────────
 /// Made by Dileepa ↗         Made by Dileepa ↗
+/// Send feedback…            Send feedback…
 /// ─────────────             ─────────────
 /// Quit KEF Remote  ⌘Q       Quit KEF Remote  ⌘Q
 /// ```
@@ -53,7 +54,8 @@ struct MenuBarIcon: View {
 /// speaker's input now, ticked on the one it's on, and greyed out while the
 /// speaker is off or not connected (``InputMenu``).
 /// Support KEF Remote…
-/// joins the links once its page exists (``MenuLink``).
+/// joins the links once its page exists (``MenuLink``), and Send feedback…
+/// once its address is set (``FeedbackEmail``).
 struct MenuBarMenu: View {
     @ObservedObject var model: MenuBarModel
     @ObservedObject var permissions: PermissionsModel
@@ -61,6 +63,7 @@ struct MenuBarMenu: View {
     let switchInput: (InputSource) -> Void
     let openPermissions: () -> Void
     let openSettings: () -> Void
+    let sendFeedback: () -> Void
 
     private let log = AppLogger(subsystem: "com.kef-remote", category: "menubar")
 
@@ -113,6 +116,13 @@ struct MenuBarMenu: View {
 
         ForEach(MenuLink.shown, id: \.self) { link in
             Button(link.title) { open(link) }
+        }
+
+        if FeedbackEmail.isShown {
+            Button(FeedbackEmail.menuTitle) {
+                log.info("menu: \(FeedbackEmail.menuTitle) clicked")
+                sendFeedback()
+            }
         }
 
         Divider()
