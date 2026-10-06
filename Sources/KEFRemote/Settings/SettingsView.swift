@@ -8,8 +8,10 @@ import SwiftUI
 /// Speaker      Discovery (Auto | Manual)
 ///   Auto:      Speaker LSX · IP 192.168.1.80 · Status Connected (Find again)
 ///   Manual:    IP [192.168.1.80] (Save)
-///              When it turns on, switch to [Don't change]
+/// Speaker defaults
+///              Input on turn-on [Don't change]
 ///              Standby [Don't change]
+///              "Input on turn-on applies when KEF Remote turns the speaker on. …"
 /// Media keys   Modifier [Control]   "Control + the volume keys … changes the speaker"
 /// Shortcuts    Power on/off, Volume up, Volume down, Mute, Quit
 ///              "Optional extra keys. They work alongside the volume keys above."
@@ -35,8 +37,12 @@ struct SettingsView: View {
                 case .auto: autoDiscovery
                 case .manual: manualIP
                 }
+            }
 
-                Picker("When it turns on, switch to", selection: Binding(
+            // Its own section, so the choices read as defaults, apart
+            // from how the app finds the speaker (hand test, 6 Oct).
+            Section("Speaker defaults") {
+                Picker("Input on turn-on", selection: Binding(
                     get: { model.powerOnInput },
                     set: { model.setPowerOnInput($0) }
                 )) {
@@ -56,7 +62,9 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.menu)
 
-                Text("The input applies when KEF Remote turns the speaker on, not KEF's own remote.")
+                // Standby is also written on each connect, so it isn't
+                // only a turn-on default; the caption says when each applies.
+                Text("Input on turn-on applies when KEF Remote turns the speaker on. Standby applies when you choose it and each time KEF Remote connects.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

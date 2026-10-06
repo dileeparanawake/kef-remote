@@ -112,12 +112,12 @@ Your config file from 0.1.0 keeps working, with discovery on Auto.
 
 ## Set the speaker up
 
-Under Speaker in Settings, two choices set the speaker up for you. Both start at Don't change, so KEF Remote leaves the speaker as it is until you pick something.
+Under Speaker defaults in Settings, two choices set the speaker up for you. Both start at Don't change, so KEF Remote leaves the speaker as it is until you pick something.
 
 | Setting | What it does |
 |---|---|
-| When it turns on, switch to | The input the speaker switches to when KEF Remote turns it on: Optical, Wi-Fi, Bluetooth, Aux or USB. It doesn't apply when you turn it on with KEF's own remote, or if it's already on. |
-| Standby | How long the speaker waits with no sound before it goes to standby: 20 min, 60 min or Never. KEF Remote sets it each time it connects. |
+| Input on turn-on | The input the speaker switches to when KEF Remote turns it on: Optical, Wi-Fi, Bluetooth, Aux or USB. It doesn't apply when you turn it on with KEF's own remote, or if it's already on. |
+| Standby | How long the speaker waits with no sound before it goes to standby: 20 min, 60 min or Never. KEF Remote sets it when you choose it, and each time it connects. |
 
 ## Shortcuts
 
