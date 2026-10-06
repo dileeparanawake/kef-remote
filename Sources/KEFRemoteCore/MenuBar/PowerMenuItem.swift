@@ -78,3 +78,13 @@ public enum PowerMenuStep: Equatable, Sendable {
     /// Nothing sent: the speaker was off already.
     case alreadyOff
 }
+
+/// How a click on the menu's power item went
+/// (``SpeakerController/runPowerMenuAction(_:applying:)``).
+public enum PowerMenuResult: Equatable, Sendable {
+    /// It read the speaker and took this step.
+    case done(PowerMenuStep)
+    /// Nothing sent, not even a read: too close to another power change,
+    /// from the menu or the power shortcut (``PowerToggleGuard``).
+    case ignored(PowerToggleGuard.Refusal)
+}

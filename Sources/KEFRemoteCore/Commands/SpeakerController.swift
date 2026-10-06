@@ -309,11 +309,11 @@ public class SpeakerController {
     /// one (``PowerToggleGuard``): a burst of presses is one toggle.
     @discardableResult
     public func togglePower(applying settings: SpeakerSettings = SpeakerSettings()) async throws -> PowerToggleResult {
-        if let refusal = powerToggleLock.withLock({ powerToggleGuard.start(at: clock.now) }) {
+        if let refusal = startPowerChange() {
             log(.info, "togglePower: ignored, \(refusal.reason)")
             return .ignored(refusal)
         }
-        defer { powerToggleLock.withLock { powerToggleGuard.finish(at: clock.now) } }
+        defer { finishPowerChange() }
 
         let source = try await getSourceByte()
         log(.info, "togglePower: \(source.isPoweredOn ? "on → off" : "off → on")")
@@ -330,8 +330,17 @@ public class SpeakerController {
     /// Turning on applies `settings`, and turning off keeps the 20-minute
     /// standby workaround, as ``togglePower(applying:)`` does. A speaker
     /// already that way is sent nothing.
+    ///
+    /// It shares the power shortcut's ``PowerToggleGuard``, so a click and
+    /// a press never change the power at once, or straight after each other.
     @discardableResult
-    public func runPowerMenuAction(_ action: PowerMenuAction, applying settings: SpeakerSettings) async throws -> PowerMenuStep {
+    public func runPowerMenuAction(_ action: PowerMenuAction, applying settings: SpeakerSettings) async throws -> PowerMenuResult {
+        if let refusal = startPowerChange() {
+            log(.info, "power menu: \(action.title) ignored, \(refusal.reason)")
+            return .ignored(refusal)
+        }
+        defer { finishPowerChange() }
+
         let source = try await getSourceByte()
         let step = action.step(isPoweredOn: source.isPoweredOn)
         switch step {
@@ -346,7 +355,18 @@ public class SpeakerController {
             log(.info, "power menu: \(action.title): on → off")
             try await writePowerOff(from: source)
         }
-        return step
+        return .done(step)
+    }
+
+    /// Start a power change (the shortcut's toggle or the menu's item), or
+    /// say why not (``PowerToggleGuard``). Call ``finishPowerChange()``
+    /// once it ends, whether or not it worked.
+    private func startPowerChange() -> PowerToggleGuard.Refusal? {
+        powerToggleLock.withLock { powerToggleGuard.start(at: clock.now) }
+    }
+
+    private func finishPowerChange() {
+        powerToggleLock.withLock { powerToggleGuard.finish(at: clock.now) }
     }
 
     private func writePowerOn(from source: SourceByte, applying settings: SpeakerSettings) async throws {

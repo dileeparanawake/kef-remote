@@ -816,18 +816,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Turn speaker on / off from the menu: what the label said
     /// (``PowerMenuAction``), with the input and standby defaults on
-    /// turn-on. The HUD shows the new state; a speaker already that way
-    /// is sent nothing, and the controller logs it.
+    /// turn-on. The HUD shows the new state. A speaker already that way,
+    /// or a click too close to the power shortcut's toggle
+    /// (``PowerToggleGuard``), is sent nothing, and the controller logs it.
     func runPowerMenuAction(_ action: PowerMenuAction) {
         guard let controller = controller(for: action.title) else { return }
 
         Task {
             do {
-                switch try await controller.runPowerMenuAction(action, applying: config.speakerSettings) {
-                case .powerOn: HUDOverlay.show(.powerOn)
-                case .powerOff: HUDOverlay.show(.powerOff)
-                case .alreadyOn, .alreadyOff: break
-                }
+                let result = try await controller.runPowerMenuAction(action, applying: config.speakerSettings)
+                if let state = HUDState.afterPowerMenu(result) { HUDOverlay.show(state) }
             } catch {
                 logger.error("\(action.title) failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Power failed"))

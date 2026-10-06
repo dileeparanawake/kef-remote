@@ -100,6 +100,21 @@ struct HUDPresentationTests {
         #expect(HUDState.afterPowerToggle(.ignored(.inFlight)) == nil)
     }
 
+    // MARK: - Turn speaker on / off in the menu
+
+    @Test func aPowerMenuClickShowsWhichWayItWent() {
+        #expect(HUDState.afterPowerMenu(.done(.powerOn)) == .powerOn)
+        #expect(HUDState.afterPowerMenu(.done(.powerOff)) == .powerOff)
+    }
+
+    /// Nothing changed, so nothing flashes up: the menu's label follows
+    /// the byte the click read.
+    @Test func aPowerMenuClickThatSentNothingShowsNothing() {
+        #expect(HUDState.afterPowerMenu(.done(.alreadyOn)) == nil)
+        #expect(HUDState.afterPowerMenu(.done(.alreadyOff)) == nil)
+        #expect(HUDState.afterPowerMenu(.ignored(.tooSoon(sinceLast: .milliseconds(300)))) == nil)
+    }
+
     // MARK: - Play/pause, next and previous
 
     /// It says what was sent, not that it worked: the speaker acks the

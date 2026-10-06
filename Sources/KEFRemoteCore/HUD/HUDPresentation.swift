@@ -37,6 +37,17 @@ extension HUDState {
         case .ignored: return nil
         }
     }
+
+    /// The HUD after Turn speaker on / off in the menu: which way it went.
+    /// Nil when nothing was sent (already that way, or too close to
+    /// another power change).
+    public static func afterPowerMenu(_ result: PowerMenuResult) -> HUDState? {
+        switch result {
+        case .done(.powerOn): return .powerOn
+        case .done(.powerOff): return .powerOff
+        case .done(.alreadyOn), .done(.alreadyOff), .ignored: return nil
+        }
+    }
 }
 
 extension HUDState {
