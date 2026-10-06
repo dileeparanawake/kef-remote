@@ -34,7 +34,7 @@ Use `make <target>` for common operations. Key targets:
 | `make app-icon` | Redraw the app icon PNGs from `Design/AppIcon.svg` |
 | `make run` | Launch most recently built debug app |
 | `make test-build` | Quit the running app, build this branch with `xcodebuild`, and launch it for a hand test |
-| `make test-fresh` | Hand test from a clean slate: saves config and preferences aside, resets Accessibility, then `test-build`. Dileepa runs it (it changes a privacy setting) |
+| `make test-fresh` | Hand test from a clean slate: saves config aside, builds under a new test bundle ID so macOS asks for both permissions again, and launches it. Changes no privacy setting |
 | `make test-restore` | Put back what `test-fresh` saved |
 | `make package` | Zip the latest Release build into `dist/KEFRemote-<version>.zip` (`ditto --norsrc --keepParent`) |
 | `make kill` | Stop all running KEFRemote instances |

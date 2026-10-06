@@ -47,34 +47,36 @@ TEST_BUILD_DIR = .build/test-build
 TEST_APP = $(TEST_BUILD_DIR)/Build/Products/Debug/KEFRemote.app
 test-build: kill
 	@echo "Building branch: $$(git branch --show-current) ($$(git rev-parse --short HEAD))"
-	xcodebuild -project KEFRemote.xcodeproj -scheme KEFRemote -configuration Debug -derivedDataPath $(TEST_BUILD_DIR) build -quiet
+	xcodebuild -project KEFRemote.xcodeproj -scheme KEFRemote -configuration Debug -derivedDataPath $(TEST_BUILD_DIR) build -quiet $(XCODE_ARGS)
 	open "$(TEST_APP)"
 	@echo "Running: $(TEST_APP)"
 	@echo "Watch the log with: make logs-tail"
 
 # Start a hand test from a clean slate, like a stranger's first run:
-# saves your config.json and preferences (shortcuts, modifier) aside,
-# resets the app's Accessibility permission so the permissions guide
-# shows, then builds and launches this branch. Run it yourself: it
-# changes a privacy setting. Local Network can't be reset from the
-# command line. `make test-restore` puts your setup back.
+# saves your config.json aside, then builds this branch under a new
+# test bundle ID (…KEFRemote.test1, .test2, …) and launches it. macOS
+# treats each as a brand-new app: it asks for Local Network and
+# Accessibility again, with empty preferences. That's the only way to
+# see the Local Network prompt again (Terminal can't reset it), and it
+# changes no privacy setting. Each run leaves a KEFRemote entry in the
+# Privacy & Security lists. `make test-restore` puts your config back.
 BUNDLE_ID = com.dileeparanawake.KEFRemote
 CONFIG_FILE = $(HOME)/.kef-remote/config.json
 CONFIG_BACKUP = $(HOME)/.kef-remote/config.before-test.json
 PREFS_BACKUP = $(HOME)/.kef-remote/preferences.before-test.plist
+TEST_RUN_FILE = $(TEST_BUILD_DIR)/test-run-number
 
 test-fresh: kill
 	@# A second run keeps the first backup: that one is the real setup.
 	@if [ -f "$(CONFIG_BACKUP)" ]; then rm -f "$(CONFIG_FILE)"; echo "Backup already there; removed the test config"; \
 	elif [ -f "$(CONFIG_FILE)" ]; then mv "$(CONFIG_FILE)" "$(CONFIG_BACKUP)"; echo "Saved config.json to $(CONFIG_BACKUP)"; fi
-	@if [ ! -f "$(PREFS_BACKUP)" ]; then defaults export $(BUNDLE_ID) "$(PREFS_BACKUP)" && echo "Saved preferences to $(PREFS_BACKUP)"; fi
-	@defaults delete $(BUNDLE_ID) 2>/dev/null && echo "Cleared preferences" || echo "No preferences to clear"
-	tccutil reset Accessibility $(BUNDLE_ID)
-	@echo "Local Network can't be reset from Terminal. To test it blocked: turn KEF Remote off in System Settings > Privacy & Security > Local Network."
-	@$(MAKE) test-build
+	@mkdir -p $(TEST_BUILD_DIR)
+	@N=$$(( $$(cat $(TEST_RUN_FILE) 2>/dev/null || echo 0) + 1 )); echo $$N > $(TEST_RUN_FILE); \
+	echo "Test identity: $(BUNDLE_ID).test$$N (new to macOS: it asks for both permissions)"; \
+	$(MAKE) test-build XCODE_ARGS="PRODUCT_BUNDLE_IDENTIFIER=$(BUNDLE_ID).test$$N"
 
-# Put back the config and preferences test-fresh saved. Accessibility
-# stays as the test left it: allow it again in the guide if needed.
+# Put back the config test-fresh saved, and any preferences an older
+# test-fresh cleared from the real app.
 test-restore: kill
 	@if [ -f "$(CONFIG_BACKUP)" ]; then mv "$(CONFIG_BACKUP)" "$(CONFIG_FILE)"; echo "Restored config.json"; else echo "No config backup"; fi
 	@if [ -f "$(PREFS_BACKUP)" ]; then defaults delete $(BUNDLE_ID) 2>/dev/null; defaults import $(BUNDLE_ID) "$(PREFS_BACKUP)" && rm "$(PREFS_BACKUP)" && echo "Restored preferences"; else echo "No preferences backup"; fi
