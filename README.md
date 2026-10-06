@@ -183,9 +183,9 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 401 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 418 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
-To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening.
+To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening. It takes a few minutes, as it waits for the speaker to power on and off.
 
 ## How it works
 
