@@ -22,7 +22,7 @@ public enum InputSource: UInt8, CaseIterable, Codable, Sendable {
 /// `applyStandby` never writes 20 minutes to a speaker that is off.
 ///
 /// Reference: Perl `kefctl` lines 80-85, 167-171.
-public enum StandbyMode: UInt8, CaseIterable, Codable {
+public enum StandbyMode: UInt8, CaseIterable, Codable, Sendable {
     case twentyMinutes = 0b00
     case sixtyMinutes  = 0b01
     case never         = 0b10
@@ -48,7 +48,7 @@ public enum StandbyMode: UInt8, CaseIterable, Codable {
 /// you'll clobber the other settings (e.g., setting input could turn off power).
 ///
 /// Reference: Perl `kefctl` lines 68-98, 150-186, 217-234.
-public struct SourceByte: Equatable {
+public struct SourceByte: Equatable, Sendable {
     public var isPoweredOn: Bool
     public var isInversed: Bool
     public var standby: StandbyMode
@@ -101,6 +101,13 @@ public struct SourceByte: Equatable {
     public func with(input: InputSource) -> SourceByte {
         var copy = self
         copy.input = input
+        return copy
+    }
+
+    /// Return a copy with only left and right swapped or not. All other fields preserved.
+    public func with(isInversed: Bool) -> SourceByte {
+        var copy = self
+        copy.isInversed = isInversed
         return copy
     }
 

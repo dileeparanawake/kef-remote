@@ -17,11 +17,15 @@ struct SettingsActions {
     var applyPowerOnInput: (PowerOnInput) -> Void
     /// Save the standby time, and set it on the speaker if connected.
     var applyStandby: (StandbyChoice) -> Void
+    /// Swap left and right on the speaker now. Throws if the speaker
+    /// didn't take it.
+    var swapLeftRight: (Bool) async throws -> Void
 }
 
 /// State for the settings window: the discovery mode, the IP field,
-/// discovery, the power-on input, the standby time, the media key
-/// modifier, and refusing a shortcut that is already taken. Shortcuts are
+/// discovery, the power-on input, the standby time, swapping left and
+/// right, the media key modifier, and refusing a shortcut that is
+/// already taken. Shortcuts are
 /// stored by the KeyboardShortcuts recorders themselves; the model checks
 /// and logs each change.
 ///
@@ -39,6 +43,11 @@ final class SettingsModel: ObservableObject {
     @Published private(set) var discovery: DiscoveryMode
     @Published private(set) var powerOnInput: PowerOnInput
     @Published private(set) var standby: StandbyChoice
+    /// The swap he just clicked, shown while the speaker writes it (see
+    /// ``SwapLeftRightSwitch``). The switch otherwise shows the speaker's.
+    @Published private(set) var requestedSwap: Bool?
+    /// Under the switch, after a write failed.
+    @Published private(set) var swapNote: String?
 
     private let actions: SettingsActions
     private let log = AppLogger(subsystem: "com.kef-remote", category: "settings")
@@ -103,6 +112,22 @@ final class SettingsModel: ObservableObject {
         log.info("standby \(standby.rawValue) -> \(choice.rawValue)")
         standby = choice
         actions.applyStandby(choice)
+    }
+
+    /// Swap left and right now. Not saved: the speaker keeps it. If the
+    /// write fails, the switch goes back to the speaker's state and the
+    /// note says why.
+    func setLeftRightSwapped(_ isSwapped: Bool) async {
+        log.info("swap left and right -> \(isSwapped ? "on" : "off")")
+        requestedSwap = isSwapped
+        swapNote = nil
+        defer { requestedSwap = nil }
+        do {
+            try await actions.swapLeftRight(isSwapped)
+        } catch {
+            swapNote = SwapLeftRightSwitch.failureNote(error)
+            log.info("swap left and right not changed (\(error)): \(swapNote ?? "")")
+        }
     }
 
     func setModifier(_ choice: MediaKeyModifier) {

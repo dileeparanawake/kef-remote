@@ -22,7 +22,8 @@ import os
 ///    missing, and from the menu; starts the volume keys once it's granted,
 ///    and shows the red dot in the menu bar while it isn't
 /// 9. Switches the speaker's input from Input ▸ in the menu, ticked from
-///    the last source byte the controller read or wrote
+///    the last source byte the controller read or wrote; swaps left and
+///    right from Settings, shown from the same byte
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -79,7 +80,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             },
             applyDiscovery: { [weak self] mode in self?.applyDiscovery(mode) },
             applyPowerOnInput: { [weak self] choice in self?.applyPowerOnInput(choice) },
-            applyStandby: { [weak self] choice in self?.applyStandbyChoice(choice) }
+            applyStandby: { [weak self] choice in self?.applyStandbyChoice(choice) },
+            swapLeftRight: { [weak self] isSwapped in try await self?.swapLeftRight(isSwapped) }
         )
     )
 
@@ -509,6 +511,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         Task { await applyStandby(for: .chosen, with: controller) }
+    }
+
+    /// Swap left and right on the speaker now, from Settings. The speaker
+    /// keeps it, so it isn't saved. A failure recovers like other
+    /// commands, and is thrown back so Settings puts the switch back.
+    private func swapLeftRight(_ isSwapped: Bool) async throws {
+        guard let controller = controller(for: "swap left and right") else {
+            throw KEFError.notConnected
+        }
+        do {
+            try await controller.setLeftRightSwapped(isSwapped)
+        } catch {
+            logger.error("Swap left and right failed: \(error.localizedDescription)")
+            handleCommandError(error)
+            throw error
+        }
     }
 
     /// Set the standby time for `reason`. A failure is only logged: the

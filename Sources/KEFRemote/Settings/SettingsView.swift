@@ -11,6 +11,7 @@ import SwiftUI
 /// Speaker defaults
 ///              Input on turn-on [Don't change]
 ///              Standby [Don't change]
+///              Swap left and right [off]
 ///              "Input on turn-on applies when KEF Remote turns the speaker on. …"
 /// Media keys   Modifier [Control]   "Control + the volume keys … changes the speaker"
 /// Shortcuts    Power on/off, Volume up, Volume down, Mute, Quit
@@ -62,9 +63,12 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.menu)
 
-                // Standby is also written on each connect, so it isn't
-                // only a turn-on default; the caption says when each applies.
-                Text("Input on turn-on applies when KEF Remote turns the speaker on. Standby applies when you choose it and each time KEF Remote connects.")
+                swapLeftRight
+
+                // Not every choice here is a turn-on default: standby is
+                // also written on each connect, and the swap is the
+                // speaker's own setting. The caption says when each applies.
+                Text("Input on turn-on applies when KEF Remote turns the speaker on. Standby applies when you choose it and each time KEF Remote connects. Swap left and right applies straight away.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -109,6 +113,25 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 440)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// The speaker's own swap, as last read, applied when clicked.
+    @ViewBuilder private var swapLeftRight: some View {
+        let shown = SwapLeftRightSwitch(
+            speakerSource: menuBar.speakerSource,
+            isConnected: menuBar.presentation.isConnected,
+            requested: model.requestedSwap
+        )
+        Toggle(SwapLeftRightSwitch.title, isOn: Binding(
+            get: { shown.isOn },
+            set: { isSwapped in Task { await model.setLeftRightSwapped(isSwapped) } }
+        ))
+        .toggleStyle(.switch)
+        .disabled(!shown.isEnabled)
+
+        if let note = model.swapNote {
+            Text(note).foregroundStyle(.secondary)
+        }
     }
 
     /// Auto: the speaker the app found, read-only, and a way to look again.
