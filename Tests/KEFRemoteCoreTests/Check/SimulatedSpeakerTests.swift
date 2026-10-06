@@ -242,4 +242,16 @@ struct SimulatedSpeakerTests {
         await clock.sleep(for: .milliseconds(500))
         #expect(clock.now == .milliseconds(3500))
     }
+    /// Play/pause, next and previous are acked like any write. It can't
+    /// be read back, so the speaker only keeps a list of what it was sent.
+    @Test func acksPlaybackAndRemembersIt() async throws {
+        let speaker = SimulatedSpeaker(volume: forty, source: on)
+
+        let reply = try await speaker.send(KEFCommand.setPlayback(.playPause), expectResponseBytes: 3)
+
+        #expect(reply == Data([0x52, 0x11, 0xFF]))
+        #expect(speaker.playbackReceived == [.playPause])
+        #expect(speaker.source == on)
+        #expect(speaker.volume == forty)
+    }
 }

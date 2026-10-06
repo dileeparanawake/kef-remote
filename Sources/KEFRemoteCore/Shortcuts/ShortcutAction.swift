@@ -1,13 +1,17 @@
 /// What a global keyboard shortcut does. Each one has a recorder in
 /// Settings, and the app turns a press into a speaker command.
 ///
-/// Volume up, volume down and mute also work as modifier + media key;
-/// these shortcuts are an extra way in, unset until the user records one.
+/// Volume up, volume down, mute, play/pause, next and previous also work
+/// as modifier + media key; these shortcuts are an extra way in, unset
+/// until the user records one.
 public enum ShortcutAction: CaseIterable, Sendable {
     case powerToggle
     case volumeUp
     case volumeDown
     case mute
+    case playPause
+    case nextTrack
+    case previousTrack
     case quit
 
     /// The key the shortcut is saved under (`KeyboardShortcuts_<name>`
@@ -18,6 +22,9 @@ public enum ShortcutAction: CaseIterable, Sendable {
         case .volumeUp: "volumeUp"
         case .volumeDown: "volumeDown"
         case .mute: "mute"
+        case .playPause: "playPause"
+        case .nextTrack: "nextTrack"
+        case .previousTrack: "previousTrack"
         case .quit: "quit"
         }
     }
@@ -29,6 +36,9 @@ public enum ShortcutAction: CaseIterable, Sendable {
         case .volumeUp: "Volume up"
         case .volumeDown: "Volume down"
         case .mute: "Mute"
+        case .playPause: "Play/pause"
+        case .nextTrack: "Next"
+        case .previousTrack: "Previous"
         case .quit: "Quit"
         }
     }

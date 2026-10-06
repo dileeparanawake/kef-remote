@@ -31,7 +31,8 @@ public struct SpeakerStatus: Equatable {
 /// so the menu can tick the input without reading it again.
 ///
 /// Volume up, down and mute read the volume first. Just after power on,
-/// a muted read is read again (``PowerOnMuteGuard``).
+/// a muted read is read again (``PowerOnMuteGuard``). Play/pause, next
+/// and previous go only on Wi-Fi and Bluetooth (``sendPlayback(_:)``).
 ///
 /// Operations are async because they involve network I/O (send command,
 /// await response).
@@ -42,6 +43,9 @@ public class SpeakerController {
     private let onSourceByte: (SourceByte) -> Void
     private let clock: SpeakerClock
     private var powerOnMuteGuard = PowerOnMuteGuard()
+    /// The source byte last read, or written and acked: play/pause uses
+    /// it to skip a read when it shows the speaker on Wi-Fi or Bluetooth.
+    private var lastSourceByte: SourceByte?
 
     /// - Parameters:
     ///   - onReply: Called after every send, on the caller's task, with
@@ -117,6 +121,12 @@ public class SpeakerController {
     /// Write a whole source byte and wait for the speaker's ack.
     private func writeSource(_ source: SourceByte) async throws {
         _ = try await sendAndReceive(KEFCommand.setSource(source.encode()), expectResponseBytes: KEFCommand.setResponseSize)
+        noteSourceByte(source)
+    }
+
+    /// Keep the source byte the speaker has now, and pass it on to `onSourceByte`.
+    private func noteSourceByte(_ source: SourceByte) {
+        lastSourceByte = source
         onSourceByte(source)
     }
 
@@ -142,7 +152,7 @@ public class SpeakerController {
         let source = SourceByte(byte: byte)
         log(.info, "source: power=\(source.isPoweredOn ? "on" : "off") input=\(source.input) standby=\(source.standby)")
         powerOnMuteGuard.noteRead(source, at: clock.now)
-        onSourceByte(source)
+        noteSourceByte(source)
         return source
     }
 
@@ -347,6 +357,37 @@ public class SpeakerController {
         let source = try await getSourceByte()
         log(.info, "setInput: \(source.input.label) -> \(input.label)")
         try await writeSource(source.with(input: input))
+    }
+
+    // MARK: - Playback
+
+    /// Send play/pause, next or previous, on Wi-Fi or Bluetooth only: on
+    /// Optical, Aux and USB another device plays, so nothing is sent.
+    /// Nothing reads it back, so the ack is all it checks.
+    ///
+    /// It uses the last source byte when that shows Wi-Fi or Bluetooth.
+    /// Otherwise it reads first: the speaker changes input by itself (AirPlay
+    /// switches it to Wi-Fi), so a refusal never rests on an old byte.
+    public func sendPlayback(_ command: PlaybackCommand) async throws -> PlaybackResult {
+        let source: SourceByte
+        let from: String
+        if let known = lastSourceByte, known.isPoweredOn, known.input.hasPlayback {
+            (source, from) = (known, "last read")
+        } else {
+            (source, from) = (try await getSourceByte(), "read now")
+        }
+        guard source.isPoweredOn else {
+            log(.info, "\(command.name): not sent: the speaker is off")
+            return .speakerOff
+        }
+        guard source.input.hasPlayback else {
+            log(.info, "\(command.name): not sent: the speaker is on \(source.input.label), "
+                + "and play/pause, next and previous work on Wi-Fi and Bluetooth")
+            return .notOnThisInput(source.input)
+        }
+        log(.info, "\(command.name): sending on \(source.input.label) (\(from))")
+        _ = try await sendAndReceive(KEFCommand.setPlayback(command), expectResponseBytes: KEFCommand.setResponseSize)
+        return .sent
     }
 
     // MARK: - Left and right

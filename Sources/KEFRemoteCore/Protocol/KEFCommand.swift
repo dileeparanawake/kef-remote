@@ -13,9 +13,10 @@ import Foundation
 ///   The payload is in byte 4 (index 3).
 /// - **SET response:** 3 bytes — always `[0x52, 0x11, 0xFF]` (acknowledgement).
 ///
-/// Only two registers are used for core speaker control:
+/// Three registers are used:
 /// - `0x25` — Volume (0–100 unmuted, 128–228 muted)
 /// - `0x30` — Source byte (packed bitfield: power, inverse, standby, input)
+/// - `0x31` — Playback (write only: play/pause, next, previous)
 ///
 /// Reference: Perl `kefctl` by Sebastian Riedel, lines 21–22.
 enum KEFCommand {
@@ -35,6 +36,9 @@ enum KEFCommand {
 
     /// Source register. Packed bitfield — see `SourceByte`.
     static let sourceRegister: UInt8 = 0x30
+
+    /// Playback register: write-only. See `PlaybackCommand`.
+    static let playbackRegister: UInt8 = 0x31
 
     // MARK: - GET commands
 
@@ -58,6 +62,11 @@ enum KEFCommand {
     /// Set the source byte on the speaker.
     static func setSource(_ value: UInt8) -> Data {
         Data([0x53, sourceRegister, 0x81, value])
+    }
+
+    /// Play/pause, next or previous. Acked like any SET.
+    static func setPlayback(_ command: PlaybackCommand) -> Data {
+        Data([0x53, playbackRegister, 0x81, command.rawValue])
     }
 
     // MARK: - Response parsing

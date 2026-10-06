@@ -7,19 +7,22 @@ import KEFRemoteCore
 //   make speaker-check             # volume, mute, power, standby, left/right
 //   make speaker-check INPUTS=1    # also each input in turn
 //   make speaker-check DRY_RUN=1   # a simulated speaker: nothing is sent
+//   make speaker-check PLAYBACK=1  # also play/pause twice on Wi-Fi and Bluetooth
+//                                  # (it starts music, so it's off by default)
 //
 // It changes what the speaker plays: run it only when nobody is listening.
 // Quit KEF Remote first: the speaker takes one connection at a time.
 // Real runs log under [check] in ~/.kef-remote/logs/kef-remote.log.
 
-let usage = "Usage: kef-check [--inputs] [--dry-run]"
+let usage = "Usage: kef-check [--inputs] [--playback] [--dry-run]"
 let arguments = Set(CommandLine.arguments.dropFirst())
-let unknown = arguments.subtracting(["--inputs", "--dry-run"])
+let unknown = arguments.subtracting(["--inputs", "--playback", "--dry-run"])
 guard unknown.isEmpty else {
     print("Unknown option: \(unknown.sorted().joined(separator: " "))\n\(usage)")
     exit(2)
 }
 let includingInputs = arguments.contains("--inputs")
+let includingPlayback = arguments.contains("--playback")
 let isDryRun = arguments.contains("--dry-run")
 
 let connection: SpeakerConnection
@@ -72,5 +75,5 @@ if includingInputs {
     log.info("kef-check: speaker \(model.label)")
 }
 let check = SpeakerCheck(connection: connection, log: log, clock: clock, onLine: { print($0) })
-let report = await check.run(includingInputs: includingInputs, model: model)
+let report = await check.run(includingInputs: includingInputs, includingPlayback: includingPlayback, model: model)
 exit(report.passed ? 0 : 1)
