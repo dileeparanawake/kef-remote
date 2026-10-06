@@ -70,6 +70,7 @@ test-fresh: kill
 	@if [ ! -f "$(PREFS_BACKUP)" ]; then defaults export $(BUNDLE_ID) "$(PREFS_BACKUP)" && echo "Saved preferences to $(PREFS_BACKUP)"; fi
 	@defaults delete $(BUNDLE_ID) 2>/dev/null && echo "Cleared preferences" || echo "No preferences to clear"
 	tccutil reset Accessibility $(BUNDLE_ID)
+	@echo "Local Network can't be reset from Terminal. To test it blocked: turn KEF Remote off in System Settings > Privacy & Security > Local Network."
 	@$(MAKE) test-build
 
 # Put back the config and preferences test-fresh saved. Accessibility
