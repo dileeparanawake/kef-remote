@@ -54,7 +54,7 @@ public final class LogFileWriter: @unchecked Sendable {
         } catch {
             self.fileHandle = nil
             write(.warning, category: "LogFileWriter",
-                  message: "Log file unavailable at \(fileURL.path) (\(error.localizedDescription)) — lines go to stderr only")
+                  message: "Log file unavailable at \(LogPath.abbreviated(fileURL)) (\(error.localizedDescription)) — lines go to stderr only")
         }
     }
 

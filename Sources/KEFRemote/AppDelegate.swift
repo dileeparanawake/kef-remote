@@ -369,10 +369,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func loadConfig() {
         do {
             config = try AppConfig.load(from: configFileURL)
-            logger.info("Loaded config from \(configFileURL.path)")
+            logger.info("Loaded config from \(LogPath.abbreviated(configFileURL))")
         } catch {
             // A broken file falls back to defaults, as before, but says so.
-            logger.error("Could not read \(configFileURL.path), using defaults: \(error)")
+            logger.error("Could not read \(LogPath.abbreviated(configFileURL)), using defaults: \(error)")
             config = AppConfig()
         }
         menuBar.showSpeaker(config.speaker)
