@@ -35,6 +35,32 @@ struct SpeakerControllerPowerTests {
         #expect(mock.sentCommands[1] == KEFCommand.setSource(expected.encode()))
     }
 
+    @Test func powerOnSwitchesToTheChosenInputInTheSameWrite() async throws {
+        let off = SourceByte(isPoweredOn: false, isInversed: false, standby: .never, input: .wifi)
+        mock.responses = [
+            Data([0x52, 0x30, 0x81, off.encode(), 0x00]),  // GET source
+            Data([0x52, 0x11, 0xFF]),                      // SET power on + input
+        ]
+        try await controller.powerOn(applying: SpeakerSettings(powerOnInput: .optical))
+        #expect(mock.sentCommands.count == 2)  // one read, one write
+        let expected = SourceByte(isPoweredOn: true, isInversed: false, standby: .never, input: .optical)
+        #expect(mock.sentCommands[1] == KEFCommand.setSource(expected.encode()))
+    }
+
+    @Test func powerOnLogsWhatItSent() async throws {
+        let log = MockKEFLog()
+        let controller = SpeakerController(connection: mock, log: log.handler)
+        let off = SourceByte(isPoweredOn: false, isInversed: false, standby: .never, input: .wifi)
+        mock.responses = [
+            Data([0x52, 0x30, 0x81, off.encode(), 0x00]),
+            Data([0x52, 0x11, 0xFF]),
+        ]
+        try await controller.powerOn(applying: SpeakerSettings(powerOnInput: .optical))
+        #expect(log.messages(at: .info).contains(
+            "powerOn: sending power=on input=optical standby=never (was input=wifi; power-on input: Optical)"
+        ))
+    }
+
     // MARK: - powerOff
 
     @Test func testPowerOffSetsPowerBitToOne() async throws {
@@ -100,6 +126,29 @@ struct SpeakerControllerPowerTests {
         #expect(isOn)
         #expect(mock.sentCommands.count == 2)  // one read, one write
         #expect(mock.sentCommands[1] == KEFCommand.setSource(off.with(isPoweredOn: true).encode()))
+    }
+
+    @Test func togglePowerOnSwitchesToTheChosenInput() async throws {
+        let off = SourceByte(isPoweredOn: false, isInversed: false, standby: .sixtyMinutes, input: .bluetoothPaired)
+        mock.responses = [
+            Data([0x52, 0x30, 0x81, off.encode(), 0x00]),
+            Data([0x52, 0x11, 0xFF]),
+        ]
+        let isOn = try await controller.togglePower(applying: SpeakerSettings(powerOnInput: .aux))
+        #expect(isOn)
+        #expect(mock.sentCommands.count == 2)
+        #expect(mock.sentCommands[1] == KEFCommand.setSource(off.with(isPoweredOn: true).with(input: .aux).encode()))
+    }
+
+    /// The input choice is for turning on; turning off leaves the input alone.
+    @Test func togglePowerOffIgnoresTheInputChoice() async throws {
+        let on = SourceByte(isPoweredOn: true, isInversed: false, standby: .never, input: .wifi)
+        mock.responses = [
+            Data([0x52, 0x30, 0x81, on.encode(), 0x00]),
+            Data([0x52, 0x11, 0xFF]),
+        ]
+        try await controller.togglePower(applying: SpeakerSettings(powerOnInput: .optical))
+        #expect(mock.sentCommands[1] == KEFCommand.setSource(on.with(isPoweredOn: false).encode()))
     }
 
     @Test func togglePowerTurnsAnOnSpeakerOff() async throws {

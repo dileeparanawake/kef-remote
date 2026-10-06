@@ -13,12 +13,15 @@ struct SettingsActions {
     var applyModifier: (MediaKeyModifier) -> Void
     /// Find the speaker by itself (Auto) or only use the typed IP (Manual).
     var applyDiscovery: (DiscoveryMode) -> Void
+    /// Save the input the speaker switches to when the app turns it on.
+    var applyPowerOnInput: (PowerOnInput) -> Void
 }
 
 /// State for the settings window: the discovery mode, the IP field,
-/// discovery, the media key modifier, and refusing a shortcut that is
-/// already taken. Shortcuts are stored by the KeyboardShortcuts
-/// recorders themselves; the model checks and logs each change.
+/// discovery, the power-on input, the media key modifier, and refusing a
+/// shortcut that is already taken. Shortcuts are stored by the
+/// KeyboardShortcuts recorders themselves; the model checks and logs each
+/// change.
 ///
 /// Every action is logged under the `settings` category.
 @MainActor
@@ -32,14 +35,16 @@ final class SettingsModel: ObservableObject {
     @Published private(set) var isDiscovering = false
     @Published private(set) var modifier: MediaKeyModifier
     @Published private(set) var discovery: DiscoveryMode
+    @Published private(set) var powerOnInput: PowerOnInput
 
     private let actions: SettingsActions
     private let log = AppLogger(subsystem: "com.kef-remote", category: "settings")
 
-    init(savedIP: String?, discovery: DiscoveryMode, actions: SettingsActions) {
+    init(savedIP: String?, discovery: DiscoveryMode, speakerSettings: SpeakerSettings, actions: SettingsActions) {
         self.savedIP = savedIP
         self.ipText = savedIP ?? ""
         self.discovery = discovery
+        self.powerOnInput = speakerSettings.powerOnInput
         self.modifier = MediaKeyModifier.stored
         self.actions = actions
     }
@@ -80,6 +85,13 @@ final class SettingsModel: ObservableObject {
         discovery = mode
         note = nil
         actions.applyDiscovery(mode)
+    }
+
+    func setPowerOnInput(_ choice: PowerOnInput) {
+        guard choice != powerOnInput else { return }
+        log.info("power-on input \(powerOnInput.rawValue) -> \(choice.rawValue)")
+        powerOnInput = choice
+        actions.applyPowerOnInput(choice)
     }
 
     func setModifier(_ choice: MediaKeyModifier) {

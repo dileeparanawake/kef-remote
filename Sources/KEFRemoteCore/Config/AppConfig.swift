@@ -5,7 +5,9 @@ import Foundation
 /// The nested structs below are the full schema.
 public struct AppConfig: Codable, Equatable {
     public var speaker: SpeakerConfig?
-    public var defaults: DefaultsConfig
+    /// What the app sets on the speaker. A file from 0.2.0 or earlier has
+    /// none: everything is Don't change.
+    public var speakerSettings: SpeakerSettings
     public var lifecycle: LifecycleConfig
     public var network: NetworkConfig
     public var app: AppBehaviourConfig
@@ -14,7 +16,7 @@ public struct AppConfig: Codable, Equatable {
 
     public init() {
         self.speaker = nil
-        self.defaults = DefaultsConfig()
+        self.speakerSettings = SpeakerSettings()
         self.lifecycle = LifecycleConfig()
         self.network = NetworkConfig()
         self.app = AppBehaviourConfig()
@@ -24,7 +26,10 @@ public struct AppConfig: Codable, Equatable {
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         speaker = try container.decodeIfPresent(SpeakerConfig.self, forKey: .speaker)
-        defaults = try container.decode(DefaultsConfig.self, forKey: .defaults)
+        // Added after 0.2.0. An older file's unused "defaults" block is not
+        // read: its input was optical for everyone, and carrying it over
+        // would switch Wi-Fi and Bluetooth listeners to Optical.
+        speakerSettings = try container.decodeIfPresent(SpeakerSettings.self, forKey: .speakerSettings) ?? SpeakerSettings()
         lifecycle = try container.decode(LifecycleConfig.self, forKey: .lifecycle)
         network = try container.decode(NetworkConfig.self, forKey: .network)
         app = try container.decode(AppBehaviourConfig.self, forKey: .app)
@@ -41,16 +46,6 @@ public struct AppConfig: Codable, Equatable {
             self.name = name
             self.mac = mac
             self.lastKnownIp = lastKnownIp
-        }
-    }
-
-    public struct DefaultsConfig: Codable, Equatable {
-        public var input: InputSource
-        public var standby: StandbyMode
-
-        public init(input: InputSource = .optical, standby: StandbyMode = .never) {
-            self.input = input
-            self.standby = standby
         }
     }
 
