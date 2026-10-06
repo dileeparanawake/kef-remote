@@ -133,7 +133,9 @@ public final class SpeakerCheck {
             try await send(step.action)
             let (comparison, waited) = try await readBack(expectation, within: step.action.readBackLimit)
             if step.action.changesPower { lastPowerChange = clock.now }
-            let showsWait = step.action.changesPower || waited > .zero
+            // The read itself takes a moment: only a wait for a second
+            // read is worth showing.
+            let showsWait = step.action.changesPower || waited >= Self.pollInterval
             let detail = comparison.line(waited: showsWait ? waited : nil)
             return (result(step.name, comparison.passed ? .pass : .fail, detail, since: mark), true)
         } catch {

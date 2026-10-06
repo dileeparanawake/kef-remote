@@ -25,7 +25,8 @@ struct SpeakerControllerInputSwitchTests {
     @Test func aSwitchTheSpeakerDoesNotTakeSaysWhereItStayed() async throws {
         let clock = SimulatedClock()
         let log = MockKEFLog()
-        let speaker = SimulatedSpeaker(volume: forty, source: onAux, hasUSBInput: false, clock: clock)
+        // Replies take no time, so the clock shows only the read-back's waits.
+        let speaker = SimulatedSpeaker(volume: forty, source: onAux, hasUSBInput: false, clock: clock, replyTime: .zero)
 
         let result = try await controller(speaker, clock: clock, log: log).switchInput(to: .usb)
 
