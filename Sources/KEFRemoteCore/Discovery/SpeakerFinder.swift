@@ -22,6 +22,7 @@ public struct FoundSpeaker: Equatable, Sendable {
 /// ```
 /// M-SEARCH (sent twice) ─▶ replies
 ///   ST is MediaRenderer?        no ─▶ drop (a Hue, say)
+///   LOCATION on this network?   no ─▶ drop, never fetched (LocalAddress)
 ///   fetch LOCATION description.xml
 ///   manufacturer is KEF?        no ─▶ drop
 ///   serial matches saved MAC?   no ─▶ drop
@@ -125,6 +126,12 @@ public struct SpeakerFinder: Sendable {
 
         guard response.isMediaRenderer else {
             log.info("Discovery: dropped \(from): ST is not MediaRenderer")
+            return nil
+        }
+        // A reply can name any LOCATION: fetch only from this network.
+        let locationHost = response.host ?? "none"
+        guard LocalAddress.isLocal(locationHost) else {
+            log.info("Discovery: dropped \(from): LOCATION host \(locationHost) is not on this network, so not fetched")
             return nil
         }
         guard checkedLocations.insert(response.location).inserted else {

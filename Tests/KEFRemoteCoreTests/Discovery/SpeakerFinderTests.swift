@@ -48,6 +48,40 @@ struct SpeakerFinderTests {
         #expect(found?.name == "LSX")
     }
 
+    /// A reply can name any LOCATION. One off this network is never
+    /// fetched, so discovery can't reach the internet.
+    @Test func aLocationOffThisNetworkIsNeverFetched() async throws {
+        let outside = "http://93.184.216.34/description.xml"
+        let socket = MockDatagramSocket(replies: [
+            Datagram(data: Fixtures.reply(location: outside), fromHost: "192.168.1.90"),
+            Self.kefReply,
+        ])
+        let fetcher = MockDescriptionFetcher([
+            outside: Fixtures.description(),
+            Self.kefLocation: Fixtures.description(),
+        ])
+        let log = MockKEFLog()
+
+        let found = try await makeFinder(socket: socket, fetcher: fetcher, log: log).find(savedMAC: nil)
+
+        #expect(found?.ip == "192.168.1.80")
+        #expect(fetcher.fetched == [URL(string: Self.kefLocation)!])
+        #expect(log.messages(at: .info).contains(
+            "Discovery: dropped 192.168.1.90: LOCATION host 93.184.216.34 is not on this network, so not fetched"
+        ))
+    }
+
+    @Test func aLocationNamedByHostnameIsNeverFetched() async throws {
+        let named = "http://example.com/description.xml"
+        let socket = MockDatagramSocket(replies: [Datagram(data: Fixtures.reply(location: named), fromHost: "192.168.1.90")])
+        let fetcher = MockDescriptionFetcher([named: Fixtures.description()])
+
+        let found = try await makeFinder(socket: socket, fetcher: fetcher).find(savedMAC: nil)
+
+        #expect(found == nil)
+        #expect(fetcher.fetched.isEmpty)
+    }
+
     @Test func aRendererFromAnotherMakerIsNotFound() async throws {
         let socket = MockDatagramSocket(replies: [Self.kefReply])
         let fetcher = MockDescriptionFetcher([Self.kefLocation: Fixtures.description(manufacturer: "Sonos, Inc.")])
