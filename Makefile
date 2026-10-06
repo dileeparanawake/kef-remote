@@ -12,6 +12,17 @@ test:
 discover:
 	swift run --disable-sandbox kef-discover $(if $(MAC),--mac $(MAC))
 
+# Run every speaker command, read each back, then put the starting state
+# back. It changes what the speaker plays: only when nobody is listening.
+# INPUTS=1 also visits each input; DRY_RUN=1 uses a simulated speaker.
+# KEF Remote must be quit: the speaker takes one connection at a time.
+speaker-check:
+	@if [ -z "$(DRY_RUN)" ] && pgrep -x KEFRemote >/dev/null; then \
+		echo "KEF Remote is running and holds the speaker's one connection. Quit it first (make kill)."; \
+		exit 1; \
+	fi
+	swift run --disable-sandbox kef-check $(if $(INPUTS),--inputs) $(if $(DRY_RUN),--dry-run)
+
 # Redraw the app icon's PNGs from Design/AppIcon.svg (commit the results)
 APP_ICON_SET = Sources/KEFRemote/Assets.xcassets/AppIcon.appiconset
 app-icon:
@@ -187,4 +198,4 @@ kef-raw-standby:
 	@test -n "$(MIN)" || (echo "Usage: make kef-raw-standby MIN=<0|20|60>"; exit 1)
 	$(KEFCTL) --standby $(MIN)
 
-.PHONY: test discover app-icon run test-build package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
+.PHONY: test discover speaker-check app-icon run test-build package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
