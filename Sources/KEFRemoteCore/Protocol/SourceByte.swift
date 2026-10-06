@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Each source has a unique 4-bit value stored in bits 3-0 of the source byte.
 /// Reference: Perl `kefctl` lines 88-93, 173-180.
-public enum InputSource: UInt8, CaseIterable, Codable {
+public enum InputSource: UInt8, CaseIterable, Codable, Sendable {
     case wifi             = 0b0010
     case usb              = 0b1100
     case bluetoothPaired  = 0b1001

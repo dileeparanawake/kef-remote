@@ -26,7 +26,9 @@ public struct SpeakerStatus: Equatable {
 /// hex bytes at `.debug` level and validates the response shape before
 /// returning. Invalid responses are logged at `.error` level with a
 /// full hex dump. After each send it reports a ``SpeakerReply`` to
-/// `onReply`: the live connected state the menu bar shows.
+/// `onReply`: the live connected state the menu bar shows. Each source
+/// byte it reads, or writes and the speaker acks, goes to `onSourceByte`,
+/// so the menu can tick the input without reading it again.
 ///
 /// Operations are async because they involve network I/O (send command,
 /// await response).
@@ -34,17 +36,24 @@ public class SpeakerController {
     private let connection: SpeakerConnection
     let log: KEFLogHandler
     private let onReply: (SpeakerReply) -> Void
+    private let onSourceByte: (SourceByte) -> Void
 
-    /// - Parameter onReply: Called after every send, on the caller's
-    ///   task, with whether the speaker answered.
+    /// - Parameters:
+    ///   - onReply: Called after every send, on the caller's task, with
+    ///     whether the speaker answered.
+    ///   - onSourceByte: Called on the caller's task with the speaker's
+    ///     source byte each time it is known: after a read, and after a
+    ///     write the speaker acked.
     public init(
         connection: SpeakerConnection,
         log: @escaping KEFLogHandler = { _, _ in },
-        onReply: @escaping (SpeakerReply) -> Void = { _ in }
+        onReply: @escaping (SpeakerReply) -> Void = { _ in },
+        onSourceByte: @escaping (SourceByte) -> Void = { _ in }
     ) {
         self.connection = connection
         self.log = log
         self.onReply = onReply
+        self.onSourceByte = onSourceByte
     }
 
     // MARK: - Core: send and receive
@@ -99,6 +108,7 @@ public class SpeakerController {
     /// Write a whole source byte and wait for the speaker's ack.
     private func writeSource(_ source: SourceByte) async throws {
         _ = try await sendAndReceive(KEFCommand.setSource(source.encode()), expectResponseBytes: KEFCommand.setResponseSize)
+        onSourceByte(source)
     }
 
     // MARK: - State reads
@@ -122,6 +132,7 @@ public class SpeakerController {
         }
         let source = SourceByte(byte: byte)
         log(.info, "source: power=\(source.isPoweredOn ? "on" : "off") input=\(source.input) standby=\(source.standby)")
+        onSourceByte(source)
         return source
     }
 
@@ -271,10 +282,9 @@ public class SpeakerController {
 
     /// Set the input source. Preserves power, standby, and inverse settings.
     public func setInput(_ input: InputSource) async throws {
-        log(.info, "setInput: \(input)")
         let source = try await getSourceByte()
-        let modified = source.with(input: input)
-        try await writeSource(modified)
+        log(.info, "setInput: \(source.input.label) -> \(input.label)")
+        try await writeSource(source.with(input: input))
     }
 
     // MARK: - Standby

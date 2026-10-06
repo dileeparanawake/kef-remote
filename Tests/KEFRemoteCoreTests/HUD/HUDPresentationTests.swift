@@ -40,6 +40,18 @@ struct HUDPresentationTests {
         #expect(HUDPresentation(.waking).label == "Waking...")
     }
 
+    @Test func anInputShowsItsName() {
+        #expect(HUDPresentation(.input(.optical)).label == "Optical")
+        #expect(HUDPresentation(.input(.wifi)).label == "Wi-Fi")
+        #expect(HUDPresentation(.input(.optical)).symbolName == "hifispeaker.fill")
+    }
+
+    /// The speaker reports Bluetooth as unpaired while nothing is paired.
+    @Test func bluetoothShowsAsBluetoothPairedOrNot() {
+        #expect(HUDPresentation(.input(.bluetoothPaired)).label == "Bluetooth")
+        #expect(HUDPresentation(.input(.bluetoothUnpaired)).label == "Bluetooth")
+    }
+
     // MARK: - A failed command
 
     /// Live test, 5 Oct: with the speaker unplugged the HUD said

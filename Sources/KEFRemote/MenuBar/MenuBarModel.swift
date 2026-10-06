@@ -2,7 +2,7 @@ import Combine
 import KEFRemoteCore
 
 /// What the menu bar shows: whether the speaker is connected, which one,
-/// and whether Accessibility lets the volume keys work.
+/// which input it's on, and whether Accessibility lets the volume keys work.
 ///
 /// `AppDelegate` owns it and sets it as things happen. The menu bar
 /// views only read it. Each real change is logged once, with its reason:
@@ -11,6 +11,7 @@ import KEFRemoteCore
 /// [menubar] status connecting -> notConnected (speaker unreachable: …), red dot on
 /// [menubar] status connecting -> connected (speaker answered), green dot for 4.0 seconds
 /// [menubar] accessibility granted -> notGranted, red dot on
+/// [menubar] speaker input Optical -> Wi-Fi
 /// ```
 ///
 /// While it looks for the speaker, ``pulse`` fades the orange dot.
@@ -19,6 +20,9 @@ final class MenuBarModel: ObservableObject {
     @Published private(set) var status: ConnectionStatus = .dormant
     @Published private(set) var speakerName: String?
     @Published private(set) var speakerIP: String?
+    /// The speaker's source byte as last read or written, for the tick in
+    /// Input ▸. Nil before the first read, and once the connection drops.
+    @Published private(set) var speakerSource: SourceByte?
     /// True for ``ConnectedFlash/duration`` after becoming connected.
     @Published private(set) var isFlashingConnected = false
 
@@ -47,6 +51,19 @@ final class MenuBarModel: ObservableObject {
             ip: speakerIP,
             isFlashingConnected: isFlashingConnected
         )
+    }
+
+    var inputMenu: InputMenu {
+        InputMenu(speakerInput: speakerSource?.input, isConnected: presentation.isConnected)
+    }
+
+    /// Show the speaker's source byte as the controller last saw it. Logs
+    /// only a change of input, the part the menu shows.
+    func showSource(_ source: SourceByte?) {
+        let oldInput = speakerSource?.input
+        speakerSource = source
+        guard source?.input != oldInput else { return }
+        log.info("speaker input \(oldInput?.label ?? "unknown") -> \(source?.input.label ?? "unknown")")
     }
 
     /// Show Accessibility as ``PermissionsModel`` last saw it. Logs only a
