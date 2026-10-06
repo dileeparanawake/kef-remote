@@ -7,7 +7,7 @@ Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) o
 Four targets in a Swift package, plus tests:
 
 - **KEFRemoteCore** (library) — Testable protocol, command, and controller logic. No UI, no system frameworks beyond Foundation and Network.
-- **KEFRemoteCore** folders: `Protocol/` (byte encoding), `Commands/` (`SpeakerController`, the connection check), `Connection/` (TCP, reply timeout), `Config/` (`config.json`, Auto/Manual discovery), `Discovery/` (SSDP), `Logging/`, `MenuBar/` and `HUD/` (what the icon, menu and HUD show), `Settings/` (the Settings tabs, the app version), `Network/` (home-network rule, Local Network permission, its retry while blocked and its checks while setup is open), `Permissions/` (each permission's row in the guide, its System Settings URL, the volume keys line: ready or restart), `Onboarding/` (the setup steps, what unlocks Continue, the finished flag, what opens at launch and from the menu and Dock, step 2's search line, that the app's own searches wait for step 2, which looks as it shows), `Windows/` (which windows are open, so whether the Dock icon shows; how one comes to the front, held back after the macOS prompt), `Shortcuts/` (what each global shortcut does, and that they pause while any of the app's menus is open), `Check/` (the speaker check: each step, read-back and putting the start back; a simulated speaker for its dry run and tests), `Utilities/`.
+- **KEFRemoteCore** folders: `Protocol/` (byte encoding), `Commands/` (`SpeakerController`, the connection check), `Connection/` (TCP, reply timeout), `Config/` (`config.json`, Auto/Manual discovery), `Discovery/` (SSDP), `Logging/`, `MenuBar/` and `HUD/` (what the icon, menu and HUD show), `Settings/` (the Settings tabs, the app version), `Network/` (home-network rule, Local Network permission, its retry while blocked and its checks while setup is open), `Permissions/` (each permission's row in the guide, its System Settings URL, the volume keys line: ready, restart, or starts on the home network), `Onboarding/` (the setup steps, what unlocks Continue, the finished flag, what opens at launch and from the menu and Dock, step 2's search line, that the app's own searches wait for step 2, which looks as it shows), `Windows/` (which windows are open, so whether the Dock icon shows; how one comes to the front, held back after the macOS prompt), `Shortcuts/` (what each global shortcut does, and that they pause while any of the app's menus is open), `Check/` (the speaker check: each step, read-back and putting the start back; a simulated speaker for its dry run and tests), `Utilities/`.
 - **KEFRemote** (executable) — macOS app: HUD overlay (`UI/`), media keys and global shortcuts, wake/sleep and Wi-Fi watching (`Control/`), menu bar (`MenuBar/`), settings window (`Settings/`), permissions guide (`Permissions/`), setup window that hosts it as step 1 (`Onboarding/`), logging to file (`Logging/`). `AppDelegate` wires them together.
 - **kef-discover** (executable) — runs discovery once and prints each step (`make discover`).
 - **kef-check** (executable) — runs every speaker command on the saved IP, reads each back, puts the start back (`make speaker-check`).
@@ -42,6 +42,7 @@ Use `make <target>` for common operations. Key targets:
 | `make logs-recent` | Last 200 lines from log file (quick agent snapshot) |
 | `make logs-previous` | The run before this one (each launch moves the last run's log to `kef-remote.previous.log`) |
 | `make logs-tail` | Live stream from log file |
+| `make logs-previous` | The run before this one (`kef-remote.previous.log`) |
 | `make logs-errors` | Errors only, from the log file |
 | `make logs-warnings` | Warnings and errors, from the log file |
 | `make logs-debug` | Debug lines (bytes on the wire), from the log file |
@@ -53,7 +54,7 @@ Use `make <target>` for common operations. Key targets:
 
 ## Project structure
 
-- `Package.swift` — Swift package manifest (three targets, one test target)
+- `Package.swift` — Swift package manifest (four targets, one test target)
 - `KEFRemote.xcodeproj/` — Xcode project for bundling, signing, running
 - `Sources/KEFRemoteCore/` — Core library (protocol, commands, controller)
 - `Sources/KEFRemote/` — macOS app (UI, hotkeys, lifecycle, integration)

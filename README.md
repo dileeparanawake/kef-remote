@@ -21,7 +21,7 @@ I've only tested it on an original LSX. The LS50 Wireless uses the same control 
 
 ## Install
 
-Upgrading from 0.1.0? Read [Upgrading from 0.1.0](#upgrading-from-010) first.
+Upgrading? Read [Upgrading from 0.2.0](#upgrading-from-020) or [Upgrading from 0.1.0](#upgrading-from-010) first.
 
 ### 1. Download
 
@@ -57,7 +57,7 @@ You only need to do this once. If it says "No such xattr", the flag is already g
 When it opens, KEF Remote shows a setup window with three steps.
 
 1. **Permissions.** Each permission has a button that opens System Settings, and gets a tick once it's allowed. Click Continue when both are ticked, or Skip for now. If you allowed either one just now, the button says Restart and continue: KEF Remote restarts once so the permissions take effect, and the window opens again at step 2.
-   - **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote. On macOS 27 this list is called Device Control and Data Access. Once it's allowed, the window says "Volume keys ready ✓", or that the restart will start them.
+   - **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote. On macOS 27 this list is called Device Control and Data Access. Once it's allowed, the window says "Volume keys ready ✓", that the restart will start them, or that they start on your home network.
    - **Local Network** (macOS 15 and later), so the app can find the speaker. macOS asks the first time the app checks it, as the window opens: click Allow. If you missed it, click Open Settings, then Local Network, and turn on KEF Remote. While the window is open it checks every few seconds, so the tick shows soon after you allow it; to check straight away, click I've allowed it.
 2. **Find your speaker.** Leave it on Auto: it looks for the speaker as the step opens (KEF Remote doesn't look before this step), and Find speaker looks again. It says "Looking for the speaker…", then "Found LSX at" the speaker's IP, "Connecting…" and then "Connected." Before any search it says "Not found yet". If it has found the speaker already, it says so straight away. If it says "Not found", check the speaker is on and on the same network, or click Enter the IP instead (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). Click Continue once it's found.
 3. **You're set.** It shows the keys to use. Click Done. The Privacy link under them opens the privacy notice: KEF Remote collects nothing.
@@ -205,7 +205,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 725 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, that the app waits for its step 2 to look for the speaker, the Dock icon while a window is open, how a window comes to the front (and stays back from the macOS prompt), the permissions guide's rows and links, trying again while Local Network is blocked and checking it while setup is open, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network, and searches again by itself after a miss), the connection check, the menu bar's states, its Input menu, its Turn speaker on/off item and when opening it reads the speaker again, the Settings tabs, the volume keys line in setup, the media keys, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file (and keeping the previous run's) and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 729 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, that the app waits for its step 2 to look for the speaker, the Dock icon while a window is open, how a window comes to the front (and stays back from the macOS prompt), the permissions guide's rows and links, trying again while Local Network is blocked and checking it while setup is open, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network, and searches again by itself after a miss), the connection check, the menu bar's states, its Input menu, its Turn speaker on/off item and when opening it reads the speaker again, the Settings tabs, the volume keys line in setup, the media keys, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file (and keeping the previous run's) and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening. It takes a few minutes, as it waits for the speaker to power on and off.
 

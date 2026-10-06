@@ -63,7 +63,7 @@ test-build: kill
 # Start a hand test from a clean slate, like a stranger's first run:
 # saves your config.json aside, clears the test app's preferences, then
 # runs test-build. It changes no privacy setting. To see each permission
-# step again, before it launches (setup step 0):
+# step again, before it launches (setup step 1):
 #   Accessibility: tccutil reset Accessibility …KEFRemote.test
 #                  (or select the test KEFRemote and click −)
 #   Local Network: switch the test KEFRemote row off in System Settings
