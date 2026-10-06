@@ -7,17 +7,18 @@ import Foundation
 /// Connected to LSX
 /// 192.168.1.80
 /// ─────────────
-/// Input  ▸  ✓ Optical
-///             Wi-Fi
-///             Bluetooth
-///             Aux
-///             USB      (not on an LSX)
+/// Input: Optical  ▸  ✓ Optical
+///                      Wi-Fi
+///                      Bluetooth
+///                      Aux
+///                      USB      (not on an LSX)
 /// ```
 ///
 /// The inputs come in the same order as Input on turn-on in Settings,
 /// only those the speaker has (``SpeakerModel/inputs``).
 /// The tick comes from the speaker's last source byte, read on connect
-/// and read back after each switch.
+/// and read back after each switch. The submenu's title names the same
+/// input, so the menu shows it without opening the submenu.
 public struct InputMenu: Equatable, Sendable {
     /// One input in the submenu.
     public struct Item: Equatable, Sendable {
@@ -30,8 +31,9 @@ public struct InputMenu: Equatable, Sendable {
         public var title: String { input.label }
     }
 
-    public static let title = "Input"
-
+    /// "Input: Optical", or just "Input" while nothing is ticked (not
+    /// connected, or before the first read).
+    public let title: String
     public let items: [Item]
     /// Greyed out while the speaker isn't connected, since a switch
     /// couldn't reach it. It stays in the menu rather than hiding, so the
@@ -58,5 +60,6 @@ public struct InputMenu: Equatable, Sendable {
         items = inputs.map { input in
             Item(input: input, isTicked: input == ticked)
         }
+        title = ticked.map { "Input: \($0.label)" } ?? "Input"
     }
 }
