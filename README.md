@@ -106,6 +106,7 @@ Your config file from 0.1.0 keeps working, with discovery on Auto.
 ## What's new in 0.3.0
 
 - **A permissions guide.** The first time it opens, a small window shows the two permissions it needs, opens the right page of System Settings, and ticks each one off.
+- **Switch the input from the menu.** Input ▸ in the menu bar switches the speaker to Optical, Wi-Fi, Bluetooth, Aux or USB now.
 - **Input when it turns on.** Choose the input, such as Optical, the speaker switches to when KEF Remote turns it on.
 - **Standby time.** Choose 20 minutes, 60 minutes or never.
 - **Made by Dileepa** in the menu, a link to my site.
@@ -152,6 +153,8 @@ The red dot is a shape as well as a colour, so you can see it without colour vis
 
 The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker" or "Volume keys off: allow Accessibility". Find speaker looks for the speaker on the network and saves its IP.
 
+Input ▸ comes next. It ticks the input the speaker is on. Pick another and the speaker switches straight away, and the new input shows on screen. It's greyed out while KEF Remote isn't connected.
+
 Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote. Permissions… shows a tick when both permissions are allowed. When one is off, it says so, such as "Permissions… (1 needs you)".
 
 ## Known limitations
@@ -178,7 +181,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 320 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input and standby choices, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 337 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input and standby choices, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 ## How it works
 
