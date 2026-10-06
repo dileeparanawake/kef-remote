@@ -133,8 +133,14 @@ public class SpeakerController {
         _ = try await sendAndReceive(KEFCommand.setVolume(byte), expectResponseBytes: KEFCommand.setResponseSize)
     }
 
-    /// Write a whole source byte and wait for the speaker's ack.
+    /// Write a whole source byte and wait for the speaker's ack. Never
+    /// sends power off with 20-minute standby, whoever asks: that write
+    /// crashes the speaker (see ``writePowerOff(from:)``).
     private func writeSource(_ source: SourceByte) async throws {
+        if !source.isPoweredOn && source.standby == .twentyMinutes {
+            log(.error, "not writing power=off standby=20min input=\(source.input): it crashes the speaker")
+            throw KEFError.wouldCrashSpeaker
+        }
         _ = try await sendAndReceive(KEFCommand.setSource(source.encode()), expectResponseBytes: KEFCommand.setResponseSize)
         noteSourceByte(source)
     }

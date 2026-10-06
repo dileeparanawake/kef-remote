@@ -11,6 +11,9 @@ public enum KEFError: Error, Equatable {
     case notConnected
     /// macOS kept the app off the local network. Carries its message.
     case localNetworkBlocked(String)
+    /// Not sent: the byte had the power bit off and 20-minute standby,
+    /// the write that crashes the speaker's control server.
+    case wouldCrashSpeaker
 }
 
 extension KEFError {
@@ -20,7 +23,7 @@ extension KEFError {
         switch self {
         case .connectionFailed, .connectionRefused, .notConnected, .commandTimeout, .localNetworkBlocked:
             return true
-        case .invalidResponse:
+        case .invalidResponse, .wouldCrashSpeaker:
             return false
         }
     }
