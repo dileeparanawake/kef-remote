@@ -66,6 +66,27 @@ struct SpeakerControllerOneAtATimeTests {
         #expect(!controller.isExchangeInFlight)
     }
 
+    /// A badly shaped reply means the replies are out of step (18:36:38,
+    /// "Invalid response (expected 3 bytes): 52 12 FF"): the bytes still
+    /// waiting would be read as the next command's reply. Commands
+    /// queued behind it send nothing until the app reconnects.
+    @Test func afterABadReplyQueuedCommandsSendNothing() async throws {
+        let mock = MockSpeakerConnection()
+        let log = MockKEFLog()
+        let controller = SpeakerController(connection: mock, log: log.handler)
+        mock.responses = [
+            Data([0x52, 0x12, 0xFF]),                // not the ack
+            Data([0x52, 0x25, 0x81, 45, 0x00]),       // would be read as the next reply
+        ]
+
+        await #expect(throws: KEFError.invalidResponse) { try await controller.setVolume(50) }
+        await #expect(throws: KEFError.invalidResponse) { try await controller.getVolumeState() }
+
+        #expect(mock.sentCommands == [KEFCommand.setVolume(50)])
+        #expect(log.messages(at: .warning)
+            == ["not sending 47 25 80: the replies are out of step; waiting for a new connection"])
+    }
+
     /// Keys, the menu, Settings, wake and sleep, the menu-open read and
     /// the connection check all share the one queue.
     @Test func everyKindOfCommandWaitsItsTurn() async throws {

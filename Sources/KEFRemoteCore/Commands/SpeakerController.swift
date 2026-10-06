@@ -55,6 +55,11 @@ public class SpeakerController {
     private var waitingPresses = VolumePresses()
     private var isVolumeTurnQueued = false
     private let pressLock = NSLock()
+    /// A reply came back badly shaped: bytes may still be waiting that
+    /// the next read would take as its own reply. From then on nothing is
+    /// sent; the app drops this connection once and reconnects after a
+    /// wait (``SpeakerReconnector``). Only touched with the turn held.
+    private var repliesOutOfStep = false
     /// Only touched with the turn held, so the queue keeps it to one
     /// thread at a time.
     private var powerOnMuteGuard = PowerOnMuteGuard()
@@ -101,6 +106,10 @@ public class SpeakerController {
     /// - Validates GET responses (5 bytes, correct header) and SET acks (3 bytes, `52 11 FF`)
     /// - Logs `.error` with full hex dump on validation failure, then throws
     private func sendAndReceive(_ command: Data, expectResponseBytes: Int) async throws -> Data {
+        guard !repliesOutOfStep else {
+            log(.warning, "not sending \(command.hexString): the replies are out of step; waiting for a new connection")
+            throw KEFError.invalidResponse
+        }
         log(.debug, "SEND: \(command.hexString)")
         let response: Data
         do {
@@ -128,7 +137,9 @@ public class SpeakerController {
                 try KEFCommand.validateSetResponse(response)
             }
         } catch {
-            log(.error, "Invalid response (expected \(expectResponseBytes) bytes): \(response.hexString)")
+            log(.error, "Invalid response (expected \(expectResponseBytes) bytes): \(response.hexString); "
+                + "the replies are out of step, so this connection sends nothing more")
+            repliesOutOfStep = true
             throw error
         }
 
