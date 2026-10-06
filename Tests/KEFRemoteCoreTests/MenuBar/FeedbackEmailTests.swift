@@ -33,11 +33,12 @@ struct FeedbackEmailTests {
         #expect(!FeedbackEmail.isShown(recipient: ""))
     }
 
-    @Test func todayThereIsNoAddress() {
-        // Dileepa hasn't picked the address yet (6 Oct 2026).
-        #expect(FeedbackEmail.recipient == nil)
-        #expect(!FeedbackEmail.isShown)
-        #expect(FeedbackEmail.today(appVersion: "0.3.0", build: "3", macOSVersion: "Version 26.0", speaker: lsx) == nil)
+    @Test func todayItGoesToDileepasWorkAddress() {
+        #expect(FeedbackEmail.recipient == "dileeparanawake@gmail.com")
+        #expect(FeedbackEmail.isShown)
+        let email = FeedbackEmail.today(appVersion: "0.3.0", build: "3", macOSVersion: "Version 26.0", speaker: lsx)
+        #expect(email?.recipient == "dileeparanawake@gmail.com")
+        #expect(email?.subject == "KEF Remote feedback (0.3.0)")
     }
 
     // MARK: - The question about the log

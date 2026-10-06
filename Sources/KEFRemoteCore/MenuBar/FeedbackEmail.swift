@@ -17,12 +17,12 @@ import Foundation
 /// What happened?
 /// ```
 ///
-/// The item sits under Made by Dileepa ↗, and stays hidden while
-/// ``recipient`` is nil, so the menu never offers a dead click.
+/// The item sits under Made by Dileepa ↗. It hides if ``recipient`` is
+/// ever nil or empty, so the menu never offers a dead click.
 public struct FeedbackEmail: Equatable, Sendable {
-    /// Where feedback goes. Dileepa picks the address; set it here and
-    /// Send feedback… shows.
-    static let recipient: String? = nil
+    /// Where feedback goes: Dileepa's work address, his choice
+    /// (6 Oct 2026). Set it to nil to hide Send feedback….
+    static let recipient: String? = "dileeparanawake@gmail.com"
 
     public static let menuTitle = "Send feedback…"
 
