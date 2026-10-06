@@ -196,12 +196,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Called when the user re-launches the app while it is already running
     /// (e.g. double-clicking the app icon again, or running from terminal).
     ///
-    /// Opens the settings window so the user can configure the app.
+    /// Also called for a click on the Dock icon, which shows while one of
+    /// its windows is open. Opens setup until it's finished
+    /// (``Onboarding/reopenOpensSetup(isFinished:)``), else Settings.
     func applicationShouldHandleReopen(
         _ sender: NSApplication,
         hasVisibleWindows flag: Bool
     ) -> Bool {
-        showSettings(source: .reopen)
+        // The Dock icon shows while a window is open; until setup is
+        // finished, clicking it goes back to setup, not Settings.
+        if Onboarding.reopenOpensSetup(isFinished: isSetupFinished) {
+            logger.info("Opened again before setup is finished: back to setup")
+            onboardingWindow.show(.resumeAllSteps, source: .reopen)
+        } else {
+            showSettings(source: .reopen)
+        }
         return false
     }
 
@@ -222,11 +231,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow.show(source: source)
     }
 
-    /// Open the permissions step of the setup window on its own, and
-    /// bring it to the front.
+    /// Open the permissions step of the setup window, and bring it to the
+    /// front: on its own, or step 1 of setup while setup is open.
     func showPermissions(source: OnboardingWindowController.Source) {
-        onboardingWindow.show(.permissionsOnly, source: source)
+        let opening = Onboarding.permissionsItemOpens(
+            isFinished: isSetupFinished, allStepsShowing: onboardingWindow.isShowingAllSteps
+        )
+        onboardingWindow.show(opening, source: source)
     }
+
+    /// Finish setup… in the menu: the setup window on the step he left
+    /// it, brought to the front.
+    func resumeSetup() {
+        onboardingWindow.show(.resumeAllSteps, source: .menu)
+    }
+
+    /// Saved in config.json; an older file has it written at launch.
+    private var isSetupFinished: Bool { config.onboarding?.finished ?? false }
 
     /// Write feedback to Dileepa from the menu, naming the saved speaker.
     func sendFeedback() {
@@ -324,21 +345,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             config.onboarding = .init(finished: finished)
             saveConfig(what: "onboarding finished=\(finished) (older config: a saved speaker and Accessibility count as set up)")
         }
+        menuBar.showSetupFinished(finished)
         if permissions.accessibility != .granted {
             logger.warning("Accessibility not granted — media keys will not work")
         }
-        guard let mode = Onboarding.windowAtLaunch(isFinished: finished, accessibility: permissions.accessibility) else {
+        guard let opening = Onboarding.windowAtLaunch(isFinished: finished, accessibility: permissions.accessibility) else {
             logger.info("Setup finished and Accessibility allowed: no window at launch")
             return
         }
-        logger.info("Opening the setup window at launch (\(mode.rawValue)): setup finished=\(finished)")
-        onboardingWindow.show(mode, source: .launch)
+        logger.info("Opening the setup window at launch (\(opening.rawValue)): setup finished=\(finished)")
+        onboardingWindow.show(opening, source: .launch)
     }
 
     /// Done in the setup window: don't open all the steps again.
     private func finishOnboarding() {
         config.onboarding = .init(finished: true)
         saveConfig(what: "onboarding finished")
+        menuBar.showSetupFinished(true)
     }
 
     // MARK: - Config

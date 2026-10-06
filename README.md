@@ -6,7 +6,7 @@ KEF Remote is a small macOS app for the KEF LSX. Hold Control and press the volu
 
 ![KEF Remote: Control plus the volume up key shows a volume panel at 60% on screen, and the KEF speaker plays louder](docs/images/social-preview.png)
 
-It runs in the background with no Dock icon. A small speaker icon in the menu bar shows whether it's connected to the speaker, and opens Settings.
+It runs in the background with no Dock icon, except while one of its windows is open. A small speaker icon in the menu bar shows whether it's connected to the speaker, and opens Settings.
 
 This is an early release with real rough edges. Read [Known limitations](#known-limitations) before you install it.
 
@@ -62,7 +62,9 @@ When it opens, KEF Remote shows a setup window with three steps.
 2. **Find your speaker.** Leave it on Auto and click Find speaker. It says "Found LSX at" and the speaker's IP. If it has found the speaker already, it says so straight away. If it says "Not found", check the speaker is on and on the same network, or click Enter the IP instead (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). Click Continue once it's found.
 3. **You're set.** It shows the keys to use. Click Done.
 
-It only opens once. To check the permissions again, click the speaker icon in the menu bar, then Permissions….
+If the window goes behind another app's, click Finish setup… at the top of the menu bar icon's menu, or KEF Remote's icon in the Dock. It goes back to the step you were on.
+
+Once you click Done it doesn't open again. To check the permissions later, click the speaker icon in the menu bar, then Permissions….
 
 ### 4. Try it
 
@@ -153,6 +155,8 @@ The icon shows whether KEF Remote is connected to the speaker. It checks when it
 | Any of these, red dot | Needs you: the speaker didn't answer, no speaker is set, or a permission is off |
 
 The red dot is a shape as well as a colour, so you can see it without colour vision.
+
+Until you finish the setup window, the menu starts with Finish setup…, which opens it again.
 
 The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker" or "Volume keys off: allow Accessibility". Find speaker looks for the speaker on the network and saves its IP.
 

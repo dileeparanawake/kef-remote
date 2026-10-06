@@ -3,9 +3,11 @@ import KEFRemoteCore
 import SwiftUI
 
 /// Opens the setup window: a plain `NSWindow` hosting ``OnboardingView``,
-/// like the settings window. All three steps the first time; step 1 on
-/// its own (the permissions guide) from Permissions… in the menu, or at
-/// a later launch while Accessibility is missing.
+/// like the settings window. All three steps until setup is finished (at
+/// launch, from Finish setup… in the menu, or the Dock icon); step 1 on
+/// its own (the permissions guide) from Permissions…, or at a later
+/// launch while Accessibility is missing. ``SetupWindowOpening`` says
+/// which, and the step it opens on.
 ///
 /// While it's open, it asks macOS about Accessibility every
 /// ``PermissionsGuide/recheckInterval``, so the tick appears soon after
@@ -13,8 +15,9 @@ import SwiftUI
 ///
 /// Logged under `onboarding`:
 /// ```
-/// window opened (source: launch, allSteps): accessibility notGranted, local network notCheckedYet
-/// setup shown: visible=true key=true appActive=true policy=accessory
+/// window opened (source: launch, resumeAllSteps): accessibility notGranted, local network notCheckedYet
+/// setup opened: Dock icon on (policy accessory -> regular)
+/// setup shown: visible=true key=true appActive=true policy=regular
 /// window closed on step 2 Find your speaker
 /// ```
 @MainActor
@@ -23,8 +26,10 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     enum Source: String {
         /// At launch: setup isn't finished, or Accessibility is missing.
         case launch
-        /// Permissions… in the menu bar menu.
+        /// Finish setup… or Permissions… in the menu bar menu.
         case menu
+        /// The Dock icon, or the app opened again while it runs.
+        case reopen
     }
 
     private let model: OnboardingModel
@@ -39,17 +44,17 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
         model.onClose = { [weak self] in self?.window?.close() }
     }
 
-    /// Open in `mode`. Permissions… while setup is open goes back to its
-    /// step 1, rather than dropping the steps he's part-way through.
-    func show(_ mode: OnboardingMode, source: Source) {
+    /// Whether the window is open on all the steps, for Permissions…
+    /// (``Onboarding/permissionsItemOpens(isFinished:allStepsShowing:)``).
+    var isShowingAllSteps: Bool {
+        window?.isVisible == true && model.mode == .allSteps
+    }
+
+    func show(_ opening: SetupWindowOpening, source: Source) {
         model.permissions.checkAccessibility(reason: "window opened")
-        if let window, window.isVisible, model.mode == .allSteps {
-            model.go(to: .permissions)
-        } else {
-            model.open(mode)
-        }
+        model.open(opening)
         log.info(
-            "window opened (source: \(source.rawValue), \(model.mode.rawValue)): "
+            "window opened (source: \(source.rawValue), \(opening.rawValue)): "
             + "accessibility \(model.permissions.accessibility.rawValue), "
             + "local network \(model.permissions.localNetwork.rawValue)"
         )
@@ -60,16 +65,15 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
     }
 
     private func makeWindow() -> NSWindow {
-        let window = NSWindow(contentViewController: NSHostingController(rootView: OnboardingView(
-            model: model,
-            permissions: model.permissions,
-            settings: model.settings,
-            menuBar: model.menuBar
-        )))
-        window.styleMask = [.titled, .closable]
-        window.isReleasedWhenClosed = false
-        window.delegate = self
-        window.center()
+        let window = AgentWindowPresenter.makeWindow(
+            NSHostingController(rootView: OnboardingView(
+                model: model,
+                permissions: model.permissions,
+                settings: model.settings,
+                menuBar: model.menuBar
+            )),
+            delegate: self
+        )
         self.window = window
         return window
     }

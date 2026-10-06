@@ -33,8 +33,8 @@ struct OnboardingLaunchTests {
     // MARK: - Which window opens at launch
 
     @Test func allStepsOpenUntilOnboardingIsFinished() {
-        #expect(Onboarding.windowAtLaunch(isFinished: false, accessibility: .granted) == .allSteps)
-        #expect(Onboarding.windowAtLaunch(isFinished: false, accessibility: .notGranted) == .allSteps)
+        #expect(Onboarding.windowAtLaunch(isFinished: false, accessibility: .granted) == .resumeAllSteps)
+        #expect(Onboarding.windowAtLaunch(isFinished: false, accessibility: .notGranted) == .resumeAllSteps)
     }
 
     @Test func onceFinishedOnlyPermissionsOpenWhileAccessibilityIsMissing() {

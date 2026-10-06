@@ -55,15 +55,20 @@ final class OnboardingModel: ObservableObject {
         self.actions = actions
     }
 
-    /// Start again from step 1, with all the steps or step 1 alone.
-    func open(_ newMode: OnboardingMode) {
-        mode = newMode
-        searchFoundNothing = false
-        go(to: .permissions)
+    /// The step last shown with all the steps, where Finish setup… goes back to.
+    private var allStepsLeftOn: OnboardingStep = .permissions
+
+    /// Show the steps ``SetupWindowOpening`` says, on its step.
+    func open(_ opening: SetupWindowOpening) {
+        mode = opening.mode
+        // Going back to where he was keeps what the search last said.
+        if opening != .resumeAllSteps { searchFoundNothing = false }
+        go(to: opening.step(leftOn: allStepsLeftOn))
     }
 
     func go(to newStep: OnboardingStep) {
         step = newStep
+        if mode == .allSteps { allStepsLeftOn = newStep }
         log.info("step \(newStep.number) \(newStep.title) shown (\(mode.rawValue))")
     }
 

@@ -9,7 +9,7 @@
 /// ```
 ///
 /// Continue unlocks when the step is done (``canContinue(accessibility:localNetwork:connection:)``).
-/// Permissions… in the menu opens step 1 on its own (``OnboardingMode/permissionsOnly``).
+/// Each way into the window, and the step it opens on: ``SetupWindowOpening``.
 public enum OnboardingStep: Int, CaseIterable, Sendable {
     case permissions = 1
     case findSpeaker
@@ -96,8 +96,8 @@ public enum Onboarding {
     /// The window that opens at launch, or nil for none. Once finished,
     /// only step 1 opens, and only while the volume keys can't work
     /// (``PermissionsGuide/showsAtLaunch(accessibility:)``).
-    public static func windowAtLaunch(isFinished: Bool, accessibility: PermissionStatus) -> OnboardingMode? {
-        guard isFinished else { return .allSteps }
+    public static func windowAtLaunch(isFinished: Bool, accessibility: PermissionStatus) -> SetupWindowOpening? {
+        guard isFinished else { return .resumeAllSteps }
         return PermissionsGuide.showsAtLaunch(accessibility: accessibility) ? .permissionsOnly : nil
     }
 }
