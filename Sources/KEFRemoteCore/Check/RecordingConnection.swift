@@ -32,6 +32,11 @@ final class RecordingConnection: SpeakerConnection {
         exchanges[mark...].last { $0.isWrite }?.sent
     }
 
+    /// How many writes were sent since `mark`.
+    func writeCount(since mark: Int) -> Int {
+        exchanges[mark...].filter(\.isWrite).count
+    }
+
     /// Each volume the speaker read back since `mark`, in order.
     func volumeReads(since mark: Int) -> [VolumeState] {
         exchanges[mark...]

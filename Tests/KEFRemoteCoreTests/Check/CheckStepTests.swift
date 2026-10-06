@@ -58,6 +58,32 @@ struct CheckStepTests {
         #expect(plan.suffix(2).map(\.action) == [.setLeftRightSwapped(false), .setLeftRightSwapped(true)])
     }
 
+    @Test func withBurstEndsWithQuickPressesUpThenDown() {
+        let plan = CheckStep.plan(from: start, includingInputs: true, includingBurst: true, model: .lsx)
+        #expect(plan.last == CheckStep(
+            name: "burst: 10 quick volume up, then 10 down",
+            action: .volumeBurst(presses: 10, by: 2, upFirst: true)
+        ))
+        #expect(!CheckStep.plan(from: start, includingInputs: false, model: .other).contains {
+            if case .volumeBurst = $0.action { return true }
+            return false
+        })
+    }
+
+    /// From 81% up, ten ups would stop at 100 and not come back.
+    @Test func theBurstGoesDownFirstNearTheTop() {
+        #expect(CheckStep.burst(from: VolumeState(level: 80, isMuted: false)).action
+            == .volumeBurst(presses: 10, by: 2, upFirst: true))
+        #expect(CheckStep.burst(from: VolumeState(level: 81, isMuted: false))
+            == CheckStep(name: "burst: 10 quick volume down, then 10 up", action: .volumeBurst(presses: 10, by: 2, upFirst: false)))
+    }
+
+    @Test func theBurstExpectsTheVolumeItStartedAt() {
+        let muted = status(level: 30, isMuted: true)
+        #expect(CheckAction.volumeBurst(presses: 10, by: 2, upFirst: true).expectation(before: muted)
+            == .volume(VolumeState(level: 30, isMuted: true)))
+    }
+
     @Test func goesDownFirstNearTheTopSoBothStepsMove() {
         let plan = CheckStep.plan(from: status(level: 99), includingInputs: false, model: .other)
         #expect(plan.prefix(2).map(\.action) == [.lowerVolume(by: 2), .raiseVolume(by: 2)])

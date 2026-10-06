@@ -30,7 +30,7 @@ Use `make <target>` for common operations. Key targets:
 |--------|---------|
 | `make test` | Run test suite (`swift test --disable-sandbox`) |
 | `make discover` | Find the speaker over SSDP and print every step (`MAC=...` to match one) |
-| `make speaker-check` | Run every speaker command, read each back, put the start back (`INPUTS=1` each input, `DRY_RUN=1` simulated). Changes what's playing: only when Dileepa is away; quit the app first |
+| `make speaker-check` | Run every speaker command, read each back, put the start back (`INPUTS=1` each input, `DRY_RUN=1` simulated, `BURST=1` quick presses together). Changes what's playing: only when Dileepa is away; quit the app first |
 | `make app-icon` | Redraw the app icon PNGs from `Design/AppIcon.svg` |
 | `make run` | Launch most recently built debug app |
 | `make test-build` | Quit the running app, build this branch as the one test app (`…KEFRemote.test`, fixed path in `~/Library/Developer/KEFRemoteTest`) and launch it |
