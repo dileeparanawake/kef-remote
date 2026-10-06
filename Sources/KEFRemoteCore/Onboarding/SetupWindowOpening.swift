@@ -5,6 +5,8 @@
 /// ───────────────────────────  ─────────────────────────  ───────────────
 /// launch                       resumeAllSteps (step 1)    permissionsOnly, only while
 ///                                                         Accessibility is missing
+/// launch after Restart and     afterRestart (step 2)      (as launch)
+///   continue
 /// Finish setup… (menu, first)  resumeAllSteps             (not in the menu)
 /// Permissions… (menu)          permissionsOnly, or        permissionsOnly
 ///                              allStepsAtPermissions
@@ -22,6 +24,10 @@ public enum SetupWindowOpening: String, Equatable, Sendable {
     case allStepsAtPermissions
     /// Step 1 on its own: the permissions guide.
     case permissionsOnly
+    /// All the steps, on step 2: the launch after Restart and continue
+    /// (``PermissionsStepContinue``). The permissions it restarted for
+    /// are done.
+    case afterRestart
 
     public var mode: OnboardingMode {
         self == .permissionsOnly ? .permissionsOnly : .allSteps
@@ -31,7 +37,11 @@ public enum SetupWindowOpening: String, Equatable, Sendable {
     ///
     /// - Parameter leftOn: The step last shown with all the steps.
     public func step(leftOn: OnboardingStep) -> OnboardingStep {
-        self == .resumeAllSteps ? leftOn : .permissions
+        switch self {
+        case .resumeAllSteps: leftOn
+        case .allStepsAtPermissions, .permissionsOnly: .permissions
+        case .afterRestart: .findSpeaker
+        }
     }
 }
 

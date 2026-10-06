@@ -23,6 +23,10 @@ import SwiftUI
 /// [Restart KEF Remote] when macOS still refuses them, or that they
 /// start on the home network.
 ///
+/// On setup step 1, once both are allowed with one allowed during this
+/// run, ``restartLine`` takes the last line's place: setup's Restart and
+/// continue button is the one restart (``PermissionsStepContinue``).
+///
 /// The Accessibility hint names the row as this Mac's System Settings
 /// does: Device Control and Data Access from macOS 27.
 ///
@@ -32,6 +36,8 @@ struct PermissionsView: View {
     @ObservedObject var model: PermissionsModel
     /// Relaunches the app, when ``VolumeKeysLine/offersRestart``.
     let restart: () -> Void
+    /// Shown instead of the volume keys line, with no button of its own.
+    let restartLine: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -42,7 +48,9 @@ struct PermissionsView: View {
                 PermissionRowView(row: row) { model.openSettings(for: row.permission) }
             }
 
-            if let line = model.volumeKeysLine {
+            if let restartLine {
+                Text(restartLine)
+            } else if let line = model.volumeKeysLine {
                 HStack {
                     Text(line.text)
                     Spacer()

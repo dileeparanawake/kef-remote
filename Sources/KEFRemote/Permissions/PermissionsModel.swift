@@ -19,6 +19,7 @@ import KEFRemoteCore
 /// [permissions] local network notGranted -> granted (probe)
 /// [permissions] volume key tap notStarted -> running: "Volume keys ready ✓"
 /// [permissions] volume key tap notStarted -> refused: offering Restart KEF Remote
+/// [permissions] Accessibility allowed during this run: setup step 1 offers Restart and continue
 /// ```
 @MainActor
 final class PermissionsModel: ObservableObject {
@@ -27,6 +28,9 @@ final class PermissionsModel: ObservableObject {
     /// Whether the volume key tap is on, as the app last started or
     /// stopped it: the guide's ``volumeKeysLine`` says so.
     @Published private(set) var mediaKeyTap: MediaKeyTapState = .notStarted
+    /// Which permissions he switched on while this copy runs: setup step 1
+    /// then offers Restart and continue (``PermissionsStepContinue``).
+    @Published private(set) var grantedThisRun = PermissionsGrantedThisRun()
 
     /// Called when Accessibility is switched on while the app runs, so
     /// the volume keys can start without a restart.
@@ -57,6 +61,7 @@ final class PermissionsModel: ObservableObject {
         let old = accessibility
         accessibility = checked
         log.info("accessibility \(old.rawValue) -> \(checked.rawValue) (\(reason))")
+        noteGrant(.accessibility, from: old, to: checked)
         if PermissionStatus.isNewlyGranted(from: old, to: checked) {
             onAccessibilityGranted?()
         }
@@ -104,6 +109,7 @@ final class PermissionsModel: ObservableObject {
         let seen = localNetwork.localNetwork(after: status)
         guard seen != localNetwork else { return }
         log.info("local network \(localNetwork.rawValue) -> \(seen.rawValue) (connection \(status.rawValue))")
+        noteGrant(.localNetwork, from: localNetwork, to: seen)
         localNetwork = seen
     }
 
@@ -113,7 +119,14 @@ final class PermissionsModel: ObservableObject {
         let seen = localNetwork.localNetwork(after: result)
         guard seen != localNetwork else { return }
         log.info("local network \(localNetwork.rawValue) -> \(seen.rawValue) (probe)")
+        noteGrant(.localNetwork, from: localNetwork, to: seen)
         localNetwork = seen
+    }
+
+    /// Count a permission he switched on during this run, logging it once.
+    private func noteGrant(_ permission: Permission, from old: PermissionStatus, to new: PermissionStatus) {
+        guard grantedThisRun.note(permission, from: old, to: new) else { return }
+        log.info("\(permission.title) allowed during this run: setup step 1 offers Restart and continue")
     }
 
     /// Open the permission's pane in System Settings. For Accessibility,

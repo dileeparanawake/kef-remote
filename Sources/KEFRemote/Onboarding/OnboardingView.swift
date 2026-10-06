@@ -7,6 +7,7 @@ import SwiftUI
 /// 1 Permissions  ›  2 Find your speaker  ›  3 You're set
 ///
 /// [step 1: PermissionsView]                Skip for now  [Continue]
+///                                          or [Restart and continue]
 /// [step 2: Auto | Manual, Find speaker]    Back          [Continue]
 /// [step 3: what works now, Privacy link]                [Done]
 /// ```
@@ -43,7 +44,7 @@ struct OnboardingView: View {
     }
 
     private var permissionsStep: some View {
-        PermissionsView(model: permissions, restart: model.restartClicked)
+        PermissionsView(model: permissions, restart: model.restartClicked, restartLine: model.permissionsRestartLine)
     }
 
     /// Where he is: the current step bold, the others grey.
@@ -94,7 +95,7 @@ struct OnboardingView: View {
                 Button("Done", action: model.doneClicked)
                     .keyboardShortcut(.defaultAction)
             } else {
-                Button("Continue", action: model.continueClicked)
+                Button(model.continueTitle, action: model.continueClicked)
                     .keyboardShortcut(.defaultAction)
                     .disabled(!model.canContinue)
             }

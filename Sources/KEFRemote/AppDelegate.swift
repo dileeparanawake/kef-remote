@@ -118,9 +118,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             restart: { [weak self] in
                 guard let self else { return }
                 AppRelauncher.relaunch(log: logger)
-            }
+            },
+            restartAndContinue: { [weak self] in self?.restartAndContinueSetup() ?? false },
+            stepShown: { [weak self] step in self?.setupStepShown(step) }
         )
     )
+    /// Setup's decisions that the app makes: where it reopens after a restart.
+    private let onboardingLogger = AppLogger(subsystem: "com.kef-remote", category: "onboarding")
     private lazy var onboardingWindow = OnboardingWindowController(model: onboarding)
     /// Feeds each connection status to ``permissions`` (Local Network).
     private var connectionWatch: AnyCancellable?
@@ -369,12 +373,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if permissions.accessibility != .granted {
             logger.warning("Accessibility not granted — media keys will not work")
         }
-        guard let opening = Onboarding.windowAtLaunch(isFinished: finished, accessibility: permissions.accessibility) else {
+        let resumeAtFindSpeaker = config.onboarding?.resumeAtFindSpeaker ?? false
+        guard let opening = Onboarding.windowAtLaunch(
+            isFinished: finished, resumeAtFindSpeaker: resumeAtFindSpeaker, accessibility: permissions.accessibility
+        ) else {
             logger.info("Setup finished and Accessibility allowed: no window at launch")
             return
         }
         logger.info("Opening the setup window at launch (\(opening.rawValue)): setup finished=\(finished)")
+        if opening == .afterRestart {
+            onboardingLogger.info("launched by Restart and continue: setup reopens on step 2")
+        }
         onboardingWindow.show(opening, source: .launch)
+    }
+
+    /// Restart and continue on setup step 1: save that setup goes on at
+    /// step 2, then quit and open again, so the new copy starts with the
+    /// permissions he just allowed.
+    /// - Returns: False if the new copy couldn't be started.
+    private func restartAndContinueSetup() -> Bool {
+        var onboarding = config.onboarding ?? .init()
+        onboarding.resumeAtFindSpeaker = true
+        config.onboarding = onboarding
+        saveConfig(what: "onboarding resumeAtFindSpeaker=true")
+        let restarted = AppRelauncher.relaunch(log: logger)
+        if !restarted {
+            onboardingLogger.warning("Restart and continue: could not restart, going on to step 2 in this copy")
+        }
+        return restarted
+    }
+
+    /// Step 2 showed: clear the resume flag Restart and continue saved,
+    /// so a later launch opens where he leaves setup.
+    private func setupStepShown(_ step: OnboardingStep) {
+        guard config.onboarding?.clearResume(onShowing: step) == true else { return }
+        onboardingLogger.info("step \(step.number) shown after Restart and continue: resume flag cleared")
+        saveConfig(what: "onboarding resumeAtFindSpeaker=false")
     }
 
     /// Done in the setup window: don't open all the steps again.

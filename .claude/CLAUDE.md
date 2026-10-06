@@ -61,7 +61,7 @@ Use `make <target>` for common operations. Key targets:
 - `Design/` — Icon source SVG and the script that renders it
 - `Sources/KEFRemote/KEFRemote.entitlements` — Permission declarations
 - `Tests/KEFRemoteCoreTests/` — Unit tests for core library
-- `~/.kef-remote/config.json` — User config (speaker IP, MAC, `discovery`: `auto` or `manual`, `onboarding.finished`, preferences). Shortcuts are saved by KeyboardShortcuts in UserDefaults
+- `~/.kef-remote/config.json` — User config (speaker IP, MAC, `discovery`: `auto` or `manual`, `onboarding.finished`, `onboarding.resumeAtFindSpeaker` (set by Restart and continue, cleared once step 2 shows), preferences). Shortcuts are saved by KeyboardShortcuts in UserDefaults
 
 ## KEF speaker protocol
 

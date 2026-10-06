@@ -8,6 +8,9 @@
 /// Skip for now [Continue]  Back [Continue]          [Done]
 /// ```
 ///
+/// Step 1's Continue is Restart and continue when he allowed a permission
+/// during this run (``PermissionsStepContinue``).
+///
 /// Continue unlocks when the step is done (``canContinue(accessibility:localNetwork:connection:)``).
 /// Each way into the window, and the step it opens on: ``SetupWindowOpening``.
 public enum OnboardingStep: Int, CaseIterable, Sendable {
@@ -96,8 +99,13 @@ public enum Onboarding {
     /// The window that opens at launch, or nil for none. Once finished,
     /// only step 1 opens, and only while the volume keys can't work
     /// (``PermissionsGuide/showsAtLaunch(accessibility:)``).
-    public static func windowAtLaunch(isFinished: Bool, accessibility: PermissionStatus) -> SetupWindowOpening? {
-        guard isFinished else { return .resumeAllSteps }
+    ///
+    /// - Parameter resumeAtFindSpeaker: Restart and continue restarted
+    ///   the app (``PermissionsStepContinue``): setup goes on at step 2.
+    public static func windowAtLaunch(
+        isFinished: Bool, resumeAtFindSpeaker: Bool, accessibility: PermissionStatus
+    ) -> SetupWindowOpening? {
+        guard isFinished else { return resumeAtFindSpeaker ? .afterRestart : .resumeAllSteps }
         return PermissionsGuide.showsAtLaunch(accessibility: accessibility) ? .permissionsOnly : nil
     }
 }
