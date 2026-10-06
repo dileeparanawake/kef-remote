@@ -457,9 +457,15 @@ public class SpeakerController {
 
     /// Swap the left and right speakers, or put them back. Preserves the
     /// other source byte fields. The speaker keeps it, so the app doesn't
-    /// save it. Only reads when the speaker is already that way.
+    /// save it. Only reads when the speaker is already that way, or off:
+    /// it ignores the write while off, and an off speaker on 20-minute
+    /// standby (after the Mac slept, say) would crash on it.
     public func setLeftRightSwapped(_ isSwapped: Bool) async throws {
         let source = try await getSourceByte()
+        guard source.isPoweredOn else {
+            log(.info, "swap left and right: not sent, the speaker is off and ignores it while off")
+            return
+        }
         guard source.isInversed != isSwapped else {
             log(.info, "swap left and right: already \(isSwapped ? "on" : "off")")
             return
