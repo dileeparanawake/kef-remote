@@ -1,15 +1,18 @@
 import AppKit
 import ApplicationServices
 import CoreGraphics
+import KEFRemoteCore
 import os
 
 /// Intercepts media key events when a modifier key is held.
 ///
 /// Uses a `CGEvent` tap to monitor system-defined events. When the
 /// configured modifier (default: Control) is held and a media key
-/// (volume up, volume down, mute) is pressed, the event is consumed
-/// and the appropriate callback is triggered instead of the system
-/// handling it.
+/// (volume up, volume down, mute, play/pause, next, previous) is
+/// pressed, the event is consumed and the appropriate callback is
+/// triggered instead of the system handling it. Without the modifier
+/// every key stays the Mac's, so play/pause still controls the Mac's own
+/// player. Which key a key code is lives in core (``MediaKey``).
 ///
 /// **Accessibility permission** is required for the event tap to work.
 /// Call ``checkAccessibility(prompt:)`` at launch to verify permission
@@ -18,11 +21,10 @@ import os
 /// Usage:
 /// ```swift
 /// let interceptor = MediaKeyInterceptor()
-/// interceptor.onMediaKey = { action in
-///     switch action {
-///     case .volumeUp:   print("Volume up")
-///     case .volumeDown: print("Volume down")
-///     case .mute:       print("Mute toggle")
+/// interceptor.onMediaKey = { key in
+///     switch key {
+///     case .volume(let command):   print("Volume \(command)")
+///     case .playback(let command): print("Playback \(command)")
 ///     }
 /// }
 /// interceptor.start()
@@ -32,25 +34,7 @@ import os
 /// turns the callbacks into speaker commands.
 final class MediaKeyInterceptor {
 
-    // MARK: - Types
-
-    /// The media key actions that can be intercepted.
-    enum MediaKeyAction {
-        case volumeUp
-        case volumeDown
-        case mute
-    }
-
-    // MARK: - Media key codes (from IOKit/hidsystem/ev_keymap.h)
-
-    /// NX_KEYTYPE_SOUND_UP — system volume up key.
-    private static let keyCodeSoundUp: Int = 0
-
-    /// NX_KEYTYPE_SOUND_DOWN — system volume down key.
-    private static let keyCodeSoundDown: Int = 1
-
-    /// NX_KEYTYPE_MUTE — system mute key.
-    private static let keyCodeMute: Int = 7
+    // MARK: - Event constants
 
     /// NSEvent subtype for media/special key events.
     private static let mediaKeySubtype: Int16 = 8
@@ -71,7 +55,7 @@ final class MediaKeyInterceptor {
     ///
     /// This callback is invoked on the main thread (the run loop
     /// thread where the event tap is installed).
-    var onMediaKey: ((MediaKeyAction) -> Void)?
+    var onMediaKey: ((MediaKey) -> Void)?
 
     /// The modifier key that must be held to intercept media keys.
     ///
@@ -205,22 +189,20 @@ final class MediaKeyInterceptor {
             return Unmanaged.passUnretained(event)
         }
 
-        // Parse the key code and key-down flag from data1.
+        // Parse the key code and key state from data1.
         //
         // data1 layout (from IOKit):
-        //   bits 31-16: key code
-        //   bits 15-8:  key flags (bit 0 = key down)
-        //   bits 7-0:   reserved
+        //   bits 31-16: key code (NX_KEYTYPE_*)
+        //   bits 15-8:  key state: NX_KEYDOWN (10) or NX_KEYUP (11)
+        //   bits 7-0:   repeat flag
         let data1 = nsEvent.data1
         let keyCode = (data1 & 0xFFFF0000) >> 16
-        let keyFlags = (data1 & 0x0000FF00) >> 8
-        let keyDown = (keyFlags & 0x01) != 0
+        let keyState = (data1 & 0x0000FF00) >> 8
+        // Bit 0 tells NX_KEYUP (11) from NX_KEYDOWN (10).
+        let isKeyUp = (keyState & 0x01) != 0
 
         // Check if this is a media key we care about.
-        guard keyCode == Self.keyCodeSoundUp
-           || keyCode == Self.keyCodeSoundDown
-           || keyCode == Self.keyCodeMute
-        else {
+        guard let key = MediaKey(keyCode: keyCode) else {
             return Unmanaged.passUnretained(event)
         }
 
@@ -235,19 +217,12 @@ final class MediaKeyInterceptor {
         // to prevent the system from processing either half of the
         // key press.
 
-        if keyDown {
-            // Dispatch the action on key-down only (not on key-up or repeat).
-            let action: MediaKeyAction? = switch keyCode {
-            case Self.keyCodeSoundUp:   .volumeUp
-            case Self.keyCodeSoundDown: .volumeDown
-            case Self.keyCodeMute:      .mute
-            default: nil
-            }
-
-            if let action = action {
-                logger.info("key: \(String(describing: action))")
-                onMediaKey?(action)
-            }
+        if isKeyUp {
+            // Dispatch once per press, on key-up, so a held key (which
+            // repeats its key-down) sends one command. The code is logged
+            // so a hand test shows which key a keyboard sends.
+            logger.info("key: \(key) (code \(keyCode))")
+            onMediaKey?(key)
         }
 
         // Return nil to consume the event (both key-down and key-up).

@@ -99,7 +99,7 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
 
                 // One line per way in: the modifier works with the keyboard's own keys.
-                Text("\(model.modifier.displayName) + the volume keys 🔉 🔊 🔇 changes the speaker, not the Mac.")
+                Text("\(model.modifier.displayName) + the volume and play keys 🔉 🔊 🔇 ⏮ ⏯ ⏭ control the speaker, not the Mac.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -115,7 +115,7 @@ struct SettingsView: View {
                 }
 
                 // The other way in: extra keys, which work alongside the modifier.
-                Text("Optional extra keys. They work alongside the volume keys above.")
+                Text("Optional extra keys. They work alongside the keys above.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 

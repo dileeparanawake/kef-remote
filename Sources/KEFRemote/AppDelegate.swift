@@ -701,31 +701,54 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let volumeStep = 5
 
     private func setupMediaKeyCallbacks() {
-        mediaKeys.onMediaKey = { [weak self] action in
-            self?.runVolumeCommand(action)
+        mediaKeys.onMediaKey = { [weak self] key in
+            switch key {
+            case .volume(let command): self?.runVolumeCommand(command)
+            case .playback(let command): self?.runPlayback(command)
+            }
         }
     }
 
     /// Volume up, down or mute: from a modifier + media key, or from a
     /// recorded shortcut. The HUD shows the new level, or Muted.
-    private func runVolumeCommand(_ action: MediaKeyInterceptor.MediaKeyAction) {
-        guard let controller = controller(for: "\(action)") else { return }
+    private func runVolumeCommand(_ command: VolumeCommand) {
+        guard let controller = controller(for: "\(MediaKey.volume(command))") else { return }
 
         Task {
             do {
-                switch action {
-                case .volumeUp:
+                switch command {
+                case .up:
                     try await controller.raiseVolume(by: Self.volumeStep)
-                case .volumeDown:
+                case .down:
                     try await controller.lowerVolume(by: Self.volumeStep)
                 case .mute:
                     try await controller.toggleMute()
                 }
                 let state = try await controller.getVolumeState()
                 // Volume keys show the level even while muted; mute shows which way it went.
-                HUDOverlay.show(action == .mute && state.isMuted ? .muted : .volume(level: state.level))
+                HUDOverlay.show(command == .mute && state.isMuted ? .muted : .volume(level: state.level))
             } catch {
                 logger.error("Volume command failed: \(error.localizedDescription)")
+                HUDOverlay.show(.failure(error, otherwise: "Command failed"))
+                handleCommandError(error)
+            }
+        }
+    }
+
+    // MARK: - Playback commands
+
+    /// Play/pause, next or previous: from a modifier + media key, or from a
+    /// recorded shortcut. On Wi-Fi and Bluetooth the HUD shows the command;
+    /// on another input it says where it works.
+    private func runPlayback(_ command: PlaybackCommand) {
+        guard let controller = controller(for: command.name) else { return }
+
+        Task {
+            do {
+                let result = try await controller.sendPlayback(command)
+                HUDOverlay.show(.afterPlayback(command, result))
+            } catch {
+                logger.error("\(command.name) failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Command failed"))
                 handleCommandError(error)
             }
@@ -741,9 +764,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             switch action {
             case .powerToggle: self.togglePower()
-            case .volumeUp: self.runVolumeCommand(.volumeUp)
-            case .volumeDown: self.runVolumeCommand(.volumeDown)
+            case .volumeUp: self.runVolumeCommand(.up)
+            case .volumeDown: self.runVolumeCommand(.down)
             case .mute: self.runVolumeCommand(.mute)
+            case .playPause: self.runPlayback(.playPause)
+            case .nextTrack: self.runPlayback(.next)
+            case .previousTrack: self.runPlayback(.previous)
             case .quit: NSApplication.shared.terminate(nil)
             }
         }
