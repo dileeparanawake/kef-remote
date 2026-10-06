@@ -105,7 +105,10 @@ public final class LogFileWriter: @unchecked Sendable {
             let timestamp = timestampFormatter.string(from: Date())
             let line = "[\(timestamp)] [\(level.label)] [\(category)] \(message)\n"
             echo(line)
-            fileHandle?.write(Data(line.utf8))
+            // The throwing write: the old `write(_:)` raises an Objective-C
+            // exception on a full disk, which Swift can't catch, and the
+            // app would crash for a log line. The line is on stderr anyway.
+            try? fileHandle?.write(contentsOf: Data(line.utf8))
         }
     }
 
