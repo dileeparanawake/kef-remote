@@ -44,17 +44,12 @@ public struct InputMenu: Equatable, Sendable {
     public init(speakerInput: InputSource?, isConnected: Bool) {
         isEnabled = isConnected
         // Once the speaker stops answering, its input may have changed
-        // (KEF's remote, or its own app), so tick nothing.
-        let ticked = isConnected ? speakerInput.map(Self.choice) : nil
+        // (KEF's remote, or its own app), so tick nothing. It reports
+        // Bluetooth as unpaired while nothing is paired, but it's the
+        // same Bluetooth item.
+        let ticked = isConnected ? speakerInput?.codeToSelect : nil
         items = PowerOnInput.allCases.compactMap(\.input).map { input in
             Item(input: input, isTicked: input == ticked)
         }
-    }
-
-    /// The item an input the speaker reports belongs to. It reports
-    /// Bluetooth as unpaired while nothing is paired, but it's the same
-    /// Bluetooth item.
-    private static func choice(for input: InputSource) -> InputSource {
-        input == .bluetoothUnpaired ? .bluetoothPaired : input
     }
 }

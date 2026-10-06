@@ -88,12 +88,7 @@ public enum StandbyChoice: String, Codable, CaseIterable, Sendable {
 
     /// The name Settings shows.
     public var label: String {
-        switch self {
-        case .dontChange: return "Don't change"
-        case .twentyMinutes: return "20 min"
-        case .sixtyMinutes: return "60 min"
-        case .never: return "Never"
-        }
+        mode?.label ?? "Don't change"
     }
 }
 
@@ -113,9 +108,7 @@ public enum PowerOnInput: String, Codable, CaseIterable, Sendable {
         case .dontChange: return nil
         case .optical: return .optical
         case .wifi: return .wifi
-        // The paired code (1001) is the one kefctl writes to select
-        // Bluetooth. The unpaired code (1111) is how the speaker reports
-        // Bluetooth while nothing is paired, not a choice to make.
+        // See InputSource.codeToSelect: Bluetooth is chosen with the paired code.
         case .bluetooth: return .bluetoothPaired
         case .aux: return .aux
         case .usb: return .usb

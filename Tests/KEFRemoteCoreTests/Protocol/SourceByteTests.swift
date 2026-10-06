@@ -149,3 +149,22 @@ import Testing
     #expect(modified.isInversed == original.isInversed)
     #expect(modified.input == original.input)
 }
+
+// MARK: - Names
+
+@Test func eachStandbyTimeHasThePlainName() {
+    #expect(StandbyMode.allCases.map(\.label) == ["20 min", "60 min", "Never"])
+}
+
+@Test func bluetoothIsSelectedWithThePairedCode() {
+    // The unpaired code is how the speaker reports Bluetooth, not a choice.
+    #expect(InputSource.bluetoothUnpaired.codeToSelect == .bluetoothPaired)
+    #expect(InputSource.bluetoothPaired.codeToSelect == .bluetoothPaired)
+    #expect(InputSource.optical.codeToSelect == .optical)
+}
+
+@Test func bothBluetoothCodesAreTheSameInput() {
+    #expect(InputSource.bluetoothPaired.isSameInput(as: .bluetoothUnpaired))
+    #expect(InputSource.usb.isSameInput(as: .usb))
+    #expect(!InputSource.usb.isSameInput(as: .aux))
+}
