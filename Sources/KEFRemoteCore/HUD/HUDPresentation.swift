@@ -27,6 +27,18 @@ extension HUDState {
 }
 
 extension HUDState {
+    /// The HUD after a power toggle: which way it went. Nil when the
+    /// toggle was ignored as a repeat: the one it repeated shows the HUD.
+    public static func afterPowerToggle(_ result: PowerToggleResult) -> HUDState? {
+        switch result {
+        case .turnedOn: return .powerOn
+        case .turnedOff: return .powerOff
+        case .ignored: return nil
+        }
+    }
+}
+
+extension HUDState {
     /// The HUD after Input ▸: the input the speaker read back, or why
     /// not. Never the input it only asked for.
     public static func afterInputSwitch(_ result: InputSwitchResult) -> HUDState {
