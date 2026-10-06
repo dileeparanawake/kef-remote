@@ -104,7 +104,8 @@ public struct MenuBarPresentation: Equatable, Sendable {
         case .localNetworkBlocked:
             symbolName = Self.plainSpeakerSymbol
             title = "Can't reach \(name): allow Local Network in System Settings"
-            detail = "Privacy & Security > Local Network > KEF Remote"
+            // Permissions… in this menu opens the pane (``PermissionsGuide``).
+            detail = "Click Permissions… to open the setting"
         }
     }
 }
