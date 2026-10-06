@@ -12,6 +12,19 @@ public protocol KEFLog: Sendable {
     func error(_ message: String)
 }
 
+extension KEFLog {
+    /// Write one line at `level`. Lets a `KEFLog` stand in where code
+    /// takes a `KEFLogHandler`: pass `log.write`.
+    public func write(_ level: KEFLogLevel, _ message: String) {
+        switch level {
+        case .debug: debug(message)
+        case .info: info(message)
+        case .warning: warning(message)
+        case .error: error(message)
+        }
+    }
+}
+
 /// A `KEFLog` that hands every line to a closure.
 ///
 /// Bridges to code that still logs through a `KEFLogHandler`.
