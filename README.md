@@ -214,6 +214,10 @@ The code is a Swift package with four targets:
 - [KeyboardShortcuts](https://github.com/sindresorhus/KeyboardShortcuts) by Sindre Sorhus (MIT License), for the global shortcuts.
 - [kefctl](https://github.com/kraih/kefctl), a Perl reference implementation (Artistic License 2.0), for the details of the KEF speaker protocol.
 
+## Privacy
+
+KEF Remote collects nothing about you and only talks to your speaker. See [PRIVACY.md](PRIVACY.md).
+
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
