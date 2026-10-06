@@ -48,11 +48,11 @@ public class SpeakerController {
     private var powerToggleGuard = PowerToggleGuard()
     private let powerToggleLock = NSLock()
     /// When the source byte was last read, or written and acked, on
-    /// ``clock``: the menu-open read skips a fresh one (``MenuOpenRead``).
+    /// ``clock``: the menu-open read skips a fresh one (``SourceByteRefresh``).
     private var lastSourceByteAt: Duration?
     /// Sends still waiting for the speaker's reply. The connection reads
     /// replies in order, so a second exchange on top would take the
-    /// first's reply: the menu-open read waits for none (``MenuOpenRead``).
+    /// first's reply: the menu-open read waits for none (``SourceByteRefresh``).
     private var exchangesInFlight = 0
 
     /// - Parameters:
@@ -153,8 +153,8 @@ public class SpeakerController {
     /// caller logs the answer and, if it reads, calls ``getSourceByte()``.
     ///
     /// - Parameter isConnected: The speaker answered the last exchange.
-    public func menuOpenRead(isConnected: Bool) -> MenuOpenRead {
-        MenuOpenRead(isConnected: isConnected, isExchangeInFlight: isExchangeInFlight, sourceByteAge: sourceByteAge)
+    public func sourceByteRefresh(isConnected: Bool) -> SourceByteRefresh {
+        SourceByteRefresh(isConnected: isConnected, isExchangeInFlight: isExchangeInFlight, sourceByteAge: sourceByteAge)
     }
 
     // MARK: - State reads

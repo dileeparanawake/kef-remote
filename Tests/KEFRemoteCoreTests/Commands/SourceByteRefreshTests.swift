@@ -6,33 +6,48 @@ import Testing
 /// speaker on/off aren't stale after the speaker changed by itself
 /// (hand test round 5: AirPlay switched it to Wi-Fi, the menu still said
 /// Optical). At most one read per open, and never on top of a command.
-struct MenuOpenReadTests {
+/// Opening Settings reads it the same way, for what the speaker is set
+/// to now (hand test round 6).
+struct SourceByteRefreshTests {
+
+    /// Settings shows standby, input and swap from the same byte, so its
+    /// lines name the byte.
+    @Test func settingsLogsTheSameDecisionsUnderItsOwnName() {
+        let stale = SourceByteRefresh(isConnected: true, isExchangeInFlight: false, sourceByteAge: .seconds(12))
+        #expect(stale.logLine(on: .settings) == "Settings opened: reading the speaker's source byte (last read 12 s ago)")
+        let fresh = SourceByteRefresh(isConnected: true, isExchangeInFlight: false, sourceByteAge: .seconds(1))
+        #expect(fresh.logLine(on: .settings) == "Settings opened: source byte read 1 s ago, not reading it again")
+        #expect(SourceByteRefresh.skipBusy.logLine(on: .settings)
+            == "Settings opened: not reading the source byte, a command is talking to the speaker")
+        #expect(SourceByteRefresh.skipNotConnected.logLine(on: .settings)
+            == "Settings opened: not reading the source byte, the speaker isn't connected")
+    }
 
     @Test func aStaleByteIsReadAgain() {
-        let read = MenuOpenRead(isConnected: true, isExchangeInFlight: false, sourceByteAge: .seconds(12))
+        let read = SourceByteRefresh(isConnected: true, isExchangeInFlight: false, sourceByteAge: .seconds(12))
         #expect(read == .read(lastReadAgo: .seconds(12)))
         #expect(read.reads)
-        #expect(read.logLine == "menu opened: reading the speaker's input (last read 12 s ago)")
+        #expect(read.logLine(on: .menu) == "menu opened: reading the speaker's input (last read 12 s ago)")
     }
 
     @Test func aByteNeverReadIsRead() {
-        let read = MenuOpenRead(isConnected: true, isExchangeInFlight: false, sourceByteAge: nil)
+        let read = SourceByteRefresh(isConnected: true, isExchangeInFlight: false, sourceByteAge: nil)
         #expect(read == .read(lastReadAgo: nil))
-        #expect(read.logLine == "menu opened: reading the speaker's input (not read yet)")
+        #expect(read.logLine(on: .menu) == "menu opened: reading the speaker's input (not read yet)")
     }
 
     @Test func aByteReadJustNowIsNotReadAgain() {
-        let read = MenuOpenRead(isConnected: true, isExchangeInFlight: false, sourceByteAge: .seconds(1))
+        let read = SourceByteRefresh(isConnected: true, isExchangeInFlight: false, sourceByteAge: .seconds(1))
         #expect(read == .skipReadRecently(.seconds(1)))
         #expect(!read.reads)
-        #expect(read.logLine == "menu opened: input read 1 s ago, not reading it again")
+        #expect(read.logLine(on: .menu) == "menu opened: input read 1 s ago, not reading it again")
     }
 
     @Test func theFreshWindowEndsAtItsLimit() {
-        let atLimit = MenuOpenRead(isConnected: true, isExchangeInFlight: false, sourceByteAge: MenuOpenRead.freshFor)
+        let atLimit = SourceByteRefresh(isConnected: true, isExchangeInFlight: false, sourceByteAge: SourceByteRefresh.freshFor)
         #expect(atLimit.reads)
-        let justUnder = MenuOpenRead(
-            isConnected: true, isExchangeInFlight: false, sourceByteAge: MenuOpenRead.freshFor - .milliseconds(1)
+        let justUnder = SourceByteRefresh(
+            isConnected: true, isExchangeInFlight: false, sourceByteAge: SourceByteRefresh.freshFor - .milliseconds(1)
         )
         #expect(!justUnder.reads)
     }
@@ -40,22 +55,22 @@ struct MenuOpenReadTests {
     /// The connection can't take two exchanges at once: the second reply
     /// would be read as the first's.
     @Test func itNeverReadsWhileACommandIsTalkingToTheSpeaker() {
-        let read = MenuOpenRead(isConnected: true, isExchangeInFlight: true, sourceByteAge: .seconds(30))
+        let read = SourceByteRefresh(isConnected: true, isExchangeInFlight: true, sourceByteAge: .seconds(30))
         #expect(read == .skipBusy)
-        #expect(read.logLine == "menu opened: not reading the input, a command is talking to the speaker")
+        #expect(read.logLine(on: .menu) == "menu opened: not reading the input, a command is talking to the speaker")
     }
 
     /// A read would wait for the connection to time out, and the menu
     /// already shows it isn't connected.
     @Test func itDoesNotReadWhileNotConnected() {
-        let read = MenuOpenRead(isConnected: false, isExchangeInFlight: false, sourceByteAge: .seconds(30))
+        let read = SourceByteRefresh(isConnected: false, isExchangeInFlight: false, sourceByteAge: .seconds(30))
         #expect(read == .skipNotConnected)
-        #expect(read.logLine == "menu opened: not reading the input, the speaker isn't connected")
+        #expect(read.logLine(on: .menu) == "menu opened: not reading the input, the speaker isn't connected")
     }
 
     @Test func aFewSecondsCountAsFresh() {
-        #expect(MenuOpenRead.freshFor >= .seconds(2))
-        #expect(MenuOpenRead.freshFor <= .seconds(5))
+        #expect(SourceByteRefresh.freshFor >= .seconds(2))
+        #expect(SourceByteRefresh.freshFor <= .seconds(5))
     }
 }
 
@@ -121,18 +136,18 @@ struct SpeakerControllerMenuOpenTests {
         #expect(!controller.isExchangeInFlight)
     }
 
-    @Test func theMenuOpenReadUsesTheControllersState() async throws {
+    @Test func theSourceByteRefreshUsesTheControllersState() async throws {
         let clock = SimulatedClock()
         let mock = MockSpeakerConnection()
         mock.responses = [Self.reply(on)]
         let controller = SpeakerController(connection: mock, clock: clock)
 
-        #expect(controller.menuOpenRead(isConnected: true) == .read(lastReadAgo: nil))
+        #expect(controller.sourceByteRefresh(isConnected: true) == .read(lastReadAgo: nil))
         _ = try await controller.getSourceByte()
-        #expect(controller.menuOpenRead(isConnected: true) == .skipReadRecently(.zero))
+        #expect(controller.sourceByteRefresh(isConnected: true) == .skipReadRecently(.zero))
         await clock.sleep(for: .seconds(4))
-        #expect(controller.menuOpenRead(isConnected: true) == .read(lastReadAgo: .seconds(4)))
-        #expect(controller.menuOpenRead(isConnected: false) == .skipNotConnected)
+        #expect(controller.sourceByteRefresh(isConnected: true) == .read(lastReadAgo: .seconds(4)))
+        #expect(controller.sourceByteRefresh(isConnected: false) == .skipNotConnected)
     }
 }
 

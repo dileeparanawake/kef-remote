@@ -11,7 +11,7 @@ import Foundation
 /// ```
 ///
 /// The words come from the last source byte, read again as the menu
-/// opens (``MenuOpenRead``). A click does what the words say
+/// opens (``SourceByteRefresh``). A click does what the words say
 /// (``PowerMenuAction``): Turn speaker on applies the input and standby
 /// defaults, as the power shortcut does.
 public struct PowerMenuItem: Equatable, Sendable {

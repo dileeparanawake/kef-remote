@@ -93,9 +93,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     )
 
-    /// Reads the speaker's input again when the menu opens (``MenuOpenRead``).
+    /// Reads the speaker's source byte again when the menu opens (``SourceByteRefresh``).
     private let menuOpenWatcher = MenuOpenWatcher()
     private let menuBarLogger = AppLogger(subsystem: "com.kef-remote", category: "menubar")
+    private let settingsLogger = AppLogger(subsystem: "com.kef-remote", category: "settings")
 
     private lazy var settingsWindow = SettingsWindowController(
         model: settingsModel, menuBar: menuBar, sendFeedback: { [weak self] in self?.sendFeedback() }
@@ -244,9 +245,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         discoverInBackground(trigger: .findSpeakerInMenu)
     }
 
-    /// Open the settings window and bring it to the front.
+    /// Open the settings window and bring it to the front, and read what
+    /// the speaker is set to now for its Speaker tab.
     func showSettings(source: SettingsWindowController.Source) {
         settingsWindow.show(source: source)
+        refreshSourceByte(on: .settings, log: settingsLogger)
     }
 
     /// Open the permissions step of the setup window, and bring it to the
@@ -864,25 +867,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Menu open
+    // MARK: - Menu and Settings open
 
-    /// The speaker changes input by itself (AirPlay switches it to Wi-Fi),
-    /// so read the source byte as the menu opens, when ``MenuOpenRead``
-    /// says to. Input ▸ and Turn speaker on/off follow the byte read.
+    /// Input ▸ and Turn speaker on/off follow the byte read.
     private func menuOpened() {
+        refreshSourceByte(on: .menu, log: menuBarLogger)
+    }
+
+    /// The speaker changes by itself (AirPlay switches it to Wi-Fi; KEF's
+    /// app can swap left and right), so read the source byte as the menu
+    /// or Settings opens, when ``SourceByteRefresh`` says to. The menu and
+    /// Settings › Speaker (``SpeakerNow``) follow the byte read.
+    private func refreshSourceByte(on opening: SourceByteRefresh.Opening, log: AppLogger) {
         guard let controller else {
-            menuBarLogger.info(MenuOpenRead.skipNotConnected.logLine)
+            log.info(SourceByteRefresh.skipNotConnected.logLine(on: opening))
             return
         }
-        let read = controller.menuOpenRead(isConnected: menuBar.presentation.isConnected)
-        menuBarLogger.info(read.logLine)
+        let read = controller.sourceByteRefresh(isConnected: menuBar.presentation.isConnected)
+        log.info(read.logLine(on: opening))
         guard read.reads else { return }
 
         Task {
             do {
                 _ = try await controller.getSourceByte()
             } catch {
-                logger.error("Menu-open read failed: \(error.localizedDescription)")
+                logger.error("Source byte read on \(opening) open failed: \(error.localizedDescription)")
                 handleCommandError(error)
             }
         }
