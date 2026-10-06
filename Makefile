@@ -117,7 +117,7 @@ test-fresh: kill
 # Lists (doesn't run) how to remove every test ID's privacy entries: the
 # fixed …KEFRemote.test and each NEW_ID one.
 test-clean:
-	@echo "Accessibility: run these, or select each test KEFRemote and click −"
+	@echo "Accessibility: run these BEFORE deleting any test build (tccutil needs the app on disk), or select each test KEFRemote and click −"
 	@echo "under Privacy & Security > Device Control and Data Access (macOS 27)"
 	@echo "or Privacy & Security > Accessibility (macOS 26 and before)."
 	@echo "  tccutil reset Accessibility $(TEST_BUNDLE_ID)"
