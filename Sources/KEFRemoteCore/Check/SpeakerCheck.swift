@@ -38,19 +38,19 @@ public final class SpeakerCheck {
     private let recorder: RecordingConnection
     private let controller: SpeakerController
     private let log: KEFLog
-    private let clock: CheckClock
+    private let clock: SpeakerClock
     private let onLine: (String) -> Void
     /// When the last power change landed (or was given up on).
     private var lastPowerChange: Duration?
 
     /// - Parameters:
-    ///   - clock: Times the waits: ``RealCheckClock`` for the real
+    ///   - clock: Times the waits: ``RealSpeakerClock`` for the real
     ///     speaker, the simulated speaker's own clock otherwise.
     ///   - onLine: Gets each line to show, in order.
     public init(
         connection: SpeakerConnection,
         log: KEFLog,
-        clock: CheckClock,
+        clock: SpeakerClock,
         onLine: @escaping (String) -> Void = { _ in }
     ) {
         let recorder = RecordingConnection(connection)

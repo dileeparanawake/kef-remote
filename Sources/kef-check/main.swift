@@ -24,7 +24,7 @@ let isDryRun = arguments.contains("--dry-run")
 
 let connection: SpeakerConnection
 let log: KEFLog
-let clock: CheckClock
+let clock: SpeakerClock
 
 if isDryRun {
     print("Dry run: a simulated speaker on simulated time, nothing is sent and nothing is logged")
@@ -58,7 +58,7 @@ if isDryRun {
     print("Checking the speaker at \(ip)\(includingInputs ? ", with inputs" : "")")
     connection = TCPSpeakerConnection(host: ip, log: fileLog.write)
     log = fileLog
-    clock = RealCheckClock()
+    clock = RealSpeakerClock()
 }
 
 let check = SpeakerCheck(connection: connection, log: log, clock: clock, onLine: { print($0) })

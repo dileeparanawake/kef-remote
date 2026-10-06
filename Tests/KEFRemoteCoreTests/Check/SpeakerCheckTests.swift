@@ -10,7 +10,7 @@ struct SpeakerCheckTests {
     /// clock when its timing matters.
     private func run(
         _ connection: SpeakerConnection, includingInputs: Bool = false, log: KEFLog = MockKEFLog(),
-        clock: CheckClock = SimulatedClock()
+        clock: SpeakerClock = SimulatedClock()
     ) async -> (report: CheckReport, lines: [String]) {
         var lines: [String] = []
         let check = SpeakerCheck(connection: connection, log: log, clock: clock, onLine: { lines.append($0) })

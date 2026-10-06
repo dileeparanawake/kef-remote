@@ -25,7 +25,7 @@ public final class SimulatedSpeaker: SpeakerConnection {
     private var sourceByte: UInt8
     private let hasPairedBluetooth: Bool
     private let keepsInputOnPowerOn: Bool
-    private let clock: CheckClock
+    private let clock: SpeakerClock
     private let powerChangeTime: Duration
     private let ignoresPowerChangesFor: Duration
 
@@ -56,7 +56,7 @@ public final class SimulatedSpeaker: SpeakerConnection {
         source: SourceByte,
         hasPairedBluetooth: Bool = false,
         keepsInputOnPowerOn: Bool = false,
-        clock: CheckClock = SimulatedClock(),
+        clock: SpeakerClock = SimulatedClock(),
         powerChangeTime: Duration = .zero,
         ignoresPowerChangesFor: Duration = .zero
     ) {
