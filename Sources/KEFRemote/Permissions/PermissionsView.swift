@@ -12,11 +12,16 @@ import SwiftUI
 ///   Not allowed yet
 ///   Privacy & Security > Accessibility
 /// ? Local Network                          [Open Settings]
-///   So the app can find the speaker.
-///   Not checked yet: shows once the speaker answers
+///   So the app can find the speaker.       [I've allowed it]
+///   Not checked yet
+///   Checked: still blocked. Turn on …      (after I've allowed it)
 ///   In Privacy & Security, click Local Network, then turn on KEF Remote
 /// Volume keys ready ✓                      (once Accessibility is allowed)
 /// ```
+///
+/// While this window is open, the app checks Local Network every few
+/// seconds until its row is green (``LocalNetworkRetry``); I've allowed
+/// it checks now, and shows until the row is green.
 ///
 /// The last line says whether the volume keys work (``VolumeKeysLine``):
 /// ready, or "The volume keys start after a restart." with
@@ -45,7 +50,12 @@ struct PermissionsView: View {
                 .font(.headline)
 
             ForEach(model.rows, id: \.permission) { row in
-                PermissionRowView(row: row) { model.openSettings(for: row.permission) }
+                PermissionRowView(
+                    row: row,
+                    checkLine: row.offersAllowedCheck ? model.localNetworkCheckLine : nil,
+                    openSettings: { model.openSettings(for: row.permission) },
+                    checkAllowed: model.localNetworkCheckClicked
+                )
             }
 
             if let restartLine {
@@ -69,7 +79,10 @@ struct PermissionsView: View {
 
 private struct PermissionRowView: View {
     let row: PermissionRow
+    /// What I've allowed it last found, while the row offers it.
+    let checkLine: String?
     let openSettings: () -> Void
+    let checkAllowed: () -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -84,6 +97,10 @@ private struct PermissionRowView: View {
                 Text(row.statusText)
                     .font(.caption)
                     .foregroundStyle(row.needsAttention ? .red : .secondary)
+                if let checkLine {
+                    Text(checkLine)
+                        .font(.caption)
+                }
                 Text(row.settingsHint)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -91,7 +108,13 @@ private struct PermissionRowView: View {
 
             Spacer()
 
-            Button("Open Settings", action: openSettings)
+            VStack(alignment: .trailing, spacing: 6) {
+                Button("Open Settings", action: openSettings)
+                if row.offersAllowedCheck {
+                    Button(PermissionRow.allowedCheckTitle, action: checkAllowed)
+                        .controlSize(.small)
+                }
+            }
         }
         .accessibilityElement(children: .combine)
     }

@@ -49,13 +49,14 @@ struct PermissionRowTests {
         #expect(row.needsAttention)
     }
 
-    /// Local Network has no API: until the speaker is asked, the app
-    /// doesn't know, so it says so rather than guess.
+    /// Local Network has no API: until a packet is sent, the app doesn't
+    /// know, so it says so rather than guess. The open window checks
+    /// every few seconds (``LocalNetworkRetry``), or on I've allowed it.
     @Test func uncheckedLocalNetworkSaysNotCheckedYet() {
         let row = PermissionRow(.localNetwork, status: .notCheckedYet)
 
         #expect(row.statusSymbol == "questionmark.circle")
-        #expect(row.statusText == "Not checked yet: shows once the speaker answers")
+        #expect(row.statusText == "Not checked yet")
         #expect(!row.needsAttention)
     }
 

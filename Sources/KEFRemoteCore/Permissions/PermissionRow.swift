@@ -38,9 +38,19 @@ public struct PermissionRow: Equatable, Sendable {
         case (.granted, _): return "Allowed"
         case (.notGranted, .accessibility): return "Not allowed yet"
         case (.notGranted, .localNetwork): return "Blocked: the app can't reach the speaker"
-        case (.notCheckedYet, _): return "Not checked yet: shows once the speaker answers"
+        case (.notCheckedYet, _): return "Not checked yet"
         }
     }
+
+    /// The Local Network row offers ``allowedCheckTitle`` until it's
+    /// green: macOS has no API to ask, so he can make the app check now
+    /// (hand test round 7). Accessibility is read every second while the
+    /// window is open, so it needs no button.
+    public var offersAllowedCheck: Bool {
+        permission == .localNetwork && status != .granted
+    }
+
+    public static let allowedCheckTitle = "I've allowed it"
 }
 
 /// When the permissions guide opens by itself, and what it lists.

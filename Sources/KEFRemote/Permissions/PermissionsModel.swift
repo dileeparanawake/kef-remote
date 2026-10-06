@@ -17,6 +17,7 @@ import KEFRemoteCore
 /// [permissions] accessibility notGranted -> granted (guide open)
 /// [permissions] local network notCheckedYet -> granted (connection connected)
 /// [permissions] local network notGranted -> granted (probe)
+/// [permissions] I've allowed it clicked: blocked, showing "Checked: still blocked. …"
 /// [permissions] volume key tap notStarted -> running: "Volume keys ready ✓"
 /// [permissions] volume key tap notStarted -> refused: offering Restart KEF Remote
 /// [permissions] Accessibility allowed during this run: setup step 1 offers Restart and continue
@@ -32,9 +33,17 @@ final class PermissionsModel: ObservableObject {
     /// then offers Restart and continue (``PermissionsStepContinue``).
     @Published private(set) var grantedThisRun = PermissionsGrantedThisRun()
 
+    /// What the last I've allowed it click found, under the Local Network
+    /// row (``LocalNetworkProbe/Result/checkLine``). Nil until clicked.
+    @Published private(set) var localNetworkCheckLine: String?
+
     /// Called when Accessibility is switched on while the app runs, so
     /// the volume keys can start without a restart.
     var onAccessibilityGranted: (() -> Void)?
+
+    /// Asks macOS about Local Network now, for I've allowed it. The app
+    /// fills it in: it owns the probe, and tries the speaker if blocked.
+    var checkLocalNetworkNow: (() -> LocalNetworkProbe.Result)?
 
     /// The system prompt is shown once a run: after that, macOS adds
     /// nothing new, and the pane is what he needs.
@@ -121,6 +130,18 @@ final class PermissionsModel: ObservableObject {
         log.info("local network \(localNetwork.rawValue) -> \(seen.rawValue) (probe)")
         noteGrant(.localNetwork, from: localNetwork, to: seen)
         localNetwork = seen
+    }
+
+    /// I've allowed it on the Local Network row: ask macOS now, and say
+    /// what it found under the row.
+    func localNetworkCheckClicked() {
+        guard let checkLocalNetworkNow else {
+            log.error("I've allowed it clicked, but nothing can check Local Network")
+            return
+        }
+        let result = checkLocalNetworkNow()
+        localNetworkCheckLine = result.checkLine
+        log.info("I've allowed it clicked: \(result), showing \"\(result.checkLine)\"")
     }
 
     /// Count a permission he switched on during this run, logging it once.
