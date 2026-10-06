@@ -141,7 +141,7 @@ If your function keys are set to work as standard F keys, hold Fn as well for th
 
 Cmd+Shift+Q is also the macOS shortcut for Log Out. While KEF Remote is running it should get the shortcut first. If macOS asks whether you want to log out instead, click Cancel. Then quit from the menu bar icon: click it, then Quit KEF Remote.
 
-To use a different key from Control, or change the shortcuts, open Settings from the menu bar icon and click Keys. To change a shortcut, click its field and press the new keys; Delete clears it. Volume up, volume down and mute have no shortcut until you record one. Changes apply straight away. While one of KEF Remote's menus is open, its shortcuts pause, and they come back when it closes.
+To use a different key from Control, or change the shortcuts, open Settings from the menu bar icon and click Keys. To change a shortcut, click its field and press the new keys; Delete clears it. Volume up, volume down and mute have no shortcut until you record one. Changes apply straight away. While one of KEF Remote's menus is open, its shortcuts pause, and they come back when it closes. The menu bar menu says so, under Settings….
 
 ## Menu bar icon
 
@@ -168,7 +168,7 @@ Input ▸ is under it. Its title names the input the speaker is on, such as "Inp
 
 Each time you open the menu, KEF Remote reads the speaker again, so the input and the on or off are current even when the speaker changed by itself, such as AirPlay switching it to Wi-Fi. It skips the read if it read the speaker in the last 3 seconds, or while another command is talking to it.
 
-Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote. Permissions… shows a tick when both permissions are allowed. When one is off, it says so, such as "Permissions… (1 needs you)".
+Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote. Permissions… shows a tick when both permissions are allowed. When one is off, it says so, such as "Permissions… (1 needs you)". On your home network, a greyed-out line under Settings… says "Shortcuts paused while this menu is open": shortcuts do nothing until you close the menu.
 
 Send feedback… opens an email to me, with the log attached if you agree.
 
@@ -205,7 +205,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 660 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, the Dock icon while a window is open, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network, and searches again by itself after a miss), the connection check, the menu bar's states, its Input menu, its Turn speaker on/off item and when opening it reads the speaker again, the Settings tabs, the volume keys line in setup, the media keys, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 662 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, the Dock icon while a window is open, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network, and searches again by itself after a miss), the connection check, the menu bar's states, its Input menu, its Turn speaker on/off item and when opening it reads the speaker again, the Settings tabs, the volume keys line in setup, the media keys, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening. It takes a few minutes, as it waits for the speaker to power on and off.
 

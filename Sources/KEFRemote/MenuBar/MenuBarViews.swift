@@ -41,6 +41,8 @@ struct MenuBarIcon: View {
 /// ─────────────             ─────────────
 /// Permissions… ✓            Permissions… (1 needs you)
 /// Settings…        ⌘,       Settings…        ⌘,
+/// Shortcuts paused while    Shortcuts paused while
+///   this menu is open         this menu is open   (greyed)
 /// ─────────────             ─────────────
 /// Made by Dileepa ↗         Made by Dileepa ↗
 /// Send feedback…            Send feedback…
@@ -56,7 +58,10 @@ struct MenuBarIcon: View {
 /// (``PermissionsGuide/menuItemTitle(rows:)``). Turn speaker on/off does
 /// what it says, with the turn-on defaults (``PowerMenuItem``). Input ▸
 /// switches the speaker's input now, ticked on the one it's on (``InputMenu``).
-/// Both are greyed out while the speaker isn't connected.
+/// Both are greyed out while the speaker isn't connected. Under
+/// Settings…, a greyed-out line says the shortcuts are paused while the
+/// menu is open (``MenuTrackingShortcuts/menuLine(status:)``), on the
+/// home network only.
 /// Support KEF Remote…
 /// joins the links once its page exists (``MenuLink``), and Send feedback…
 /// once its address is set (``FeedbackEmail``).
@@ -136,6 +141,12 @@ struct MenuBarMenu: View {
             openSettings()
         }
         .keyboardShortcut(",")
+
+        // Under Settings…, where the shortcuts are changed. A Text in a
+        // menu shows greyed out, so it reads as a note, not an item.
+        if let pausedLine = MenuTrackingShortcuts.menuLine(status: model.status) {
+            Text(pausedLine)
+        }
 
         Divider()
 
