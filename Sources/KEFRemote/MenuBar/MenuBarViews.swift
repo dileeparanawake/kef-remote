@@ -36,7 +36,8 @@ struct MenuBarIcon: View {
 /// Connected to LSX          Volume keys off: allow Accessibility
 /// 192.168.1.80              Click Permissions… to turn it on
 /// ─────────────             ─────────────
-/// Input        ▸            Input        ▸
+/// Turn speaker off          Turn speaker on/off  (greyed)
+/// Input: Optical ▸          Input        ▸       (greyed)
 /// ─────────────             ─────────────
 /// Permissions… ✓            Permissions… (1 needs you)
 /// Settings…        ⌘,       Settings…        ⌘,
@@ -52,9 +53,10 @@ struct MenuBarIcon: View {
 /// Find speaker shows under the first two lines when the speaker isn't
 /// connected (``MenuBarPresentation/offersFindSpeaker``). The
 /// Permissions… item says whether any permission needs him
-/// (``PermissionsGuide/menuItemTitle(rows:)``). Input ▸ switches the
-/// speaker's input now, ticked on the one it's on, and greyed out while the
-/// speaker is off or not connected (``InputMenu``).
+/// (``PermissionsGuide/menuItemTitle(rows:)``). Turn speaker on/off flips
+/// the power as the power shortcut does (``PowerMenuItem``). Input ▸
+/// switches the speaker's input now, ticked on the one it's on (``InputMenu``).
+/// Both are greyed out while the speaker isn't connected.
 /// Support KEF Remote…
 /// joins the links once its page exists (``MenuLink``), and Send feedback…
 /// once its address is set (``FeedbackEmail``).
@@ -63,6 +65,7 @@ struct MenuBarMenu: View {
     @ObservedObject var permissions: PermissionsModel
     let resumeSetup: () -> Void
     let findSpeaker: () -> Void
+    let togglePower: () -> Void
     let switchInput: (InputSource) -> Void
     let openPermissions: () -> Void
     let openSettings: () -> Void
@@ -93,6 +96,13 @@ struct MenuBarMenu: View {
         }
 
         Divider()
+
+        let powerItem = model.powerItem
+        Button(powerItem.title) {
+            log.info("menu: \(powerItem.title) clicked")
+            togglePower()
+        }
+        .disabled(!powerItem.isEnabled)
 
         let inputMenu = model.inputMenu
         Menu(inputMenu.title) {

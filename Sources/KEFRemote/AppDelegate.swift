@@ -24,8 +24,9 @@ import os
 ///    offers a restart if macOS still refuses them), and shows the red
 ///    dot in the menu bar while it isn't
 /// 9. Switches the speaker's input from Input ▸ in the menu, ticked from
-///    the last source byte the controller read or wrote; swaps left and
-///    right from Settings, shown from the same byte
+///    the last source byte the controller read or wrote; turns the
+///    speaker on or off from the menu as the power shortcut does; swaps
+///    left and right from Settings, shown from the same byte
 /// 10. Writes feedback from Send feedback… in the menu (``FeedbackSender``)
 /// 11. While macOS blocks Local Network, asks again every few seconds and
 ///     tries the speaker once it's allowed (``LocalNetworkRetry``)
@@ -780,8 +781,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Read whether the speaker is on, then flip it. The HUD shows which
-    /// way it went; a toggle ignored as a repeat shows nothing.
-    private func togglePower() {
+    /// way it went; a toggle ignored as a repeat shows nothing. From the
+    /// power shortcut, and from Turn speaker on/off in the menu, so the
+    /// input and standby defaults apply to both.
+    func togglePower() {
         guard let controller = controller(for: "power toggle") else { return }
 
         Task {
