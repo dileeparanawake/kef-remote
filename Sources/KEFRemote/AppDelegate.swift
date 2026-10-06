@@ -593,48 +593,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Lifecycle callbacks
 
     private func setupLifecycleCallbacks() {
+        // Each runs its steps in order in one task (see macWoke/macSlept),
+        // so a standby write and a power write never undo each other.
         lifecycle.onWake = { [weak self] in
-            guard let self, self.config.lifecycle.powerOnWake else { return }
-            guard let controller = self.controller(for: "wake power-on") else { return }
-
-            HUDOverlay.show(.waking)
+            guard let self, let controller = self.controller(for: "wake") else { return }
+            let powerOn = self.config.lifecycle.powerOnWake
+            if powerOn { HUDOverlay.show(.waking) }
             Task {
                 do {
-                    try await controller.powerOn(applying: self.config.speakerSettings)
-                    await MainActor.run {
-                        HUDOverlay.show(.powerOn)
-                    }
+                    try await controller.macWoke(self.config.speakerSettings, powerOn: powerOn)
+                    if powerOn { HUDOverlay.show(.powerOn) }
                 } catch {
-                    self.logger.error(
-                        "Wake power-on failed: \(error.localizedDescription)"
-                    )
+                    self.logger.error("Wake steps failed: \(error.localizedDescription)")
+                    guard powerOn else { return }
                     // Replace "Waking..." so it doesn't look stuck.
-                    await MainActor.run {
-                        HUDOverlay.show(.failure(error, otherwise: "Power failed"))
-                    }
+                    HUDOverlay.show(.failure(error, otherwise: "Power failed"))
                     self.handleCommandError(error)
                 }
             }
         }
 
         lifecycle.onSleep = { [weak self] in
-            guard let self, self.config.lifecycle.powerOffSleep else { return }
-            guard let controller = self.controller(for: "sleep power-off") else { return }
-
+            guard let self, let controller = self.controller(for: "sleep") else { return }
             Task {
                 do {
-                    try await controller.powerOff()
+                    try await controller.macSlept(self.config.speakerSettings, powerOff: self.config.lifecycle.powerOffSleep)
                 } catch {
-                    self.logger.error(
-                        "Sleep power-off failed: \(error.localizedDescription)"
-                    )
+                    self.logger.error("Sleep steps failed: \(error.localizedDescription)")
                 }
             }
-        }
-
-        lifecycle.onStandbyChange = { [weak self] reason in
-            guard let self, let controller = self.controller(for: "standby (\(reason.rawValue))") else { return }
-            Task { await self.applyStandby(for: reason, with: controller) }
         }
     }
 

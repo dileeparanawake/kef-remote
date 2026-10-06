@@ -7,25 +7,21 @@ import os
 ///
 /// When the Mac goes to sleep, a configurable delay timer starts.
 /// If the Mac wakes before the timer fires, the timer is cancelled
-/// and the speaker is powered on. If the timer fires, it asks for
-/// 20-minute standby, then for power-off.
+/// and ``onWake`` fires. If the timer fires, ``onSleep`` fires.
 ///
-/// The "dynamic standby" feature asks for a standby time on wake and
-/// when the timer fires. `SpeakerSettings.standbyToWrite(for:)` picks it:
-/// the chosen time on wake (never, with no choice), 20 minutes at sleep.
-/// Note: when power-off on sleep is on, `SpeakerController.powerOff()`
-/// then switches 20 to 60 minutes first, because powering off at 20
-/// minutes crashes the speaker.
+/// Each fires once per event. `AppDelegate` runs the speaker steps for
+/// it in order, in one task: `SpeakerController.macWoke` (the wake
+/// standby time, then power on) and `macSlept` (20-minute standby, then
+/// power off, which switches 20 to 60 minutes first because powering off
+/// at 20 minutes crashes the speaker).
 ///
 /// This class only watches wake/sleep and fires callbacks.
-/// `AppDelegate` turns the callbacks into speaker commands.
 ///
 /// Usage:
 /// ```swift
 /// let lifecycle = LifecycleManager()
-/// lifecycle.onWake = { print("Power on speaker") }
-/// lifecycle.onSleep = { print("Power off speaker") }
-/// lifecycle.onStandbyChange = { reason in print("Set standby for \(reason)") }
+/// lifecycle.onWake = { print("Standby time, then power on") }
+/// lifecycle.onSleep = { print("20-minute standby, then power off") }
 /// lifecycle.isEnabled = true
 /// lifecycle.start()
 /// ```
@@ -33,25 +29,13 @@ final class LifecycleManager {
 
     // MARK: - Callbacks
 
-    /// Called when the Mac wakes and the speaker should power on.
-    ///
-    /// Invoked on the main thread after cancelling any pending sleep
-    /// timer. The callback should issue a power-on command to the
-    /// speaker.
+    /// Called when the Mac wakes, on the main thread, after cancelling
+    /// any pending sleep timer.
     var onWake: (() -> Void)?
 
-    /// Called when the sleep timer fires and the speaker should power off.
-    ///
-    /// Invoked on the main thread after the ``powerOffDelay`` has
-    /// elapsed following a sleep notification. The callback should
-    /// issue a power-off command to the speaker.
+    /// Called on the main thread when the ``powerOffDelay`` has elapsed
+    /// after a sleep notification.
     var onSleep: (() -> Void)?
-
-    /// Called when the speaker's standby time should be set, with why:
-    /// - `.wake` when the Mac wakes
-    /// - `.sleep` before sleep power-off (so the speaker enters standby
-    ///   on its own if the Mac doesn't wake)
-    var onStandbyChange: ((StandbyReason) -> Void)?
 
     // MARK: - Configuration
 
@@ -202,7 +186,6 @@ final class LifecycleManager {
 
             self.sleepTimerPending = false
             self.logger.info("Power-off timer fired")
-            self.onStandbyChange?(.sleep)
             self.onSleep?()
         }
     }
@@ -214,13 +197,10 @@ final class LifecycleManager {
         sleepTimerPending = false
     }
 
-    /// Cancel the sleep timer and trigger wake callbacks.
-    ///
-    /// Asks for the wake standby time, then calls ``onWake``.
+    /// Cancel the sleep timer and call ``onWake``.
     private func cancelSleepAndPowerOn() {
         cancelSleepTimer()
-        logger.info("Wake detected, cancelling sleep timer and powering on")
-        onStandbyChange?(.wake)
+        logger.info("Wake detected, cancelling sleep timer")
         onWake?()
     }
 }
