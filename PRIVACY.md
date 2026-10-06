@@ -14,6 +14,7 @@ It keeps a few things on your Mac so it can find the speaker again and remember 
 
 - `~/.kef-remote/config.json`: your speaker's name, model, IP address and serial number, and your settings, including your home Wi-Fi name if you set one.
 - `~/.kef-remote/logs/kef-remote.log`: what the app did, such as the commands it sent to the speaker. It also holds your speaker's name, IP address and serial number, and the addresses of other devices on your network that answered the search. The log starts again each time the app opens.
+- `~/.kef-remote/logs/kef-remote.previous.log`: the log from the time before, kept so a freeze or a restart doesn't wipe it. It holds the same kinds of data, and each time the app opens it replaces this file with the last log.
 - Your shortcuts and modifier key, in `~/Library/Preferences/com.dileeparanawake.KEFRemote.plist`.
 
 Warnings and errors also go to the macOS system log, which macOS clears on its own. If the app crashes, macOS may offer to send a report to Apple. I don't receive it.

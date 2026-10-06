@@ -3,6 +3,7 @@
 
 SPEAKER_SUBSYSTEM = com.kef-remote
 LOG_FILE = $(HOME)/.kef-remote/logs/kef-remote.log
+PREVIOUS_LOG_FILE = $(HOME)/.kef-remote/logs/kef-remote.previous.log
 
 # Run all tests
 test:
@@ -148,6 +149,11 @@ logs-recent:
 logs-full:
 	cat "$(LOG_FILE)"
 
+# The run before this one: each launch moves the last run's log aside,
+# so a freeze or a restart doesn't wipe it
+logs-previous:
+	@cat "$(PREVIOUS_LOG_FILE)" 2>/dev/null || echo "No previous run's log yet"
+
 # --- Log file filters (work always — Xcode, standalone, agent sandbox) ---
 
 # Errors only
@@ -241,4 +247,4 @@ kef-raw-standby:
 	@test -n "$(MIN)" || (echo "Usage: make kef-raw-standby MIN=<0|20|60>"; exit 1)
 	$(KEFCTL) --standby $(MIN)
 
-.PHONY: test-fresh test-clean test-restore test discover speaker-check app-icon run test-build package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
+.PHONY: test-fresh test-clean test-restore test discover speaker-check app-icon run test-build package kill logs-tail logs-recent logs-full logs-previous logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby

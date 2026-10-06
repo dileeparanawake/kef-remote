@@ -11,7 +11,8 @@ import os
 ///    the text filter bar (type a category, level, or keyword).
 /// 3. **Log file** — `~/.kef-remote/logs/kef-remote.log`. Always written,
 ///    regardless of launch method, and each line is in the file before the
-///    call returns. Agents read this file directly (`make logs-*`).
+///    call returns. Agents read this file directly (`make logs-*`). The
+///    run before is in `kef-remote.previous.log` (`make logs-previous`).
 ///
 /// ## Filtering in Xcode
 /// Use the text filter bar at the bottom of the debug console:
