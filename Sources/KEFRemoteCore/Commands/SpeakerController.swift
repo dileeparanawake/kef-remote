@@ -30,6 +30,9 @@ public struct SpeakerStatus: Equatable {
 /// byte it reads, or writes and the speaker acks, goes to `onSourceByte`,
 /// so the menu can tick the input without reading it again.
 ///
+/// Volume up, down and mute read the volume first. Just after power on,
+/// a muted read is read again (``PowerOnMuteGuard``).
+///
 /// Operations are async because they involve network I/O (send command,
 /// await response).
 public class SpeakerController {
@@ -37,6 +40,8 @@ public class SpeakerController {
     let log: KEFLogHandler
     private let onReply: (SpeakerReply) -> Void
     private let onSourceByte: (SourceByte) -> Void
+    private let clock: SpeakerClock
+    private var powerOnMuteGuard = PowerOnMuteGuard()
 
     /// - Parameters:
     ///   - onReply: Called after every send, on the caller's task, with
@@ -44,16 +49,20 @@ public class SpeakerController {
     ///   - onSourceByte: Called on the caller's task with the speaker's
     ///     source byte each time it is known: after a read, and after a
     ///     write the speaker acked.
+    ///   - clock: Times the wait before reading the volume again after
+    ///     power on. Share the simulated speaker's in tests.
     public init(
         connection: SpeakerConnection,
         log: @escaping KEFLogHandler = { _, _ in },
         onReply: @escaping (SpeakerReply) -> Void = { _ in },
-        onSourceByte: @escaping (SourceByte) -> Void = { _ in }
+        onSourceByte: @escaping (SourceByte) -> Void = { _ in },
+        clock: SpeakerClock = RealSpeakerClock()
     ) {
         self.connection = connection
         self.log = log
         self.onReply = onReply
         self.onSourceByte = onSourceByte
+        self.clock = clock
     }
 
     // MARK: - Core: send and receive
@@ -132,8 +141,26 @@ public class SpeakerController {
         }
         let source = SourceByte(byte: byte)
         log(.info, "source: power=\(source.isPoweredOn ? "on" : "off") input=\(source.input) standby=\(source.standby)")
+        powerOnMuteGuard.noteRead(source, at: clock.now)
         onSourceByte(source)
         return source
+    }
+
+    /// Read the volume for a press that keeps or flips the mute it reads.
+    /// Just after power on, a muted read is read again a second later and
+    /// the second read is used: see ``PowerOnMuteGuard``.
+    private func getVolumeStateForPress(_ command: String) async throws -> VolumeState {
+        let first = try await getVolumeState()
+        let now = clock.now
+        guard powerOnMuteGuard.shouldReadAgain(first, at: now) else { return first }
+        let since = powerOnMuteGuard.sincePowerOn(at: now).map { "\($0.components.seconds) s" } ?? "just"
+        log(.info, "\(command): read muted \(since) after power on; reading again in "
+            + "\(PowerOnMuteGuard.readAgainAfter.components.seconds) s (the speaker can show muted for a moment as it comes on)")
+        await clock.sleep(for: PowerOnMuteGuard.readAgainAfter)
+        let second = try await getVolumeState()
+        let verdict = second.isMuted ? "still muted (keeping the mute)" : "not muted (it was the power-on moment)"
+        log(.info, "\(command): read again: \(second.level)%\(second.isMuted ? " muted" : ""), \(verdict)")
+        return second
     }
 
     /// Read the full speaker state: volume then source, sequentially.
@@ -164,7 +191,7 @@ public class SpeakerController {
 
     /// Raise the volume by `amount` percent. Preserves mute state.
     public func raiseVolume(by amount: Int) async throws {
-        let current = try await getVolumeState()
+        let current = try await getVolumeStateForPress("raiseVolume")
         let newLevel = min(current.level + amount, 100)
         log(.info, "raiseVolume: \(current.level)%\(current.isMuted ? " [muted]" : "") → \(newLevel)%")
         try await writeVolume(level: newLevel, isMuted: current.isMuted)
@@ -172,7 +199,7 @@ public class SpeakerController {
 
     /// Lower the volume by `amount` percent. Preserves mute state.
     public func lowerVolume(by amount: Int) async throws {
-        let current = try await getVolumeState()
+        let current = try await getVolumeStateForPress("lowerVolume")
         let newLevel = max(current.level - amount, 0)
         log(.info, "lowerVolume: \(current.level)%\(current.isMuted ? " [muted]" : "") → \(newLevel)%")
         try await writeVolume(level: newLevel, isMuted: current.isMuted)
@@ -204,7 +231,7 @@ public class SpeakerController {
 
     /// Toggle mute state. If muted, unmute. If unmuted, mute.
     public func toggleMute() async throws {
-        let current = try await getVolumeState()
+        let current = try await getVolumeStateForPress("toggleMute")
         let toggled = !current.isMuted
         log(.info, "toggleMute: \(current.isMuted ? "muted" : "unmuted") → \(toggled ? "muted" : "unmuted")")
         try await writeVolume(level: current.level, isMuted: toggled)
@@ -252,6 +279,7 @@ public class SpeakerController {
 
     private func writePowerOn(from source: SourceByte, applying settings: SpeakerSettings) async throws {
         let byte = settings.powerOnByte(from: source)
+        if !source.isPoweredOn { powerOnMuteGuard.notePowerOnWrite(at: clock.now) }
         log(.info, "powerOn: sending power=on input=\(byte.input) standby=\(byte.standby) "
             + "(was input=\(source.input) standby=\(source.standby); "
             + "power-on input: \(settings.powerOnInput.label), standby: \(settings.standby.label))")

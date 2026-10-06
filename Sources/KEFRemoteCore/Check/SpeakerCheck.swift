@@ -66,7 +66,7 @@ public final class SpeakerCheck {
     ) {
         let recorder = RecordingConnection(connection)
         self.recorder = recorder
-        self.controller = SpeakerController(connection: recorder, log: log.write)
+        self.controller = SpeakerController(connection: recorder, log: log.write, clock: clock)
         self.log = log
         self.clock = clock
         self.onLine = onLine
