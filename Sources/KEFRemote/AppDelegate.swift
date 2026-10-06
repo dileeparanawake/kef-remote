@@ -836,22 +836,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Volume up, down or mute: from a modifier + media key, or from a
-    /// recorded shortcut. The HUD shows the new level, or Muted.
+    /// recorded shortcut. The HUD shows the new level, or Muted. Presses
+    /// that come while one waits for the speaker join its one write
+    /// (``VolumePresses``), and the HUD shows where they all landed.
     private func runVolumeCommand(_ command: VolumeCommand) {
         guard let controller = controller(for: "\(command)") else { return }
 
         Task {
             do {
-                switch command {
-                case .up:
-                    try await controller.raiseVolume(by: Self.volumeStep)
-                case .down:
-                    try await controller.lowerVolume(by: Self.volumeStep)
-                case .mute:
-                    try await controller.toggleMute()
-                }
-                let state = try await controller.getVolumeState()
-                HUDOverlay.show(.afterVolumeCommand(command, now: state))
+                let result = try await controller.press(command, step: Self.volumeStep)
+                guard case .sent(let presses, let now) = result else { return }
+                HUDOverlay.show(.afterVolumeCommand(presses.hudCommand, now: now))
             } catch {
                 logger.error("Volume command failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Command failed"))

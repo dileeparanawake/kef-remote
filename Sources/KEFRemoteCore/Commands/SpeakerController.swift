@@ -49,6 +49,12 @@ public class SpeakerController {
     /// One command at a time. The connection reads replies in order, so
     /// a second exchange on top would take the first's reply.
     let queue = SpeakerExchangeQueue()
+    /// Volume and mute presses waiting for their turn, added up into one
+    /// change (``press(_:step:)``), and whether a turn is queued for them.
+    /// Locked: presses come in on several tasks at once.
+    private var waitingPresses = VolumePresses()
+    private var isVolumeTurnQueued = false
+    private let pressLock = NSLock()
     /// Only touched with the turn held, so the queue keeps it to one
     /// thread at a time.
     private var powerOnMuteGuard = PowerOnMuteGuard()
@@ -278,6 +284,50 @@ public class SpeakerController {
         }
     }
 
+    /// Volume up, down or mute from a key or shortcut. A press that comes
+    /// while another is waiting for its turn joins it and returns
+    /// ``VolumePressResult/addedToWaiting``; the one that queued the turn
+    /// reads the volume once, writes the sum of them all once
+    /// (``VolumePresses``), and returns what it wrote. So a burst is at
+    /// most one change running and one waiting, never a write per press.
+    public func press(_ command: VolumeCommand, step: Int) async throws -> VolumePressResult {
+        let joined: Int? = pressLock.withLock {
+            waitingPresses.add(command, step: step)
+            if isVolumeTurnQueued { return waitingPresses.count }
+            isVolumeTurnQueued = true
+            return nil
+        }
+        if let joined {
+            log(.info, "\(command): added to the volume change waiting its turn (\(joined) presses)")
+            return .addedToWaiting
+        }
+        return try await queue.run {
+            // Presses from here on wait for the next turn.
+            let presses: VolumePresses = pressLock.withLock {
+                defer {
+                    waitingPresses = VolumePresses()
+                    isVolumeTurnQueued = false
+                }
+                return waitingPresses
+            }
+            let current = try await getVolumeStateForPress(presses.name)
+            let target = presses.applied(to: current)
+            log(.info, "\(presses.name): \(Self.describe(current)) → \(Self.describe(target))")
+            if target != current {
+                try await writeVolume(level: target.level, isMuted: target.isMuted)
+            }
+            return .sent(presses, now: target)
+        }
+    }
+
+    /// Whether a volume turn is queued that new presses would join.
+    var hasVolumeTurnQueued: Bool { pressLock.withLock { isVolumeTurnQueued } }
+
+    /// "45%", or "45% [muted]", for the log.
+    private static func describe(_ volume: VolumeState) -> String {
+        "\(volume.level)%\(volume.isMuted ? " [muted]" : "")"
+    }
+
     // MARK: - Mute
 
     /// Mute the speaker. No-op if already muted.
@@ -303,16 +353,6 @@ public class SpeakerController {
             }
             log(.info, "unmute: muted → \(current.level)%")
             try await writeVolume(level: current.level, isMuted: false)
-        }
-    }
-
-    /// Toggle mute state. If muted, unmute. If unmuted, mute.
-    public func toggleMute() async throws {
-        try await queue.run {
-            let current = try await getVolumeStateForPress("toggleMute")
-            let toggled = !current.isMuted
-            log(.info, "toggleMute: \(current.isMuted ? "muted" : "unmuted") → \(toggled ? "muted" : "unmuted")")
-            try await writeVolume(level: current.level, isMuted: toggled)
         }
     }
 

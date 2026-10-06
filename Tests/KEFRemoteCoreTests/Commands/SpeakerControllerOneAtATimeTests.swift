@@ -34,8 +34,8 @@ struct SpeakerControllerOneAtATimeTests {
         let speaker = OverlapProbeSpeaker(volume: VolumeState(level: 45, isMuted: false))
         let controller = SpeakerController(connection: speaker)
 
-        async let first: Void = controller.toggleMute()
-        async let second: Void = controller.toggleMute()
+        async let first = controller.press(.mute, step: Self.step)
+        async let second = controller.press(.mute, step: Self.step)
         _ = try await (first, second)
 
         #expect(speaker.mostAtOnce == 1)
@@ -77,7 +77,7 @@ struct SpeakerControllerOneAtATimeTests {
         await withTaskGroup(of: Void.self) { group in
             group.addTask { _ = try? await controller.raiseVolume(by: Self.step) }
             group.addTask { _ = try? await controller.lowerVolume(by: Self.step) }
-            group.addTask { _ = try? await controller.toggleMute() }
+            group.addTask { _ = try? await controller.press(.mute, step: Self.step) }
             group.addTask { _ = try? await controller.getSourceByte() }
             group.addTask { _ = try? await controller.switchInput(to: .wifi) }
             group.addTask { _ = try? await controller.setLeftRightSwapped(true) }
