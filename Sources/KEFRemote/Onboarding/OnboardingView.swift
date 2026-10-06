@@ -160,23 +160,22 @@ private struct FindSpeakerStep: View {
         }
     }
 
-    /// A spinner while looking, then found (a tick) or what to check.
-    @ViewBuilder private var searchLine: some View {
+    /// A spinner while looking or connecting, then connected (a tick) or
+    /// what to check.
+    private var searchLine: some View {
         let line = model.searchLine
-        if let text = line.text {
-            HStack(spacing: 6) {
-                if line.isBusy {
-                    ProgressView().controlSize(.small)
-                } else if case .found = line {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .accessibilityHidden(true)
-                }
-                Text(text)
-                if line.offersManual && settings.discovery == .auto {
-                    Button("Enter the IP instead", action: model.enterIPClicked)
-                        .buttonStyle(.link)
-                }
+        return HStack(spacing: 6) {
+            if line.isBusy {
+                ProgressView().controlSize(.small)
+            } else if case .connected = line {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .accessibilityHidden(true)
+            }
+            Text(line.text)
+            if line.offersManual && settings.discovery == .auto {
+                Button("Enter the IP instead", action: model.enterIPClicked)
+                    .buttonStyle(.link)
             }
         }
     }
