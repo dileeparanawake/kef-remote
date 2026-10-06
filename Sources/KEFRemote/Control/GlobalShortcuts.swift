@@ -63,11 +63,14 @@ extension ShortcutAction {
 ///
 /// While one of the app's menus is open, the library fires the listener
 /// again for the same key-up on every run-loop turn (176 times for one
-/// press in the 6 Oct hand test). ``ShortcutRepeatFilter`` turns that
-/// back into one press.
+/// press in the 6 Oct hand test). So every shortcut is switched off while
+/// a menu tracks, as the library's docs say (``MenuTrackingShortcuts``),
+/// and ``ShortcutRepeatFilter`` still turns any burst back into one press.
 ///
 /// Logged under `shortcuts`:
 /// ```
+/// shortcuts paused: a menu is open
+/// shortcuts back on: the menu closed
 /// shortcut listening: Power on/off = ⇧⌘O
 /// shortcut fired: Power on/off (⇧⌘O)
 /// shortcut repeat dropped: Power on/off (same press, within 100 ms)
@@ -82,6 +85,7 @@ final class GlobalShortcuts {
 
     private var isListening = false
     private var repeatFilter = ShortcutRepeatFilter()
+    private var menuTracking = MenuTrackingShortcuts()
     /// The filter's clock starts here; only the time between fires matters.
     private let startedAt = ContinuousClock.now
     private let log = AppLogger(subsystem: "com.kef-remote", category: "shortcuts")
@@ -102,6 +106,28 @@ final class GlobalShortcuts {
     func setEnabled(_ isEnabled: Bool, reason: String) {
         KeyboardShortcuts.isEnabled = isEnabled
         log.info("shortcuts \(isEnabled ? "on" : "off") (\(reason))")
+    }
+
+    /// One of the app's menus began tracking: switch every shortcut off
+    /// until it ends, if they're on (``MenuTrackingShortcuts``).
+    func menuBeganTracking() {
+        apply(menuTracking.menuBegan(shortcutsOn: KeyboardShortcuts.isEnabled))
+    }
+
+    /// The menu ended tracking: switch back on what ``menuBeganTracking()``
+    /// switched off.
+    func menuEndedTracking() {
+        apply(menuTracking.menuEnded())
+    }
+
+    private func apply(_ change: MenuTrackingShortcuts.Change) {
+        let names = ShortcutAction.allCases.map(\.name)
+        switch change {
+        case .disable: KeyboardShortcuts.disable(names)
+        case .enable: KeyboardShortcuts.enable(names)
+        case .leaveOff, .leave: break
+        }
+        if let line = change.logLine { log.info(line) }
     }
 
     /// Run the action once per press. Of a burst's repeats only the first

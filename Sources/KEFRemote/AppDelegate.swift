@@ -175,6 +175,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupLifecycleCallbacks()
         setupNetworkCallbacks()
         menuOpenWatcher.onOpen = { [weak self] in self?.menuOpened() }
+        // Any of the app's menus, not only the menu bar's: shortcuts
+        // re-fire while one tracks (``MenuTrackingShortcuts``).
+        menuOpenWatcher.onAnyMenuBegan = { [weak self] in self?.shortcuts.menuBeganTracking() }
+        menuOpenWatcher.onAnyMenuEnded = { [weak self] in self?.shortcuts.menuEndedTracking() }
         menuOpenWatcher.start()
 
         // 4. Start network monitor — it will call activate() or deactivate()
