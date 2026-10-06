@@ -2,7 +2,7 @@
 
 KEF already has an app, but I built this one to put my speaker on my keyboard. That matters most if you listen over optical for hi-res audio, like I do: the Mac's volume keys can't reach the speaker over optical, so it's back to the clunky remote. If you use AirPlay, the Mac's own volume already works.
 
-KEF Remote is a small macOS app for the KEF LSX. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Cmd+Shift+O turns the speaker on, or off if it's on.
+KEF Remote is a small macOS app for the KEF LSX. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Cmd+Shift+O turns the speaker on, or off if it's on, and can switch it to optical as it does.
 
 ![KEF Remote: Control plus the volume up key shows a volume panel at 60% on screen, and the KEF speaker plays louder](docs/images/social-preview.png)
 
@@ -103,14 +103,21 @@ Your settings and config file carry over.
 
 Your config file from 0.1.0 keeps working, with discovery on Auto.
 
-## What's new in 0.2.0
+## What's new in 0.3.0
 
-- **Finds the speaker by itself**, when it opens and again if the speaker's IP changes. No Terminal step.
-- **Auto or Manual discovery.** Settings shows the speaker it found and its IP. Choose Manual to type the IP yourself.
-- **Menu bar icon.** It shows if it's connected. A red dot means something needs you, and the menu says what to do.
-- **Settings window** for the speaker, the modifier key and your own shortcuts (power, volume up, volume down, mute and quit).
-- **One power shortcut.** Cmd+Shift+O turns the speaker on or off, whichever it isn't.
-- **Also:** an app icon, a plain log file at `~/.kef-remote/logs/kef-remote.log`, and tests up from 97 to 244.
+- **A permissions guide.** The first time it opens, a small window shows the two permissions it needs, opens the right page of System Settings, and ticks each one off.
+- **Input when it turns on.** Choose the input, such as Optical, the speaker switches to when KEF Remote turns it on.
+- **Standby time.** Choose 20 minutes, 60 minutes or never.
+- **Made by Dileepa** in the menu, a link to my site.
+
+## Set the speaker up
+
+Under Speaker in Settings, two choices set the speaker up for you. Both start at Don't change, so KEF Remote leaves the speaker as it is until you pick something.
+
+| Setting | What it does |
+|---|---|
+| When it turns on, switch to | The input the speaker switches to when KEF Remote turns it on: Optical, Wi-Fi, Bluetooth, Aux or USB. It doesn't apply when you turn it on with KEF's own remote, or if it's already on. |
+| Standby | How long the speaker waits with no sound before it goes to standby: 20 min, 60 min or Never. KEF Remote sets it each time it connects. |
 
 ## Shortcuts
 
