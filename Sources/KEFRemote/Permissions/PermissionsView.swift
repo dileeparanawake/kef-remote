@@ -15,8 +15,13 @@ import SwiftUI
 ///   So the app can find the speaker.
 ///   Not checked yet: shows once the speaker answers
 ///   In Privacy & Security, click Local Network, then turn on KEF Remote
-/// The volume keys start after a restart.   [Restart KEF Remote]   (only if needed)
+/// Volume keys ready ✓                      (once Accessibility is allowed)
 /// ```
+///
+/// The last line says whether the volume keys work (``VolumeKeysLine``):
+/// ready, or "The volume keys start after a restart." with
+/// [Restart KEF Remote] when macOS still refuses them, or that they
+/// start on the home network.
 ///
 /// The Accessibility hint names the row as this Mac's System Settings
 /// does: Device Control and Data Access from macOS 27.
@@ -25,7 +30,7 @@ import SwiftUI
 /// decided in ``PermissionRow``.
 struct PermissionsView: View {
     @ObservedObject var model: PermissionsModel
-    /// Relaunches the app, when ``PermissionsModel/needsRestart``.
+    /// Relaunches the app, when ``VolumeKeysLine/offersRestart``.
     let restart: () -> Void
 
     var body: some View {
@@ -37,11 +42,13 @@ struct PermissionsView: View {
                 PermissionRowView(row: row) { model.openSettings(for: row.permission) }
             }
 
-            if model.needsRestart {
+            if let line = model.volumeKeysLine {
                 HStack {
-                    Text("The volume keys start after a restart.")
+                    Text(line.text)
                     Spacer()
-                    Button("Restart KEF Remote", action: restart)
+                    if line.offersRestart {
+                        Button("Restart KEF Remote", action: restart)
+                    }
                 }
             }
 

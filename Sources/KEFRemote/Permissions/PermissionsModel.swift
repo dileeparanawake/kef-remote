@@ -17,15 +17,16 @@ import KEFRemoteCore
 /// [permissions] accessibility notGranted -> granted (guide open)
 /// [permissions] local network notCheckedYet -> granted (connection connected)
 /// [permissions] local network notGranted -> granted (probe)
-/// [permissions] volume keys did not start after Accessibility was allowed: offering Restart KEF Remote
+/// [permissions] volume key tap notStarted -> running: "Volume keys ready ✓"
+/// [permissions] volume key tap notStarted -> refused: offering Restart KEF Remote
 /// ```
 @MainActor
 final class PermissionsModel: ObservableObject {
     @Published private(set) var accessibility: PermissionStatus
     @Published private(set) var localNetwork: PermissionStatus = .notCheckedYet
-    /// Accessibility is allowed, but macOS still refused the volume key
-    /// tap: the guide offers Restart KEF Remote.
-    @Published private(set) var needsRestart = false
+    /// Whether the volume key tap is on, as the app last started or
+    /// stopped it: the guide's ``volumeKeysLine`` says so.
+    @Published private(set) var mediaKeyTap: MediaKeyTapState = .notStarted
 
     /// Called when Accessibility is switched on while the app runs, so
     /// the volume keys can start without a restart.
@@ -77,14 +78,23 @@ final class PermissionsModel: ObservableObject {
         }
     }
 
-    /// Whether the volume keys started once Accessibility was allowed.
-    /// If not, the guide offers a restart (``PermissionsGuide/needsRestart(accessibility:mediaKeysStarted:)``).
-    func showMediaKeys(started: Bool) {
-        needsRestart = PermissionsGuide.needsRestart(accessibility: accessibility, mediaKeysStarted: started)
-        if needsRestart {
-            log.warning("volume keys did not start after Accessibility was allowed: offering Restart KEF Remote")
+    /// Once Accessibility is allowed: Volume keys ready ✓, or Restart KEF
+    /// Remote if macOS still refuses the tap (``VolumeKeysLine``).
+    var volumeKeysLine: VolumeKeysLine? {
+        VolumeKeysLine(accessibility: accessibility, tap: mediaKeyTap)
+    }
+
+    /// Show the volume key tap as the app just started or stopped it.
+    /// Logs only a change, with the line the guide now shows.
+    func showMediaKeyTap(_ tap: MediaKeyTapState) {
+        guard tap != mediaKeyTap else { return }
+        let old = mediaKeyTap
+        mediaKeyTap = tap
+        let shown = volumeKeysLine.map { "\"\($0.text)\"" } ?? "no line (Accessibility not allowed)"
+        if volumeKeysLine == .needsRestart {
+            log.warning("volume key tap \(old.rawValue) -> \(tap.rawValue): offering Restart KEF Remote")
         } else {
-            log.info("volume keys started after Accessibility was allowed: no restart needed")
+            log.info("volume key tap \(old.rawValue) -> \(tap.rawValue): \(shown)")
         }
     }
 

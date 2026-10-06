@@ -338,7 +338,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         logger.info("Accessibility granted — starting the media key tap")
         mediaKeys.start()
-        permissions.showMediaKeys(started: mediaKeys.isRunning)
+        showMediaKeyTap()
+    }
+
+    /// Tell the setup window whether the volume keys work now, after the
+    /// tap was started or stopped (``VolumeKeysLine``).
+    private func showMediaKeyTap() {
+        permissions.showMediaKeyTap(MediaKeyTapState(isActive: isActive, isRunning: mediaKeys.isRunning))
     }
 
     // MARK: - Setup window
@@ -418,6 +424,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.set(.idle(isActive: true, speakerIP: config.speaker?.lastKnownIp), reason: "on home network")
         connectToSpeaker(.savedIP)
         mediaKeys.start()
+        showMediaKeyTap()
         shortcuts.setEnabled(true, reason: "on home network")
         lifecycle.start()
     }
@@ -433,6 +440,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.set(.dormant, reason: "off home network")
 
         mediaKeys.stop()
+        showMediaKeyTap()
         shortcuts.setEnabled(false, reason: "off home network")
         lifecycle.stop()
         disconnectSpeaker()
