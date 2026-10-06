@@ -52,6 +52,32 @@ test-build: kill
 	@echo "Running: $(TEST_APP)"
 	@echo "Watch the log with: make logs-tail"
 
+# Start a hand test from a clean slate, like a stranger's first run:
+# saves your config.json and preferences (shortcuts, modifier) aside,
+# resets the app's Accessibility permission so the permissions guide
+# shows, then builds and launches this branch. Run it yourself: it
+# changes a privacy setting. Local Network can't be reset from the
+# command line. `make test-restore` puts your setup back.
+BUNDLE_ID = com.dileeparanawake.KEFRemote
+CONFIG_FILE = $(HOME)/.kef-remote/config.json
+CONFIG_BACKUP = $(HOME)/.kef-remote/config.before-test.json
+PREFS_BACKUP = $(HOME)/.kef-remote/preferences.before-test.plist
+
+test-fresh: kill
+	@# A second run keeps the first backup: that one is the real setup.
+	@if [ -f "$(CONFIG_BACKUP)" ]; then rm -f "$(CONFIG_FILE)"; echo "Backup already there; removed the test config"; \
+	elif [ -f "$(CONFIG_FILE)" ]; then mv "$(CONFIG_FILE)" "$(CONFIG_BACKUP)"; echo "Saved config.json to $(CONFIG_BACKUP)"; fi
+	@if [ ! -f "$(PREFS_BACKUP)" ]; then defaults export $(BUNDLE_ID) "$(PREFS_BACKUP)" && echo "Saved preferences to $(PREFS_BACKUP)"; fi
+	@defaults delete $(BUNDLE_ID) 2>/dev/null && echo "Cleared preferences" || echo "No preferences to clear"
+	tccutil reset Accessibility $(BUNDLE_ID)
+	@$(MAKE) test-build
+
+# Put back the config and preferences test-fresh saved. Accessibility
+# stays as the test left it: allow it again in the guide if needed.
+test-restore: kill
+	@if [ -f "$(CONFIG_BACKUP)" ]; then mv "$(CONFIG_BACKUP)" "$(CONFIG_FILE)"; echo "Restored config.json"; else echo "No config backup"; fi
+	@if [ -f "$(PREFS_BACKUP)" ]; then defaults delete $(BUNDLE_ID) 2>/dev/null; defaults import $(BUNDLE_ID) "$(PREFS_BACKUP)" && rm "$(PREFS_BACKUP)" && echo "Restored preferences"; else echo "No preferences backup"; fi
+
 # --- Release packaging ---
 
 RELEASE_APP = $(shell ls -td $(DERIVED_DATA)/KEFRemote-*/Build/Products/Release/KEFRemote.app 2>/dev/null | head -1)
@@ -199,4 +225,4 @@ kef-raw-standby:
 	@test -n "$(MIN)" || (echo "Usage: make kef-raw-standby MIN=<0|20|60>"; exit 1)
 	$(KEFCTL) --standby $(MIN)
 
-.PHONY: test discover speaker-check app-icon run test-build package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
+.PHONY: test-fresh test-restore test discover speaker-check app-icon run test-build package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
