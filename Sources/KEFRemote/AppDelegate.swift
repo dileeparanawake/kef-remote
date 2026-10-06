@@ -91,7 +91,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     )
 
-    private lazy var settingsWindow = SettingsWindowController(model: settingsModel, menuBar: menuBar)
+    private lazy var settingsWindow = SettingsWindowController(
+        model: settingsModel, menuBar: menuBar, sendFeedback: { [weak self] in self?.sendFeedback() }
+    )
 
     // MARK: - Setup window and permissions
 

@@ -19,10 +19,10 @@ struct FeedbackSender {
 
     /// - Parameter speaker: The saved speaker, for the email's Speaker line.
     func send(speaker: AppConfig.SpeakerConfig?) {
-        let info = Bundle.main.infoDictionary
+        let version = AppVersion.current
         guard let email = FeedbackEmail.today(
-            appVersion: info?["CFBundleShortVersionString"] as? String ?? "unknown",
-            build: info?["CFBundleVersion"] as? String ?? "unknown",
+            appVersion: version.short,
+            build: version.build,
             macOSVersion: ProcessInfo.processInfo.operatingSystemVersionString,
             speaker: speaker
         ) else {

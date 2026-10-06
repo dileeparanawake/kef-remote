@@ -28,13 +28,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private let model: SettingsModel
     private let menuBar: MenuBarModel
+    /// Send feedback… in the About tab.
+    private let sendFeedback: () -> Void
     private var window: NSWindow?
     private let log = AppLogger(subsystem: "com.kef-remote", category: "menubar")
     private lazy var presenter = AgentWindowPresenter(name: "settings", log: log)
 
-    init(model: SettingsModel, menuBar: MenuBarModel) {
+    init(model: SettingsModel, menuBar: MenuBarModel, sendFeedback: @escaping () -> Void) {
         self.model = model
         self.menuBar = menuBar
+        self.sendFeedback = sendFeedback
     }
 
     func show(source: Source) {
@@ -44,7 +47,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private func makeWindow() -> NSWindow {
         let window = AgentWindowPresenter.makeWindow(
-            NSHostingController(rootView: SettingsView(model: model, menuBar: menuBar)),
+            NSHostingController(rootView: SettingsView(model: model, menuBar: menuBar, sendFeedback: sendFeedback)),
             delegate: self
         )
         window.title = "KEF Remote Settings"

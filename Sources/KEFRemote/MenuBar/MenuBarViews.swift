@@ -127,7 +127,7 @@ struct MenuBarMenu: View {
         Divider()
 
         ForEach(MenuLink.shown, id: \.self) { link in
-            Button(link.title) { open(link) }
+            Button(link.title) { link.open(from: "menu", log: log) }
         }
 
         if FeedbackEmail.isShown {
@@ -144,11 +144,5 @@ struct MenuBarMenu: View {
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
-    }
-
-    private func open(_ link: MenuLink) {
-        guard let url = link.url else { return }
-        let opened = NSWorkspace.shared.open(url)
-        log.info("menu: \(link.title) clicked, \(opened ? "opened" : "could not open") \(url.absoluteString)")
     }
 }
