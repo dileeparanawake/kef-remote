@@ -34,10 +34,13 @@ public struct InputMenu: Equatable, Sendable {
 
     public let items: [Item]
     /// Greyed out while the speaker isn't connected, since a switch
-    /// couldn't reach it, and while it's off, since it ignores input
-    /// writes then (first real check, 6 Oct 2026). It stays in the menu
-    /// rather than hiding, so the menu keeps its shape and Input is where
-    /// he left it.
+    /// couldn't reach it. It stays in the menu rather than hiding, so the
+    /// menu keeps its shape and Input is where he left it.
+    ///
+    /// Not greyed while the last read said off: KEF's own remote can turn
+    /// the speaker on without the app seeing it, which would leave Input
+    /// greyed. A switch reads the speaker first instead, and says "Speaker
+    /// is off" if it is (``SpeakerController/switchInput(to:)``).
     public let isEnabled: Bool
 
     /// - Parameters:
@@ -46,8 +49,7 @@ public struct InputMenu: Equatable, Sendable {
     ///   - isConnected: The speaker answered the last exchange.
     ///   - inputs: The inputs the speaker has, in order.
     public init(speakerSource: SourceByte?, isConnected: Bool, inputs: [InputSource]) {
-        // Before the first read, power isn't known: a switch reads it first.
-        isEnabled = isConnected && speakerSource?.isPoweredOn != false
+        isEnabled = isConnected
         // Once the speaker stops answering, its input may have changed
         // (KEF's remote, or its own app), so tick nothing. It reports
         // Bluetooth as unpaired while nothing is paired, but it's the

@@ -55,12 +55,13 @@ struct InputMenuTests {
         #expect(menu.items.allSatisfy { !$0.isTicked })
     }
 
-    /// The speaker ignores input writes while off (first real check).
-    @Test func whileTheSpeakerIsOffItIsGreyedOutButKeepsItsTick() {
+    /// KEF's remote can turn it on unseen, so a stale "off" mustn't grey
+    /// it out; the switch itself checks.
+    @Test func whileTheLastReadSaidOffItStaysEnabledAndKeepsItsTick() {
         let menu = InputMenu(
             speakerSource: on(.wifi).with(isPoweredOn: false), isConnected: true, inputs: SpeakerModel.other.inputs
         )
-        #expect(!menu.isEnabled)
+        #expect(menu.isEnabled)
         #expect(menu.items.filter(\.isTicked).map(\.title) == ["Wi-Fi"])
     }
 
