@@ -18,9 +18,11 @@ import os
 ///    every exchange with the speaker reports whether it answered
 /// 7. Opens the settings window from the menu, or when the app is
 ///    launched again while running, and applies settings changes live
-/// 8. Opens the permissions guide at launch while Accessibility is
-///    missing, and from the menu; starts the volume keys once it's granted,
-///    and shows the red dot in the menu bar while it isn't
+/// 8. Opens the setup window at launch until setup is finished, then
+///    only its permissions step while Accessibility is missing, and that
+///    step from the menu; starts the volume keys once it's granted (or
+///    offers a restart if macOS still refuses them), and shows the red
+///    dot in the menu bar while it isn't
 /// 9. Switches the speaker's input from Input ▸ in the menu, ticked from
 ///    the last source byte the controller read or wrote; swaps left and
 ///    right from Settings, shown from the same byte
@@ -91,11 +93,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private lazy var settingsWindow = SettingsWindowController(model: settingsModel, menuBar: menuBar)
 
-    // MARK: - Permissions guide
+    // MARK: - Setup window and permissions
 
     /// Read by ``KEFRemoteApp`` for the Permissions… item.
     let permissions = PermissionsModel()
-    private lazy var permissionsWindow = PermissionsWindowController(model: permissions)
+
+    private lazy var onboarding = OnboardingModel(
+        permissions: permissions,
+        settings: settingsModel,
+        menuBar: menuBar,
+        actions: OnboardingActions(
+            findSpeaker: { [weak self] in
+                await self?.runDiscovery(trigger: "Find speaker in setup") ?? .failed("app is closing")
+            },
+            finish: { [weak self] in self?.finishOnboarding() },
+            restart: { [weak self] in
+                guard let self else { return }
+                AppRelauncher.relaunch(log: logger)
+            }
+        )
+    )
+    private lazy var onboardingWindow = OnboardingWindowController(model: onboarding)
     /// Feeds each connection status to ``permissions`` (Local Network).
     private var connectionWatch: AnyCancellable?
     /// Feeds each Accessibility status to ``menuBar`` (the red dot).
@@ -136,14 +154,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 1. Load config from disk.
         loadConfig()
 
-        // 2. Accessibility (needed for media key interception): while it's
-        //    missing, the permissions guide says why and opens the pane,
-        //    rather than the bare system prompt.
+        // 2. The setup window, until it's finished. After that, while
+        //    Accessibility (needed for media key interception) is missing,
+        //    its permissions step says why and opens the pane, rather than
+        //    the bare system prompt.
         setupPermissions()
-        if PermissionsGuide.showsAtLaunch(accessibility: permissions.accessibility) {
-            logger.warning("Accessibility not granted — media keys will not work; showing the permissions guide")
-            showPermissions(source: .launch)
-        }
+        openSetupAtLaunch()
 
         // 3. Set up all component callbacks.
         setupMediaKeyCallbacks()
@@ -206,9 +222,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow.show(source: source)
     }
 
-    /// Open the permissions guide and bring it to the front.
-    func showPermissions(source: PermissionsWindowController.Source) {
-        permissionsWindow.show(source: source)
+    /// Open the permissions step of the setup window on its own, and
+    /// bring it to the front.
+    func showPermissions(source: OnboardingWindowController.Source) {
+        onboardingWindow.show(.permissionsOnly, source: source)
     }
 
     /// Write feedback to Dileepa from the menu, naming the saved speaker.
@@ -290,6 +307,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         logger.info("Accessibility granted — starting the media key tap")
         mediaKeys.start()
+        permissions.showMediaKeys(started: mediaKeys.isRunning)
+    }
+
+    // MARK: - Setup window
+
+    /// All the steps until setup is finished; after that, only the
+    /// permissions step while Accessibility is missing (``Onboarding``).
+    private func openSetupAtLaunch() {
+        let finished = Onboarding.isFinished(
+            saved: config.onboarding, speaker: config.speaker, accessibility: permissions.accessibility
+        )
+        if config.onboarding == nil {
+            // An older config.json: save the answer, so losing Accessibility
+            // later opens the permissions step, not the whole setup again.
+            config.onboarding = .init(finished: finished)
+            saveConfig(what: "onboarding finished=\(finished) (older config: a saved speaker and Accessibility count as set up)")
+        }
+        if permissions.accessibility != .granted {
+            logger.warning("Accessibility not granted — media keys will not work")
+        }
+        guard let mode = Onboarding.windowAtLaunch(isFinished: finished, accessibility: permissions.accessibility) else {
+            logger.info("Setup finished and Accessibility allowed: no window at launch")
+            return
+        }
+        logger.info("Opening the setup window at launch (\(mode.rawValue)): setup finished=\(finished)")
+        onboardingWindow.show(mode, source: .launch)
+    }
+
+    /// Done in the setup window: don't open all the steps again.
+    private func finishOnboarding() {
+        config.onboarding = .init(finished: true)
+        saveConfig(what: "onboarding finished")
     }
 
     // MARK: - Config

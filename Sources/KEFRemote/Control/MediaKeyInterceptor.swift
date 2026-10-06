@@ -86,6 +86,9 @@ final class MediaKeyInterceptor {
     /// The run loop source that drives the event tap.
     private var runLoopSource: CFRunLoopSource?
 
+    /// Whether the tap is on: ``start()`` makes it only if macOS allows.
+    var isRunning: Bool { eventTap != nil }
+
     // MARK: - Lifecycle
 
     deinit {

@@ -34,6 +34,12 @@ extension ShortcutAction {
     var shortcutText: String {
         KeyboardShortcuts.getShortcut(for: name).map { "\($0)" } ?? "not set"
     }
+
+    /// The saved shortcut in words, like "Cmd+Shift+O", or nil if cleared.
+    @MainActor
+    var shortcutWords: String? {
+        KeyboardShortcuts.getShortcut(for: name).map { ShortcutWords.words(fromSymbols: "\($0)") }
+    }
 }
 
 // MARK: - GlobalShortcuts

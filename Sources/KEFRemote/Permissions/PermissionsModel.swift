@@ -17,11 +17,15 @@ import KEFRemoteCore
 /// [permissions] accessibility notGranted -> granted (guide open)
 /// [permissions] local network notCheckedYet -> granted (connection connected)
 /// [permissions] local network notGranted -> granted (probe)
+/// [permissions] volume keys did not start after Accessibility was allowed: offering Restart KEF Remote
 /// ```
 @MainActor
 final class PermissionsModel: ObservableObject {
     @Published private(set) var accessibility: PermissionStatus
     @Published private(set) var localNetwork: PermissionStatus = .notCheckedYet
+    /// Accessibility is allowed, but macOS still refused the volume key
+    /// tap: the guide offers Restart KEF Remote.
+    @Published private(set) var needsRestart = false
 
     /// Called when Accessibility is switched on while the app runs, so
     /// the volume keys can start without a restart.
@@ -70,6 +74,17 @@ final class PermissionsModel: ObservableObject {
                 guard !Task.isCancelled else { return }
                 self?.checkAccessibility(reason: "menu bar check")
             }
+        }
+    }
+
+    /// Whether the volume keys started once Accessibility was allowed.
+    /// If not, the guide offers a restart (``PermissionsGuide/needsRestart(accessibility:mediaKeysStarted:)``).
+    func showMediaKeys(started: Bool) {
+        needsRestart = PermissionsGuide.needsRestart(accessibility: accessibility, mediaKeysStarted: started)
+        if needsRestart {
+            log.warning("volume keys did not start after Accessibility was allowed: offering Restart KEF Remote")
+        } else {
+            log.info("volume keys started after Accessibility was allowed: no restart needed")
         }
     }
 
