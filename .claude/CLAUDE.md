@@ -1,6 +1,6 @@
 # KEF Remote
 
-Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) over TCP. Runs as a background agent (LSUIElement=true) with no Dock icon. A menu bar icon shows whether the speaker is connected (it answered the last exchange), with a red dot when something needs the user, a brief green dot on connecting and a pulsing orange dot while it looks for the speaker. It offers Find speaker when it isn't connected, and opens Settings (a plain `NSWindow`). It intercepts media keys and shows a HUD overlay for volume/source feedback. Menu and settings actions log under the `menubar` and `settings` categories.
+Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) over TCP. Runs as a background agent (LSUIElement=true) with no Dock icon. A menu bar icon shows whether the speaker is connected (it answered the last exchange), with a red dot when something needs the user, a brief green dot on connecting and a pulsing orange dot while it looks for the speaker. It offers Find speaker when it isn't connected, opens Settings (a plain `NSWindow`), and links to who made it (`MenuLink`; Support stays hidden until its page exists). It intercepts media keys and shows a HUD overlay for volume/source feedback. Menu and settings actions log under the `menubar` and `settings` categories.
 
 ## Codebase
 
