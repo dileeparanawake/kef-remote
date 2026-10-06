@@ -20,19 +20,29 @@ import Foundation
 /// - A power change sent within `ignoresPowerChangesFor` of the last one
 ///   landing is ignored: "cycling it quickly looks like failure because
 ///   requests aren't taken" (Dileepa).
+/// - For `mutedAsItComesOnFor` after power comes on, the volume reads
+///   muted though it isn't. A volume written in that moment is kept as
+///   written. (Second real check, 6 Oct 2026: the LSX read 45% muted
+///   right as it came on; kefctl polling every second saw 45% unmuted.)
+/// - With no USB input (the LSX), a switch to USB keeps the input it is
+///   on. (Same check: asked for USB, it stayed on Aux.)
 public final class SimulatedSpeaker: SpeakerConnection {
     private var volumeByte: UInt8
     private var sourceByte: UInt8
     private let hasPairedBluetooth: Bool
     private let keepsInputOnPowerOn: Bool
+    private let hasUSBInput: Bool
     private let clock: SpeakerClock
     private let powerChangeTime: Duration
     private let ignoresPowerChangesFor: Duration
+    private let mutedAsItComesOnFor: Duration
 
     /// A power change on its way: the byte it lands on, and when.
     private var powerChange: (source: SourceByte, landsAt: Duration)?
     /// When the last power change landed.
     private var lastPowerChangeLanded: Duration?
+    /// When it last came on, for the moment it reads muted.
+    private var cameOnAt: Duration?
 
     /// True once it was sent the write that crashes a real speaker.
     public private(set) var hasCrashed = false
@@ -51,22 +61,29 @@ public final class SimulatedSpeaker: SpeakerConnection {
     ///   - powerChangeTime: How long turning on or off takes.
     ///   - ignoresPowerChangesFor: How long after one power change lands
     ///     it ignores the next.
+    ///   - mutedAsItComesOnFor: How long the volume reads muted once it
+    ///     comes on.
+    ///   - hasUSBInput: False for an LSX, which has no USB input.
     public init(
         volume: VolumeState,
         source: SourceByte,
         hasPairedBluetooth: Bool = false,
         keepsInputOnPowerOn: Bool = false,
+        hasUSBInput: Bool = true,
         clock: SpeakerClock = SimulatedClock(),
         powerChangeTime: Duration = .zero,
-        ignoresPowerChangesFor: Duration = .zero
+        ignoresPowerChangesFor: Duration = .zero,
+        mutedAsItComesOnFor: Duration = .zero
     ) {
         self.volumeByte = VolumeCoding.encode(level: volume.level, isMuted: volume.isMuted)
         self.sourceByte = source.encode()
         self.hasPairedBluetooth = hasPairedBluetooth
         self.keepsInputOnPowerOn = keepsInputOnPowerOn
+        self.hasUSBInput = hasUSBInput
         self.clock = clock
         self.powerChangeTime = powerChangeTime
         self.ignoresPowerChangesFor = ignoresPowerChangesFor
+        self.mutedAsItComesOnFor = mutedAsItComesOnFor
     }
 
     public func send(_ data: Data, expectResponseBytes: Int) async throws -> Data {
@@ -75,7 +92,7 @@ public final class SimulatedSpeaker: SpeakerConnection {
         }
         let bytes = [UInt8](data)
         if bytes == [UInt8](KEFCommand.getVolume()) {
-            return reply(register: KEFCommand.volumeRegister, value: volumeByte)
+            return reply(register: KEFCommand.volumeRegister, value: volumeByteAsRead)
         }
         if bytes == [UInt8](KEFCommand.getSource()) {
             return reply(register: KEFCommand.sourceRegister, value: source.encode())
@@ -91,6 +108,13 @@ public final class SimulatedSpeaker: SpeakerConnection {
         throw KEFError.invalidResponse
     }
 
+    /// The volume as a read reports it: muted for a moment as it comes on.
+    private var volumeByteAsRead: UInt8 {
+        landPowerChange()
+        guard let cameOnAt, clock.now < cameOnAt + mutedAsItComesOnFor else { return volumeByte }
+        return VolumeCoding.encode(level: volume.level, isMuted: true)
+    }
+
     /// Every write is acked: the real speaker acks the ones it ignores too.
     private func write(source new: SourceByte) throws {
         if !new.isPoweredOn && new.standby == .twentyMinutes {
@@ -104,7 +128,7 @@ public final class SimulatedSpeaker: SpeakerConnection {
             return
         }
         guard current.isPoweredOn else { return }  // off: ignored
-        sourceByte = withBluetoothRule(new).encode()
+        sourceByte = withInputRules(new, from: current).encode()
     }
 
     private func startPowerChange(to new: SourceByte, from current: SourceByte) {
@@ -115,7 +139,7 @@ public final class SimulatedSpeaker: SpeakerConnection {
         if new.isPoweredOn && keepsInputOnPowerOn {
             landing = landing.with(input: current.input)
         }
-        powerChange = (withBluetoothRule(landing), clock.now + powerChangeTime)
+        powerChange = (withInputRules(landing, from: current), clock.now + powerChangeTime)
         landPowerChange()
     }
 
@@ -125,9 +149,13 @@ public final class SimulatedSpeaker: SpeakerConnection {
         sourceByte = change.source.encode()
         powerChange = nil
         lastPowerChangeLanded = change.landsAt
+        if change.source.isPoweredOn { cameOnAt = change.landsAt }
     }
 
-    private func withBluetoothRule(_ source: SourceByte) -> SourceByte {
+    /// The byte a write lands on: with no USB it keeps the input it had,
+    /// and Bluetooth reads as paired or unpaired.
+    private func withInputRules(_ source: SourceByte, from current: SourceByte) -> SourceByte {
+        if source.input == .usb && !hasUSBInput { return source.with(input: current.input) }
         guard source.input.isSameInput(as: .bluetoothPaired) else { return source }
         return source.with(input: hasPairedBluetooth ? .bluetoothPaired : .bluetoothUnpaired)
     }

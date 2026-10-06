@@ -166,6 +166,73 @@ struct SimulatedSpeakerTests {
         #expect(speaker.source.input == .wifi)
     }
 
+    // MARK: - Muted for a moment as it comes on
+
+    /// Like the LSX in the second real check (6 Oct 2026): it read muted
+    /// right as power came on, though it wasn't muted before or after.
+    private func speakerThatFlashesMuted(_ clock: SimulatedClock) -> SimulatedSpeaker {
+        SimulatedSpeaker(
+            volume: forty, source: on.with(isPoweredOn: false), clock: clock,
+            powerChangeTime: .seconds(7), mutedAsItComesOnFor: .milliseconds(500)
+        )
+    }
+
+    /// The volume as the speaker answers a read, with no controller in
+    /// between (the controller reads again in that moment).
+    private func readVolume(_ speaker: SimulatedSpeaker) async throws -> VolumeState {
+        let reply = try await speaker.send(KEFCommand.getVolume(), expectResponseBytes: 5)
+        return VolumeCoding.decode(reply[3])
+    }
+
+    @Test func readsMutedForAMomentAsItComesOn() async throws {
+        let clock = SimulatedClock()
+        let speaker = speakerThatFlashesMuted(clock)
+
+        try await SpeakerController(connection: speaker).powerOn()
+        await clock.sleep(for: .seconds(7))
+        #expect(try await readVolume(speaker) == VolumeState(level: 40, isMuted: true))
+
+        await clock.sleep(for: .milliseconds(500))
+        #expect(try await readVolume(speaker) == forty)
+    }
+
+    @Test func aMutedVolumeWrittenInThatMomentStaysMuted() async throws {
+        let clock = SimulatedClock()
+        let speaker = speakerThatFlashesMuted(clock)
+
+        try await SpeakerController(connection: speaker).powerOn()
+        await clock.sleep(for: .seconds(7))
+        _ = try await speaker.send(KEFCommand.setVolume(VolumeCoding.encode(level: 42, isMuted: true)), expectResponseBytes: 3)
+        await clock.sleep(for: .seconds(1))
+
+        #expect(speaker.volume == VolumeState(level: 42, isMuted: true))
+    }
+
+    @Test func doesNotReadMutedWhenItWasAlreadyOn() async throws {
+        let clock = SimulatedClock()
+        let speaker = SimulatedSpeaker(volume: forty, source: on, clock: clock, mutedAsItComesOnFor: .seconds(1))
+        #expect(try await readVolume(speaker) == forty)
+    }
+
+    // MARK: - No USB input (the LSX)
+
+    @Test func aSpeakerWithNoUSBStaysOnItsInputWhenAskedForUSB() async throws {
+        let speaker = SimulatedSpeaker(volume: forty, source: on.with(input: .aux), hasUSBInput: false)
+        let controller = SpeakerController(connection: speaker)
+
+        try await controller.setInput(.usb)
+
+        #expect(speaker.source.input == .aux)
+        try await controller.setInput(.optical)
+        #expect(speaker.source.input == .optical)
+    }
+
+    @Test func aSpeakerWithUSBSwitchesToIt() async throws {
+        let speaker = SimulatedSpeaker(volume: forty, source: on)
+        try await SpeakerController(connection: speaker).setInput(.usb)
+        #expect(speaker.source.input == .usb)
+    }
+
     // MARK: - Clock
 
     @Test func simulatedClockMovesOnlyWhenSlept() async {
