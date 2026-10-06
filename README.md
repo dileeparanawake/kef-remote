@@ -171,6 +171,7 @@ Send feedback… opens an email to me, with the log attached if you agree.
 | Limitation | What to do for now |
 |---|---|
 | Finding the speaker needs the Mac and the speaker on the same network, with local network access allowed. | Set the IP in Settings (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). |
+| Open Settings for Local Network opens Privacy & Security, not the Local Network list (macOS has no link to it). | Click Local Network, then turn on KEF Remote. |
 | It doesn't start at login. | Add it in System Settings > General > Login Items. |
 | Fast repeated key presses can get lost. After an error, presses are ignored for about two seconds while it reconnects. | Press the keys one at a time. |
 | After the Mac sleeps, the icon can still say connected until the next key press. | Press a volume key; the icon updates. |
