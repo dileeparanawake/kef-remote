@@ -18,6 +18,8 @@ public class TCPSpeakerConnection: SpeakerConnection {
     public static let replyTimeout: Duration = .seconds(2)
 
     private var connection: NWConnection?
+    /// Set by ``disconnect()``: no more connects on this one.
+    private var isClosed = false
     /// The speaker's IP, so the app can tell if discovery found the one it is on.
     public let host: String
     private let port: UInt16
@@ -71,8 +73,12 @@ public class TCPSpeakerConnection: SpeakerConnection {
         }
     }
 
-    /// Disconnect from the speaker.
+    /// Disconnect from the speaker, for good: the app makes a new
+    /// connection to reconnect. Commands still queued on this one fail
+    /// without connecting, so a dropped connection never reconnects
+    /// behind the app's back (hand test 6 Oct 2026: two connects at once).
     public func disconnect() {
+        isClosed = true
         connection?.cancel()
         connection = nil
         log(.info, "TCP: disconnected from \(host):\(port)")
@@ -89,6 +95,10 @@ public class TCPSpeakerConnection: SpeakerConnection {
     }
 
     private func getConnection() async throws -> NWConnection {
+        if isClosed {
+            log(.info, "TCP: not connecting to \(host):\(port): this connection was dropped")
+            throw KEFError.notConnected
+        }
         if let existing = connection, existing.state == .ready {
             return existing
         }
