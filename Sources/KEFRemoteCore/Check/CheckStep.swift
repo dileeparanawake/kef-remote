@@ -133,6 +133,14 @@ extension CheckAction {
         }
     }
 
+    /// Turns the speaker on, after which its volume needs a moment.
+    var turnsPowerOn: Bool {
+        switch self {
+        case .powerOn, .powerOnApplying: return true
+        default: return false
+        }
+    }
+
     /// Turns the speaker on or off, which takes it a while.
     var changesPower: Bool {
         switch self {

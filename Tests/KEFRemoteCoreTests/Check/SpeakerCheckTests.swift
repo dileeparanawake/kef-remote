@@ -141,6 +141,50 @@ struct SpeakerCheckTests {
         #expect(speaker.source == off)
     }
 
+    // MARK: - Letting the volume settle after power on
+
+    /// Like the LSX in the second real check: muted for a moment as it
+    /// comes on.
+    private func speakerThatFlashesMuted(_ source: SourceByte, clock: SimulatedClock) -> SimulatedSpeaker {
+        SimulatedSpeaker(
+            volume: forty, source: source, clock: clock,
+            powerChangeTime: .seconds(7), ignoresPowerChangesFor: .seconds(12),
+            mutedAsItComesOnFor: .milliseconds(500)
+        )
+    }
+
+    @Test func waitsForTheVolumeToSettleAfterPowerOnBeforeTheVolumeSteps() async {
+        let clock = SimulatedClock()
+        let speaker = speakerThatFlashesMuted(wifiOn.with(isPoweredOn: false), clock: clock)
+
+        let (report, lines) = await run(speaker, clock: clock)
+
+        // Read muted at 7 s, then 40% at 8 s and 9 s: two reads agree.
+        #expect(lines.contains("Volume settled at 40% 2 s after power on"))
+        // Expected from the settled read, not the muted moment.
+        #expect(detail(of: "volume up", in: report) == "expected 42%, read 42%")
+        #expect(report.passed)
+        #expect(speaker.volume == forty)
+    }
+
+    @Test func saysWhenTheVolumeIsStillChangingAndCarriesOn() async {
+        let clock = SimulatedClock()
+        let speaker = slowSpeaker(wifiOn.with(isPoweredOn: false), clock: clock)
+        let faulty = FaultySpeaker(speaker)
+        // For 10 s after it comes on, every volume read says something new.
+        var reads = 0
+        faulty.volumeRead = {
+            guard speaker.source.isPoweredOn, clock.now < .seconds(17) else { return nil }
+            reads += 1
+            return VolumeState(level: 40 + reads, isMuted: false)
+        }
+
+        let (report, lines) = await run(faulty, clock: clock)
+
+        #expect(lines.contains { $0.hasPrefix("Volume still changing 5 s after power on (last read") })
+        #expect(report.steps.first?.verdict == .pass)
+    }
+
     @Test func neverSendsInputStandbyOrSwapWhileTheSpeakerIsOff() async {
         let speaker = SimulatedSpeaker(volume: forty, source: wifiOn)
         let faulty = FaultySpeaker(speaker)

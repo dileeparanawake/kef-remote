@@ -13,6 +13,9 @@ final class FaultySpeaker: SpeakerConnection {
     /// can fail just one.
     var failsSend: (Data) -> Bool = { _ in false }
 
+    /// Volume reads it answers with this instead, when not nil.
+    var volumeRead: () -> VolumeState? = { nil }
+
     init(_ speaker: SimulatedSpeaker) {
         self.speaker = speaker
     }
@@ -23,6 +26,10 @@ final class FaultySpeaker: SpeakerConnection {
         }
         if ignoresWrite(data) {
             return Data([0x52, 0x11, 0xFF])
+        }
+        if data == KEFCommand.getVolume(), let volume = volumeRead() {
+            let byte = VolumeCoding.encode(level: volume.level, isMuted: volume.isMuted)
+            return Data([0x52, KEFCommand.volumeRegister, 0x81, byte, 0x00])
         }
         return try await speaker.send(data, expectResponseBytes: expectResponseBytes)
     }

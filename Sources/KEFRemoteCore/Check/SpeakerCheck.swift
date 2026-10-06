@@ -13,7 +13,8 @@ import Foundation
 ///
 /// The real speaker is slow to power on and off, so after a power change
 /// it reads back every second until it matches, says how long it took,
-/// and rests before the next power change.
+/// and rests before the next power change. Once power comes on, it waits
+/// for the volume to settle before the next step.
 ///
 /// Each line goes to `onLine` (the terminal) and to `log` (the log file).
 public final class SpeakerCheck {
@@ -31,6 +32,16 @@ public final class SpeakerCheck {
     public static let sourceWriteLimit: Duration = .seconds(5)
     /// How often to read back while waiting.
     public static let pollInterval: Duration = .seconds(1)
+
+    // Second real check (6 Oct 2026): right as the LSX came on it read
+    // 45% muted, and the volume moved under the next two steps (volume
+    // down expected 45% muted, read 43% muted). kefctl, polling every
+    // second, saw 45% unmuted all through power on, so it's brief.
+
+    /// How long to wait for the volume to settle once power comes on.
+    public static let volumeSettleLimit: Duration = .seconds(5)
+    /// How far apart two volume reads are that must agree to call it settled.
+    public static let volumeSettleInterval: Duration = .seconds(1)
 
     /// Why an input, standby or left/right step is not sent.
     static let notSentWhileOff = "not sent: the speaker is off, and it ignores input, standby and left/right while off"
@@ -83,9 +94,12 @@ public final class SpeakerCheck {
 
         var results: [CheckStepResult] = []
         for step in CheckStep.plan(from: start, includingInputs: includingInputs) {
-            let (result, answered) = await perform(step)
+            var (result, answered) = await perform(step)
             results.append(result)
             show(result)
+            if answered, result.verdict == .pass, step.action.turnsPowerOn {
+                answered = await settleVolumeAfterPowerOn()
+            }
             if !answered {
                 show("Stopping: the speaker didn't answer. Putting the starting state back.", at: .warning)
                 break
@@ -154,6 +168,39 @@ public final class SpeakerCheck {
                 return (comparison, waited)
             }
             await clock.sleep(for: Self.pollInterval)
+        }
+    }
+
+    /// Read the volume every ``volumeSettleInterval`` until two reads in a
+    /// row agree, for up to ``volumeSettleLimit``, and say which. Gives up
+    /// waiting rather than failing: the next step reads it again anyway.
+    @discardableResult
+    private func settleVolume() async throws -> VolumeState {
+        let started = clock.now
+        var last = try await controller.getVolumeState()
+        while clock.now - started < Self.volumeSettleLimit {
+            await clock.sleep(for: Self.volumeSettleInterval)
+            let next = try await controller.getVolumeState()
+            if next == last {
+                show("Volume settled at \(next.checkName) \(Self.seconds(clock.now - started)) s after power on", at: .info)
+                return next
+            }
+            last = next
+        }
+        show("Volume still changing \(Self.seconds(Self.volumeSettleLimit)) s after power on "
+            + "(last read \(last.checkName)); carrying on", at: .warning)
+        return last
+    }
+
+    /// ``settleVolume()`` between steps. False when the speaker didn't
+    /// answer, which stops the check.
+    private func settleVolumeAfterPowerOn() async -> Bool {
+        do {
+            try await settleVolume()
+            return true
+        } catch {
+            show("Volume could not be read after power on (\(error))", at: .error)
+            return false
         }
     }
 
@@ -300,6 +347,8 @@ public final class SpeakerCheck {
         let detail = comparison.line(waited: waited)
         show("put back: \(detail)", at: comparison.passed ? .info : .error)
         guard comparison.passed else { throw CheckProblem(detail) }
+        // The volume is put back after this, so it must be the real one.
+        if expectation == .poweredOn { try await settleVolume() }
     }
 
     /// Run one part of putting back. Returns what went wrong, if anything.
