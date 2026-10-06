@@ -19,7 +19,8 @@ import os
 /// 7. Opens the settings window from the menu, or when the app is
 ///    launched again while running, and applies settings changes live
 /// 8. Opens the permissions guide at launch while Accessibility is
-///    missing, and from the menu; starts the volume keys once it's granted
+///    missing, and from the menu; starts the volume keys once it's granted,
+///    and shows the red dot in the menu bar while it isn't
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -57,7 +58,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Menu bar and settings
 
     /// What the menu bar icon and menu show. Read by ``KEFRemoteApp``.
-    let menuBar = MenuBarModel()
+    /// Lazy, so it starts from the Accessibility status ``permissions``
+    /// read at launch.
+    private(set) lazy var menuBar = MenuBarModel(accessibility: permissions.accessibility)
 
     private lazy var settingsModel = SettingsModel(
         savedIP: config.speaker?.lastKnownIp,
@@ -82,10 +85,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Permissions guide
 
-    private let permissions = PermissionsModel()
+    /// Read by ``KEFRemoteApp`` for the Permissions… item.
+    let permissions = PermissionsModel()
     private lazy var permissionsWindow = PermissionsWindowController(model: permissions)
     /// Feeds each connection status to ``permissions`` (Local Network).
     private var connectionWatch: AnyCancellable?
+    /// Feeds each Accessibility status to ``menuBar`` (the red dot).
+    private var accessibilityWatch: AnyCancellable?
 
     // MARK: - Components
 
@@ -195,12 +201,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Permissions
 
     /// Local Network has no API: the guide reads it from whether the
-    /// speaker answered. Accessibility switched on while the app runs
-    /// starts the volume keys.
+    /// speaker answered. Accessibility is checked every few seconds, and
+    /// the menu bar shows it. Switched on while the app runs, it starts
+    /// the volume keys.
     private func setupPermissions() {
         connectionWatch = menuBar.$status.sink { [weak self] status in
             self?.permissions.showConnection(status)
         }
+        accessibilityWatch = permissions.$accessibility.sink { [weak self] status in
+            self?.menuBar.showAccessibility(status)
+        }
+        permissions.watchAccessibility()
         permissions.onAccessibilityGranted = { [weak self] in
             self?.startMediaKeysAfterAccessibilityGranted()
         }

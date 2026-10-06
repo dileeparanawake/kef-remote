@@ -51,6 +51,12 @@ public enum PermissionsGuide {
     /// window closes.
     public static let recheckInterval: Duration = .seconds(1)
 
+    /// How often the app asks about Accessibility while the guide is
+    /// closed, so the menu bar's red dot comes or goes within a few
+    /// seconds of a change in System Settings. Slower than the open
+    /// guide: nobody is watching for a tick.
+    public static let menuBarRecheckInterval: Duration = .seconds(3)
+
     /// Open at launch, instead of the bare system prompt, when the volume
     /// keys can't work. Local Network is always "not checked yet" at
     /// launch, so it doesn't count here; the menu's red dot points to
@@ -62,5 +68,21 @@ public enum PermissionsGuide {
     /// The rows, top to bottom.
     public static func rows(accessibility: PermissionStatus, localNetwork: PermissionStatus) -> [PermissionRow] {
         [PermissionRow(.accessibility, status: accessibility), PermissionRow(.localNetwork, status: localNetwork)]
+    }
+
+    /// The Permissions… item in the menu, so he sees at a glance whether
+    /// he's done. Words and a tick, so it reads without colour.
+    ///
+    /// ```
+    /// Permissions… ✓              every permission allowed
+    /// Permissions… (1 needs you)  one not allowed
+    /// Permissions…                none missing, Local Network not checked yet
+    /// ```
+    public static func menuItemTitle(rows: [PermissionRow]) -> String {
+        let needingHim = rows.filter(\.needsAttention).count
+        if needingHim == 1 { return "Permissions… (1 needs you)" }
+        if needingHim > 1 { return "Permissions… (\(needingHim) need you)" }
+        if rows.allSatisfy({ $0.status == .granted }) { return "Permissions… ✓" }
+        return "Permissions…"
     }
 }

@@ -33,21 +33,25 @@ struct MenuBarIcon: View {
 /// The menu that drops down from the icon.
 ///
 /// ```
-/// Connected to LSX          Can't reach LSX: click Find speaker
-/// 192.168.1.80              No answer at 192.168.1.80
-/// ─────────────             Find speaker
-/// Permissions…              ─────────────
-/// Settings…        ⌘,       Permissions…
-/// ─────────────             Settings…
-/// Made by Dileepa ↗         ─────────────
-/// ─────────────             Made by Dileepa ↗
-/// Quit KEF Remote  ⌘Q       ─────────────
-///                           Quit
+/// Connected to LSX          Volume keys off: allow Accessibility
+/// 192.168.1.80              Click Permissions… to turn it on
+/// ─────────────             ─────────────
+/// Permissions… ✓            Permissions… (1 needs you)
+/// Settings…        ⌘,       Settings…        ⌘,
+/// ─────────────             ─────────────
+/// Made by Dileepa ↗         Made by Dileepa ↗
+/// ─────────────             ─────────────
+/// Quit KEF Remote  ⌘Q       Quit KEF Remote  ⌘Q
 /// ```
 ///
-/// Support KEF Remote… joins the links once its page exists (``MenuLink``).
+/// Find speaker shows under the first two lines when the speaker isn't
+/// connected (``MenuBarPresentation/offersFindSpeaker``). The
+/// Permissions… item says whether any permission needs him
+/// (``PermissionsGuide/menuItemTitle(rows:)``). Support KEF Remote…
+/// joins the links once its page exists (``MenuLink``).
 struct MenuBarMenu: View {
     @ObservedObject var model: MenuBarModel
+    @ObservedObject var permissions: PermissionsModel
     let findSpeaker: () -> Void
     let openPermissions: () -> Void
     let openSettings: () -> Void
@@ -69,8 +73,9 @@ struct MenuBarMenu: View {
 
         Divider()
 
-        Button("Permissions…") {
-            log.info("menu: Permissions… clicked")
+        let permissionsTitle = PermissionsGuide.menuItemTitle(rows: permissions.rows)
+        Button(permissionsTitle) {
+            log.info("menu: \(permissionsTitle) clicked")
             openPermissions()
         }
 

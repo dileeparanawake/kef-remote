@@ -92,4 +92,46 @@ struct PermissionRowTests {
         #expect(rows.map(\.permission) == [.accessibility, .localNetwork])
         #expect(rows.map(\.status) == [.granted, .notCheckedYet])
     }
+
+    // MARK: - The Permissions… item in the menu
+
+    /// Hand test, 6 Oct: he wants to see at a glance, in the menu,
+    /// whether the permissions are fine.
+    @Test func whenBothAreAllowedTheMenuItemShowsATick() {
+        let rows = PermissionsGuide.rows(accessibility: .granted, localNetwork: .granted)
+
+        #expect(PermissionsGuide.menuItemTitle(rows: rows) == "Permissions… ✓")
+    }
+
+    @Test func whenOneIsMissingTheMenuItemSaysOneNeedsHim() {
+        let rows = PermissionsGuide.rows(accessibility: .notGranted, localNetwork: .granted)
+
+        #expect(PermissionsGuide.menuItemTitle(rows: rows) == "Permissions… (1 needs you)")
+    }
+
+    @Test func whenBothAreMissingTheMenuItemSaysTwoNeedHim() {
+        let rows = PermissionsGuide.rows(accessibility: .notGranted, localNetwork: .notGranted)
+
+        #expect(PermissionsGuide.menuItemTitle(rows: rows) == "Permissions… (2 need you)")
+    }
+
+    /// Local Network isn't known until the speaker is asked, so there is
+    /// no tick yet, and nothing to ask of him either.
+    @Test func whileLocalNetworkIsUncheckedTheMenuItemIsPlain() {
+        let rows = PermissionsGuide.rows(accessibility: .granted, localNetwork: .notCheckedYet)
+
+        #expect(PermissionsGuide.menuItemTitle(rows: rows) == "Permissions…")
+    }
+
+    @Test func missingAccessibilityCountsEvenWhileLocalNetworkIsUnchecked() {
+        let rows = PermissionsGuide.rows(accessibility: .notGranted, localNetwork: .notCheckedYet)
+
+        #expect(PermissionsGuide.menuItemTitle(rows: rows) == "Permissions… (1 needs you)")
+    }
+
+    /// The open guide asks every second; the slower check keeps the menu
+    /// bar's red dot true while the guide is closed.
+    @Test func theMenuBarChecksAccessibilityLessOftenThanTheOpenGuide() {
+        #expect(PermissionsGuide.menuBarRecheckInterval > PermissionsGuide.recheckInterval)
+    }
 }
