@@ -33,9 +33,9 @@ Use `make <target>` for common operations. Key targets:
 | `make speaker-check` | Run every speaker command, read each back, put the start back (`INPUTS=1` each input, `DRY_RUN=1` simulated). Changes what's playing: only when Dileepa is away; quit the app first |
 | `make app-icon` | Redraw the app icon PNGs from `Design/AppIcon.svg` |
 | `make run` | Launch most recently built debug app |
-| `make test-build` | Quit the running app, build this branch with `xcodebuild`, and launch it for a hand test |
-| `make test-fresh` | Hand test from a clean slate: saves config aside, clears the test ID's preferences, builds under one fixed test bundle ID (`…KEFRemote.test`) in its own folder (`.build/test-fresh/<ID>`) and launches it. Prints the `tccutil` line that resets its Accessibility; never runs it. `NEW_ID=1` builds under a new ID (`.test1`, `.test2`, …) and path so macOS should ask for Local Network again; each adds one Local Network entry. macOS tells apps apart by bundle ID, path, signature and executable UUID together, so a new UUID alone doesn't re-ask. Don't `make -n` it: the line holding `$(MAKE)` still runs |
-| `make test-clean` | Prints (doesn't run) how to remove each test ID: a `tccutil reset Accessibility` line per ID (or the − button under Device Control and Data Access). Local Network entries have no supported removal; reported to go after deleting `.build/test-fresh` and restarting |
+| `make test-build` | Quit the running app, build this branch as the one test app (`…KEFRemote.test`, fixed path in `~/Library/Developer/KEFRemoteTest`) and launch it |
+| `make test-fresh` | Hand test from a clean slate: config aside, test app's preferences cleared, then `test-build`. Changes no privacy setting |
+| `make test-clean` | Prints how to remove the test app's privacy entries |
 | `make test-restore` | Put back what `test-fresh` saved |
 | `make package` | Zip the latest Release build into `dist/KEFRemote-<version>.zip` (`ditto --norsrc --keepParent`) |
 | `make kill` | Stop all running KEFRemote instances |
