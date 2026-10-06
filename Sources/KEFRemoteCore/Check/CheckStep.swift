@@ -11,8 +11,7 @@ public enum CheckAction: Equatable {
     case powerOn
     case setStandby(StandbyMode)
     case setInput(InputSource)
-    /// Not built yet (another ticket adds it): the check says so and moves on.
-    case swapLeftRight
+    case setLeftRightSwapped(Bool)
 }
 
 /// A named step of the check: send one action, read it back, compare.
@@ -28,8 +27,8 @@ public struct CheckStep: Equatable {
     /// How far each volume step moves. Small, so it is barely heard.
     public static let volumeStep = 2
 
-    /// The inputs `--inputs` visits, in order.
-    public static let inputsToVisit: [InputSource] = [.optical, .wifi, .bluetoothPaired, .aux, .usb]
+    /// The inputs `--inputs` visits: the Input menu's, in its order.
+    public static let inputsToVisit: [InputSource] = PowerOnInput.allCases.compactMap(\.input)
 
     /// Every step, in order, for a speaker that starts as `start`.
     ///
@@ -49,7 +48,8 @@ public struct CheckStep: Equatable {
             steps.append(CheckStep(name: "standby \(mode.checkName)", action: .setStandby(mode)))
         }
         steps.append(CheckStep(name: "standby back to \(start.standby.checkName)", action: .setStandby(start.standby)))
-        steps.append(CheckStep(name: "left/right swap", action: .swapLeftRight))
+        steps.append(CheckStep(name: "left/right swap", action: .setLeftRightSwapped(!start.isInversed)))
+        steps.append(CheckStep(name: "left/right swap back", action: .setLeftRightSwapped(start.isInversed)))
         if includingInputs {
             for input in inputsToVisit {
                 steps.append(CheckStep(name: "input \(input.label)", action: .setInput(input)))
@@ -75,8 +75,8 @@ public struct CheckStep: Equatable {
 
 extension CheckAction {
     /// What the speaker should read back after this action, given its
-    /// state before. Nil when there is nothing to send yet.
-    public func expectation(before: SpeakerStatus) -> CheckExpectation? {
+    /// state before.
+    public func expectation(before: SpeakerStatus) -> CheckExpectation {
         let volume = before.volume
         switch self {
         case .raiseVolume(let amount):
@@ -95,8 +95,8 @@ extension CheckAction {
             return .standby(mode)
         case .setInput(let input):
             return .input(input)
-        case .swapLeftRight:
-            return nil
+        case .setLeftRightSwapped(let isSwapped):
+            return .leftRightSwapped(isSwapped)
         }
     }
 
@@ -108,7 +108,7 @@ extension CheckAction {
         switch self {
         case .setStandby(let mode):
             return mode == .twentyMinutes
-        case .setInput:
+        case .setInput, .setLeftRightSwapped:
             // The write keeps the standby time the speaker has.
             return before.standby == .twentyMinutes
         default:
@@ -134,6 +134,7 @@ public enum CheckExpectation: Equatable {
     case standby(StandbyMode)
     /// Bluetooth passes as either code: see ``compare(_:)``.
     case input(InputSource)
+    case leftRightSwapped(Bool)
 
     /// Whether the read-back is the volume register, not the source byte.
     var readsVolume: Bool {
@@ -177,6 +178,11 @@ public enum CheckExpectation: Equatable {
             default: break
             }
             return CheckComparison(passed: read.input.isSameInput(as: expected), detail: detail)
+        case (.leftRightSwapped(let expected), .source(let read)):
+            return CheckComparison(
+                passed: read.isInversed == expected,
+                detail: "expected \(leftRightName(expected)), read \(leftRightName(read.isInversed))"
+            )
         default:
             return CheckComparison(passed: false, detail: "read back the wrong register")
         }
@@ -198,6 +204,11 @@ public struct CheckComparison: Equatable {
         self.passed = passed
         self.detail = detail
     }
+}
+
+/// "left/right swapped" or "left/right normal".
+func leftRightName(_ isSwapped: Bool) -> String {
+    "left/right \(isSwapped ? "swapped" : "normal")"
 }
 
 extension VolumeState {

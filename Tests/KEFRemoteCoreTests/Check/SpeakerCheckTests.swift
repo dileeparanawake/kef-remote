@@ -34,11 +34,31 @@ struct SpeakerCheckTests {
         #expect(speaker.source == wifiOn)
     }
 
-    @Test func swapIsSkippedUntilItIsBuilt() async {
-        let (report, _) = await run(SimulatedSpeaker(volume: forty, source: wifiOn))
-        let swap = report.steps.first { $0.name == "left/right swap" }
-        #expect(swap?.verdict == .skip)
-        #expect(swap?.detail == "not built yet (another ticket adds it)")
+    @Test func swapsLeftAndRightThenBack() async {
+        let (report, lines) = await run(SimulatedSpeaker(volume: forty, source: wifiOn))
+        #expect(verdict(of: "left/right swap", in: report) == .pass)
+        #expect(verdict(of: "left/right swap back", in: report) == .pass)
+        #expect(lines.contains(
+            "PASS  left/right swap: expected left/right swapped, read left/right swapped [sent 53 30 81 52, read 52 30 81 52 00]"
+        ))
+    }
+
+    @Test func putsTheSwapBackAfterAFailure() async {
+        let speaker = SimulatedSpeaker(volume: forty, source: wifiOn)
+        let faulty = FaultySpeaker(speaker)
+        var failedOnce = false
+        // The speaker stops answering just as the swap is undone.
+        faulty.failsSend = { data in
+            guard !failedOnce, speaker.source.isInversed, data == KEFCommand.setSource(wifiOn.encode()) else { return false }
+            failedOnce = true
+            return true
+        }
+
+        let (report, _) = await run(faulty)
+
+        #expect(verdict(of: "left/right swap back", in: report) == .fail)
+        #expect(report.restore?.verdict == .pass)
+        #expect(speaker.source == wifiOn)
     }
 
     @Test func withInputsVisitsEachInputAndPutsTheStartingOneBack() async {
@@ -170,10 +190,10 @@ struct SpeakerCheckTests {
     @Test func showsTheStartEachStepThePutBackAndASummary() async {
         let (report, lines) = await run(SimulatedSpeaker(volume: forty, source: wifiOn))
 
-        #expect(lines.first == "Start: volume 40%, power on, input Wi-Fi, standby 60 min")
+        #expect(lines.first == "Start: volume 40%, power on, input Wi-Fi, standby 60 min, left/right normal")
         #expect(lines.contains("PASS  volume up: expected 42%, read 42% [sent 53 25 81 2A, read 52 25 81 2A 00]"))
-        #expect(lines.contains { $0.hasPrefix("PASS  put back: volume 40%, power on, input Wi-Fi, standby 60 min") })
-        #expect(lines.last == "Done: 10 passed, 0 failed, 1 skipped. Starting state put back.")
+        #expect(lines.contains { $0.hasPrefix("PASS  put back: volume 40%, power on, input Wi-Fi, standby 60 min, left/right normal") })
+        #expect(lines.last == "Done: 12 passed, 0 failed. Starting state put back.")
         #expect(report.summary == lines.last)
     }
 

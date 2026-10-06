@@ -4,7 +4,7 @@ import KEFRemoteCore
 // Runs every speaker command, reads each one back, then puts the
 // starting state back. Prints PASS / FAIL per step; exits 1 on a failure.
 //
-//   make speaker-check             # volume, mute, power, standby
+//   make speaker-check             # volume, mute, power, standby, left/right
 //   make speaker-check INPUTS=1    # also each input in turn
 //   make speaker-check DRY_RUN=1   # a simulated speaker: nothing is sent
 //

@@ -86,12 +86,10 @@ public final class SpeakerCheck {
         let mark = recorder.mark
         do {
             let before = try await controller.getState()
-            guard let expectation = step.action.expectation(before: before) else {
-                return (CheckStepResult(name: step.name, verdict: .skip, detail: "not built yet (another ticket adds it)"), true)
-            }
             guard !step.action.wouldLeaveTwentyMinutesWhileOff(before: before) else {
                 return (CheckStepResult(name: step.name, verdict: .fail, detail: Self.notSentWhileOff), true)
             }
+            let expectation = step.action.expectation(before: before)
             try await send(step.action)
             if step.action.needsSettling { await settle() }
             let reading: CheckReading = expectation.readsVolume
@@ -115,8 +113,7 @@ public final class SpeakerCheck {
         case .powerOn: try await controller.powerOn()
         case .setStandby(let mode): try await controller.setStandby(mode)
         case .setInput(let input): try await controller.setInput(input)
-        // Skipped before it gets here: there is nothing to send yet.
-        case .swapLeftRight: return
+        case .setLeftRightSwapped(let isSwapped): try await controller.setLeftRightSwapped(isSwapped)
         }
     }
 
@@ -149,13 +146,17 @@ public final class SpeakerCheck {
         if read.standby != expected.standby {
             differences.append("standby \(expected.standby.checkName), read standby \(read.standby.checkName)")
         }
+        if read.isInversed != expected.isInversed {
+            differences.append("\(leftRightName(expected.isInversed)), read \(leftRightName(read.isInversed))")
+        }
         return differences
     }
 
-    /// `volume 40%, power on, input Wi-Fi, standby 60 min`
+    /// `volume 40%, power on, input Wi-Fi, standby 60 min, left/right normal`
     static func describe(_ status: SpeakerStatus) -> String {
         "volume \(status.volume.checkName), power \(onOff(status.isPoweredOn)), "
-            + "input \(status.input.label), standby \(status.standby.checkName)"
+            + "input \(status.input.label), standby \(status.standby.checkName), "
+            + leftRightName(status.isInversed)
     }
 
     private static func onOff(_ isOn: Bool) -> String { isOn ? "on" : "off" }
@@ -189,6 +190,13 @@ public final class SpeakerCheck {
             let action = CheckAction.setStandby(target.standby)
             guard !action.wouldLeaveTwentyMinutesWhileOff(before: now) else { throw NotSentWhileOff() }
             try await controller.setStandby(target.standby)
+        }
+        problems += await attempt("left/right") { [self] in
+            let now = try await controller.getState()
+            guard now.isInversed != target.isInversed else { return }
+            let action = CheckAction.setLeftRightSwapped(target.isInversed)
+            guard !action.wouldLeaveTwentyMinutesWhileOff(before: now) else { throw NotSentWhileOff() }
+            try await controller.setLeftRightSwapped(target.isInversed)
         }
         problems += await attempt("volume") { [self] in
             let now = try await controller.getVolumeState()

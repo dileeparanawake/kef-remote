@@ -5,12 +5,11 @@ public struct CheckStepResult: Equatable {
     public enum Verdict: String {
         case pass = "PASS"
         case fail = "FAIL"
-        case skip = "SKIP"
     }
 
     public let name: String
     public let verdict: Verdict
-    /// What was expected and read back, or why it failed or was skipped.
+    /// What was expected and read back, or why it failed.
     public let detail: String
     /// The step's last write, if it sent one.
     public let sentBytes: Data?
@@ -52,7 +51,7 @@ public struct CheckReport: Equatable {
         !steps.contains { $0.verdict == .fail } && restore?.verdict != .fail
     }
 
-    /// `Done: 10 passed, 0 failed, 1 skipped. Starting state put back.`
+    /// `Done: 12 passed, 0 failed. Starting state put back.`
     public var summary: String {
         let count = { (verdict: CheckStepResult.Verdict) in self.steps.filter { $0.verdict == verdict }.count }
         let ending: String
@@ -61,6 +60,6 @@ public struct CheckReport: Equatable {
         case .fail: ending = "Putting the starting state back FAILED."
         default: ending = "Starting state put back."
         }
-        return "Done: \(count(.pass)) passed, \(count(.fail)) failed, \(count(.skip)) skipped. \(ending)"
+        return "Done: \(count(.pass)) passed, \(count(.fail)) failed. \(ending)"
     }
 }

@@ -26,20 +26,28 @@ struct CheckStepTests {
             "volume up", "volume down", "mute", "unmute",
             "power off", "power on",
             "standby 20 min", "standby 60 min", "standby never", "standby back to 60 min",
-            "left/right swap",
+            "left/right swap", "left/right swap back",
         ])
         #expect(plan.map(\.action) == [
             .raiseVolume(by: 2), .lowerVolume(by: 2), .mute, .unmute,
             .powerOff, .powerOn,
             .setStandby(.twentyMinutes), .setStandby(.sixtyMinutes), .setStandby(.never),
             .setStandby(.sixtyMinutes),
-            .swapLeftRight,
+            .setLeftRightSwapped(true), .setLeftRightSwapped(false),
         ])
     }
 
     @Test func turnsTheSpeakerOnFirstWhenItStartsOff() {
         let plan = CheckStep.plan(from: status(isPoweredOn: false), includingInputs: false)
         #expect(plan.first == CheckStep(name: "power on (it was off)", action: .powerOn))
+    }
+
+    @Test func swapsFromWhicheverWayTheSpeakerStarts() {
+        let swapped = SpeakerStatus(
+            volume: start.volume, isPoweredOn: true, isInversed: true, input: .wifi, standby: .sixtyMinutes
+        )
+        let plan = CheckStep.plan(from: swapped, includingInputs: false)
+        #expect(plan.suffix(2).map(\.action) == [.setLeftRightSwapped(false), .setLeftRightSwapped(true)])
     }
 
     @Test func goesDownFirstNearTheTopSoBothStepsMove() {
@@ -97,8 +105,7 @@ struct CheckStepTests {
         #expect(CheckAction.powerOn.expectation(before: start) == .poweredOn)
         #expect(CheckAction.setStandby(.never).expectation(before: start) == .standby(.never))
         #expect(CheckAction.setInput(.aux).expectation(before: start) == .input(.aux))
-        // Not built yet: nothing to send or read back.
-        #expect(CheckAction.swapLeftRight.expectation(before: start) == nil)
+        #expect(CheckAction.setLeftRightSwapped(true).expectation(before: start) == .leftRightSwapped(true))
     }
 
     // MARK: - Comparing
@@ -137,6 +144,14 @@ struct CheckStepTests {
             == CheckComparison(passed: false, detail: "expected off, read off with 20 min standby (that crashes the speaker)"))
     }
 
+    @Test func swapSaysWhichWayItRead() {
+        let normal = SourceByte(isPoweredOn: true, isInversed: false, standby: .never, input: .wifi)
+        #expect(CheckExpectation.leftRightSwapped(true).compare(.source(normal.with(isInversed: true)))
+            == CheckComparison(passed: true, detail: "expected left/right swapped, read left/right swapped"))
+        #expect(CheckExpectation.leftRightSwapped(true).compare(.source(normal))
+            == CheckComparison(passed: false, detail: "expected left/right swapped, read left/right normal"))
+    }
+
     @Test func standbyAndPowerSayWhatTheyRead() {
         let on = SourceByte(isPoweredOn: true, isInversed: false, standby: .never, input: .wifi)
         #expect(CheckExpectation.poweredOn.compare(.source(on))
@@ -154,6 +169,7 @@ struct CheckStepTests {
         let offWithTwenty = status(isPoweredOn: false, standby: .twentyMinutes)
         #expect(!CheckAction.setStandby(.sixtyMinutes).wouldLeaveTwentyMinutesWhileOff(before: offWithTwenty))
         #expect(CheckAction.setInput(.aux).wouldLeaveTwentyMinutesWhileOff(before: offWithTwenty))
+        #expect(CheckAction.setLeftRightSwapped(true).wouldLeaveTwentyMinutesWhileOff(before: offWithTwenty))
         // Power off has its own workaround in the controller.
         #expect(!CheckAction.powerOff.wouldLeaveTwentyMinutesWhileOff(before: status(standby: .twentyMinutes)))
     }
@@ -169,6 +185,10 @@ struct CheckStepTests {
         #expect(SpeakerCheck.differences(expected: started, read: status(input: .bluetoothPaired)).isEmpty)
         #expect(SpeakerCheck.differences(expected: started, read: status(level: 38, input: .aux))
             == ["volume 40%, read 38%", "input Bluetooth, read Aux"])
+        let swapped = SpeakerStatus(
+            volume: started.volume, isPoweredOn: true, isInversed: true, input: .bluetoothUnpaired, standby: .sixtyMinutes
+        )
+        #expect(SpeakerCheck.differences(expected: started, read: swapped) == ["left/right normal, read left/right swapped"])
     }
 
     // MARK: - Lines
@@ -189,8 +209,8 @@ struct CheckStepTests {
         #expect(result.line.hasSuffix("[sent nothing, read 52 25 81 AA 00]"))
     }
 
-    @Test func aSkippedLineHasNoBytes() {
-        let result = CheckStepResult(name: "left/right swap", verdict: .skip, detail: "not built yet")
-        #expect(result.line == "SKIP  left/right swap: not built yet")
+    @Test func aLineWithNoBytesHasNoBrackets() {
+        let result = CheckStepResult(name: "standby 20 min", verdict: .fail, detail: SpeakerCheck.notSentWhileOff)
+        #expect(result.line == "FAIL  standby 20 min: " + SpeakerCheck.notSentWhileOff)
     }
 }
