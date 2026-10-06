@@ -4,14 +4,25 @@
 public struct SpeakerSettings: Codable, Equatable, Sendable {
     /// The input the speaker switches to when the app turns it on.
     public var powerOnInput: PowerOnInput
+    /// How long the speaker waits with no sound before it goes to standby.
+    public var standby: StandbyChoice
 
-    public init(powerOnInput: PowerOnInput = .dontChange) {
+    public init(powerOnInput: PowerOnInput = .dontChange, standby: StandbyChoice = .dontChange) {
         self.powerOnInput = powerOnInput
+        self.standby = standby
+    }
+
+    /// A choice missing from the file (saved before it existed) is Don't change.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        powerOnInput = try container.decodeIfPresent(PowerOnInput.self, forKey: .powerOnInput) ?? .dontChange
+        standby = try container.decodeIfPresent(StandbyChoice.self, forKey: .standby) ?? .dontChange
     }
 
     /// The source byte that turns the speaker on: the byte it reported,
-    /// with the power bit set and the chosen input. It all goes in one
-    /// write, so the speaker never starts on the old input first.
+    /// with the power bit set, the chosen input and the chosen standby
+    /// time. It all goes in one write, so the speaker never starts on the
+    /// old input first.
     ///
     /// A speaker that is already on keeps its input: waking the Mac after
     /// a short sleep "powers on" a speaker that never went off, and
@@ -21,7 +32,68 @@ public struct SpeakerSettings: Codable, Equatable, Sendable {
         if !current.isPoweredOn, let input = powerOnInput.input {
             byte = byte.with(input: input)
         }
+        if let mode = standby.mode {
+            byte = byte.with(standby: mode)
+        }
         return byte
+    }
+
+    /// The standby time to write for `reason`, or nil to leave the
+    /// speaker's as it is.
+    public func standbyToWrite(for reason: StandbyReason) -> StandbyMode? {
+        switch reason {
+        case .chosen, .connect:
+            return standby.mode
+        case .wake:
+            // Dynamic standby: awake, use the chosen time. With no choice,
+            // keep what it always did, so the speaker stays on all day.
+            return standby.mode ?? .never
+        case .sleep:
+            // Whatever was chosen, a speaker left on while the Mac sleeps
+            // goes to standby by itself.
+            return .twentyMinutes
+        }
+    }
+}
+
+/// Why the app is writing the speaker's standby time. Logged with each write.
+public enum StandbyReason: String, Sendable {
+    /// The owner picked a time in Settings.
+    case chosen
+    /// The speaker just answered the app's connection check.
+    case connect
+    /// The Mac woke up (dynamic standby).
+    case wake
+    /// The Mac has been asleep for the power-off delay (dynamic standby).
+    case sleep
+}
+
+/// How long the speaker waits before standby, as chosen in Settings.
+/// Saved by name (`"sixtyMinutes"`).
+public enum StandbyChoice: String, Codable, CaseIterable, Sendable {
+    case dontChange
+    case twentyMinutes
+    case sixtyMinutes
+    case never
+
+    /// The time to write, or nil to keep the speaker's.
+    public var mode: StandbyMode? {
+        switch self {
+        case .dontChange: return nil
+        case .twentyMinutes: return .twentyMinutes
+        case .sixtyMinutes: return .sixtyMinutes
+        case .never: return .never
+        }
+    }
+
+    /// The name Settings shows.
+    public var label: String {
+        switch self {
+        case .dontChange: return "Don't change"
+        case .twentyMinutes: return "20 min"
+        case .sixtyMinutes: return "60 min"
+        case .never: return "Never"
+        }
     }
 }
 

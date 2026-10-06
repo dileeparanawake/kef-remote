@@ -73,7 +73,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.logger.info("Media key modifier is now \(choice.rawValue)")
             },
             applyDiscovery: { [weak self] mode in self?.applyDiscovery(mode) },
-            applyPowerOnInput: { [weak self] choice in self?.applyPowerOnInput(choice) }
+            applyPowerOnInput: { [weak self] choice in self?.applyPowerOnInput(choice) },
+            applyStandby: { [weak self] choice in self?.applyStandbyChoice(choice) }
         )
     )
 
@@ -313,11 +314,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         checkSpeaker(controller, on: conn, origin: origin)
     }
 
-    /// Check the speaker answers. If the saved IP has gone stale, look
-    /// for the speaker now rather than on the first key press.
+    /// Check the speaker answers, then set the chosen standby time. If the
+    /// saved IP has gone stale, look for the speaker now rather than on
+    /// the first key press.
     private func checkSpeaker(_ controller: SpeakerController, on conn: TCPSpeakerConnection, origin: CheckOrigin) {
         Task {
             let outcome = await controller.checkConnection(origin, discovery: config.discovery)
+            if outcome == .answered {
+                await applyStandby(for: .connect, with: controller)
+            }
             guard outcome == .rediscover else { return }
             guard conn === connection else {
                 logger.info("Check failed, but a newer connection has taken over; not rediscovering")
@@ -468,6 +473,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         saveConfig(what: "power-on input \(choice.rawValue)")
     }
 
+    /// Save the standby time, and set it now if the speaker is connected.
+    /// Otherwise it is set on the next connect.
+    private func applyStandbyChoice(_ choice: StandbyChoice) {
+        logger.info("Standby \(config.speakerSettings.standby.rawValue) -> \(choice.rawValue)")
+        config.speakerSettings.standby = choice
+        saveConfig(what: "standby \(choice.rawValue)")
+        guard menuBar.status == .connected, let controller else {
+            logger.info("Speaker not connected: the standby time is set on the next connect")
+            return
+        }
+        Task { await applyStandby(for: .chosen, with: controller) }
+    }
+
+    /// Set the standby time for `reason`. A failure is only logged: the
+    /// next command finds out whether the speaker has gone.
+    private func applyStandby(for reason: StandbyReason, with controller: SpeakerController) async {
+        do {
+            try await controller.applyStandby(config.speakerSettings, for: reason)
+        } catch {
+            logger.error("Standby (\(reason.rawValue)) failed: \(error.localizedDescription)")
+        }
+    }
+
     private func saveConfig(what: String) {
         do {
             try AppConfig.save(config, to: configFileURL)
@@ -604,18 +632,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        lifecycle.onStandbyChange = { [weak self] mode in
-            guard let self, let controller = self.controller(for: "standby \(mode)") else { return }
-
-            Task {
-                do {
-                    try await controller.setStandby(mode)
-                } catch {
-                    self.logger.error(
-                        "Standby change failed: \(error.localizedDescription)"
-                    )
-                }
-            }
+        lifecycle.onStandbyChange = { [weak self] reason in
+            guard let self, let controller = self.controller(for: "standby (\(reason.rawValue))") else { return }
+            Task { await self.applyStandby(for: reason, with: controller) }
         }
     }
 

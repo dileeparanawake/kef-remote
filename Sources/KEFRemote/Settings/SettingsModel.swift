@@ -15,13 +15,15 @@ struct SettingsActions {
     var applyDiscovery: (DiscoveryMode) -> Void
     /// Save the input the speaker switches to when the app turns it on.
     var applyPowerOnInput: (PowerOnInput) -> Void
+    /// Save the standby time, and set it on the speaker if connected.
+    var applyStandby: (StandbyChoice) -> Void
 }
 
 /// State for the settings window: the discovery mode, the IP field,
-/// discovery, the power-on input, the media key modifier, and refusing a
-/// shortcut that is already taken. Shortcuts are stored by the
-/// KeyboardShortcuts recorders themselves; the model checks and logs each
-/// change.
+/// discovery, the power-on input, the standby time, the media key
+/// modifier, and refusing a shortcut that is already taken. Shortcuts are
+/// stored by the KeyboardShortcuts recorders themselves; the model checks
+/// and logs each change.
 ///
 /// Every action is logged under the `settings` category.
 @MainActor
@@ -36,6 +38,7 @@ final class SettingsModel: ObservableObject {
     @Published private(set) var modifier: MediaKeyModifier
     @Published private(set) var discovery: DiscoveryMode
     @Published private(set) var powerOnInput: PowerOnInput
+    @Published private(set) var standby: StandbyChoice
 
     private let actions: SettingsActions
     private let log = AppLogger(subsystem: "com.kef-remote", category: "settings")
@@ -45,6 +48,7 @@ final class SettingsModel: ObservableObject {
         self.ipText = savedIP ?? ""
         self.discovery = discovery
         self.powerOnInput = speakerSettings.powerOnInput
+        self.standby = speakerSettings.standby
         self.modifier = MediaKeyModifier.stored
         self.actions = actions
     }
@@ -92,6 +96,13 @@ final class SettingsModel: ObservableObject {
         log.info("power-on input \(powerOnInput.rawValue) -> \(choice.rawValue)")
         powerOnInput = choice
         actions.applyPowerOnInput(choice)
+    }
+
+    func setStandby(_ choice: StandbyChoice) {
+        guard choice != standby else { return }
+        log.info("standby \(standby.rawValue) -> \(choice.rawValue)")
+        standby = choice
+        actions.applyStandby(choice)
     }
 
     func setModifier(_ choice: MediaKeyModifier) {

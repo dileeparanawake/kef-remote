@@ -15,10 +15,11 @@ public enum InputSource: UInt8, CaseIterable, Codable {
 
 /// Standby timeout mode for the KEF speaker.
 ///
-/// Stored in bits 5-4 of the source byte.
+/// Stored in bits 5-4 of the source byte. Settings offers all three
+/// (``StandbyChoice``), and dynamic standby asks for 20 minutes at sleep.
 /// **Warning:** 20-minute standby causes the speaker's control server to crash
-/// on power-off. The app only exposes 60-minute and never to the user.
-/// 20-minute is used internally by dynamic standby management.
+/// on power-off. So `powerOff()` switches 20 to 60 minutes first, and
+/// `applyStandby` never writes 20 minutes to a speaker that is off.
 ///
 /// Reference: Perl `kefctl` lines 80-85, 167-171.
 public enum StandbyMode: UInt8, CaseIterable, Codable {
