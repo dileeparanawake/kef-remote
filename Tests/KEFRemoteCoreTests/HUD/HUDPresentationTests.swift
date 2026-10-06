@@ -102,10 +102,12 @@ struct HUDPresentationTests {
 
     // MARK: - Play/pause, next and previous
 
-    @Test func playbackShowsItsSymbolAndName() {
+    /// It says what was sent, not that it worked: the speaker acks the
+    /// command, but on AirPlay from the Mac it can't pause the stream.
+    @Test func playbackShowsItsSymbolAndThatItWasSent() {
         let shown = [PlaybackCommand.playPause, .next, .previous].map { HUDPresentation(.playback($0)) }
         #expect(shown.map(\.symbolName) == ["playpause.fill", "forward.fill", "backward.fill"])
-        #expect(shown.map(\.label) == ["Play/Pause", "Next", "Previous"])
+        #expect(shown.map(\.label) == ["Play/Pause sent", "Next sent", "Previous sent"])
     }
 
     @Test func aSentPlaybackCommandShowsIt() {

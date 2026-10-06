@@ -12,7 +12,9 @@ import os
 /// pressed, the event is consumed and the appropriate callback is
 /// triggered instead of the system handling it. Without the modifier
 /// every key stays the Mac's, so play/pause still controls the Mac's own
-/// player. Which key a key code is lives in core (``MediaKey``).
+/// player. Which key a key code is lives in core (``MediaKey``), and
+/// which way each half of a press goes too (``MediaKeyPressRouter``):
+/// the key-down decides, so a press never goes half to each.
 ///
 /// **Accessibility permission** is required for the event tap to work.
 /// Call ``checkAccessibility(prompt:)`` at launch to verify permission
@@ -69,6 +71,10 @@ final class MediaKeyInterceptor {
 
     /// The run loop source that drives the event tap.
     private var runLoopSource: CFRunLoopSource?
+
+    /// Which way each press goes. Only the tap callback, on the main run
+    /// loop, touches it.
+    private var pressRouter = MediaKeyPressRouter()
 
     /// Whether the tap is on: ``start()`` makes it only if macOS allows.
     var isRunning: Bool { eventTap != nil }
@@ -206,27 +212,28 @@ final class MediaKeyInterceptor {
             return Unmanaged.passUnretained(event)
         }
 
-        // Check if the modifier is held.
-        let modifiers = event.flags
-        guard modifiers.contains(modifier) else {
-            // Modifier not held — pass the event through to the system.
+        // Both halves go where the key-down went, so the Mac never gets
+        // half a press (a key-down alone starts its player).
+        let modifierHeld = event.flags.contains(modifier)
+        let route = pressRouter.route(keyCode: keyCode, isKeyUp: isKeyUp, modifierHeld: modifierHeld)
+        logger.debug("key \(isKeyUp ? "up" : "down"): \(key) (code \(keyCode)), "
+            + "modifier \(modifierHeld ? "held" : "not held") -> \(route)")
+
+        switch route {
+        case .toMac:
+            if isKeyUp, modifierHeld {
+                logger.info("key: \(key) (code \(keyCode)) left to the Mac: "
+                    + "the modifier came after the key went down")
+            }
             return Unmanaged.passUnretained(event)
-        }
-
-        // Modifier is held. We consume both key-down and key-up events
-        // to prevent the system from processing either half of the
-        // key press.
-
-        if isKeyUp {
-            // Dispatch once per press, on key-up, so a held key (which
-            // repeats its key-down) sends one command. The code is logged
-            // so a hand test shows which key a keyboard sends.
+        case .keep:
+            return nil
+        case .keepAndSend:
+            // The code is logged so a hand test shows which key a keyboard sends.
             logger.info("key: \(key) (code \(keyCode))")
             onMediaKey?(key)
+            return nil
         }
-
-        // Return nil to consume the event (both key-down and key-up).
-        return nil
     }
 }
 
