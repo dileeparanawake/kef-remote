@@ -11,6 +11,7 @@ import Foundation
 ///   localNetworkBlocked ─▶ probe: one M-SEARCH
 ///                            blocked  ─▶ keep waiting
 ///                            allowed  ─▶ Auto: rediscover / Manual: reconnect
+///                                        (Auto before setup's step 2: reconnect)
 ///   searching, connecting ─▶ wait for that answer
 ///   anything else, setup open, row not green ─▶ checkRow: probe, row only
 ///   anything else ─────────▶ stop (the speaker answered, or macOS let it out)
@@ -32,7 +33,7 @@ public enum LocalNetworkRetry: Equatable, Sendable {
 
     /// What one tick does.
     public enum Tick: Equatable, Sendable {
-        /// Blocked: probe, then ``afterProbe(_:discovery:)`` says what next.
+        /// Blocked: probe, then ``afterProbe(_:discovery:searchWaitsForSetup:)`` says what next.
         case probe
         /// The setup window shows a row that isn't green: probe, and show
         /// the answer on the row only. Nothing was blocked, so there's
@@ -61,10 +62,16 @@ public enum LocalNetworkRetry: Equatable, Sendable {
 
     /// What to do after the probe. A failure that isn't the permission
     /// says nothing either way, so the full attempt finds out.
-    public static func afterProbe(_ result: LocalNetworkProbe.Result, discovery: DiscoveryMode) -> LocalNetworkRetry {
+    ///
+    /// - Parameter searchWaitsForSetup: The app's own searches wait for
+    ///   setup's step 2 (``SetupSearch``). Auto then checks the saved IP
+    ///   instead, so the status leaves blocked; step 2 searches as it shows.
+    public static func afterProbe(
+        _ result: LocalNetworkProbe.Result, discovery: DiscoveryMode, searchWaitsForSetup: Bool
+    ) -> LocalNetworkRetry {
         switch result {
         case .blocked: return .keepWaiting
-        case .allowed, .failed: return discovery.searchesBySelf ? .rediscover : .reconnect
+        case .allowed, .failed: return discovery.searchesBySelf && !searchWaitsForSetup ? .rediscover : .reconnect
         }
     }
 }

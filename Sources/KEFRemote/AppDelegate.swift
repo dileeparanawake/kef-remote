@@ -272,6 +272,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Saved in config.json; an older file has it written at launch.
     private var isSetupFinished: Bool { config.onboarding?.finished ?? false }
 
+    /// Setup's step 2 has shown during this run (``SetupSearch``).
+    private var findSpeakerStepShown = false
+
+    /// Whether a search the app would start by itself waits for setup's step 2.
+    private func searchWaitsForSetup(_ trigger: DiscoveryTrigger) -> Bool {
+        SetupSearch.waits(trigger, isSetupFinished: isSetupFinished, findSpeakerStepShown: findSpeakerStepShown)
+    }
+
     /// Write feedback to Dileepa from the menu, naming the saved speaker.
     func sendFeedback() {
         FeedbackSender().send(speaker: config.speaker)
@@ -376,7 +384,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// a packet gets out.
     private func actOnLocalNetworkProbe(_ result: LocalNetworkProbe.Result) {
         permissions.showProbe(result)
-        switch LocalNetworkRetry.afterProbe(result, discovery: config.discovery) {
+        let waits = searchWaitsForSetup(.localNetworkAllowed)
+        switch LocalNetworkRetry.afterProbe(result, discovery: config.discovery, searchWaitsForSetup: waits) {
         case .keepWaiting:
             // Debug: it repeats every few seconds while he hasn't allowed it.
             logger.debug("Local Network still blocked; asking again in \(LocalNetworkRetry.interval)")
@@ -384,7 +393,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             logger.info("Local Network probe: \(result); looking for the speaker again")
             Task { _ = await runDiscovery(trigger: .localNetworkAllowed) }
         case .reconnect:
-            logger.info("Local Network probe: \(result); checking the saved IP again")
+            logger.info("Local Network probe: \(result); checking the saved IP again\(waits ? " (setup's step 2 searches)" : "")")
             reconnect(.savedIP, reason: "Local Network allowed")
         }
     }
@@ -457,7 +466,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Step 2 showed: clear the resume flag Restart and continue saved,
     /// so a later launch opens where he leaves setup.
+    /// Step 2 showing also lets the app's own searches go on: it looked
+    /// for the speaker itself (``SetupSearch``).
     private func setupStepShown(_ step: OnboardingStep) {
+        if step == .findSpeaker && !findSpeakerStepShown {
+            findSpeakerStepShown = true
+            onboardingLogger.info("step 2 shown: the app looks for the speaker by itself from now on")
+        }
         guard config.onboarding?.clearResume(onShowing: step) == true else { return }
         onboardingLogger.info("step \(step.number) shown after Restart and continue: resume flag cleared")
         saveConfig(what: "onboarding resumeAtFindSpeaker=false")
@@ -704,13 +719,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Run discovery without waiting, and show a HUD if it finds nothing.
+    /// Run discovery without waiting, and show a HUD if it finds nothing,
+    /// unless the setup window is open: step 2 shows the result there.
+    /// Before setup's step 2, a search the app starts by itself waits:
+    /// step 2 looks as it shows (``SetupSearch``).
     private func discoverInBackground(trigger: DiscoveryTrigger) {
+        if searchWaitsForSetup(trigger) {
+            logger.info(SetupSearch.waitLogLine(trigger))
+            return
+        }
         Task {
-            switch await runDiscovery(trigger: trigger) {
-            case .notFound: HUDOverlay.show(.error("Speaker not found"))
-            case .failed: HUDOverlay.show(.error("Discovery failed"))
-            case .found, .alreadyRunning: break
+            let outcome = await runDiscovery(trigger: trigger)
+            if let hud = SetupSearch.hud(after: outcome, setupOpen: onboardingWindow.isOpen) {
+                HUDOverlay.show(hud)
+            } else if SetupSearch.hud(after: outcome, setupOpen: false) != nil {
+                logger.info("No HUD for \"\(outcome.message)\": the setup window is open and shows it")
             }
         }
     }

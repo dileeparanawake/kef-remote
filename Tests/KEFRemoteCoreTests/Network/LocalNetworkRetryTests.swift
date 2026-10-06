@@ -91,24 +91,32 @@ struct LocalNetworkRetryTests {
     // MARK: - After asking macOS
 
     @Test func stillBlockedKeepsWaiting() {
-        #expect(LocalNetworkRetry.afterProbe(.blocked, discovery: .auto) == .keepWaiting)
-        #expect(LocalNetworkRetry.afterProbe(.blocked, discovery: .manual) == .keepWaiting)
+        #expect(LocalNetworkRetry.afterProbe(.blocked, discovery: .auto, searchWaitsForSetup: false) == .keepWaiting)
+        #expect(LocalNetworkRetry.afterProbe(.blocked, discovery: .manual, searchWaitsForSetup: false) == .keepWaiting)
     }
 
     @Test func onceAllowedAutoLooksForTheSpeakerAgain() {
-        #expect(LocalNetworkRetry.afterProbe(.allowed, discovery: .auto) == .rediscover)
+        #expect(LocalNetworkRetry.afterProbe(.allowed, discovery: .auto, searchWaitsForSetup: false) == .rediscover)
     }
 
     /// Manual never searches by itself: it checks the IP he typed.
     @Test func onceAllowedManualChecksTheSavedIPAgain() {
-        #expect(LocalNetworkRetry.afterProbe(.allowed, discovery: .manual) == .reconnect)
+        #expect(LocalNetworkRetry.afterProbe(.allowed, discovery: .manual, searchWaitsForSetup: false) == .reconnect)
+    }
+
+    /// Before setup's step 2 the app doesn't search by itself
+    /// (``SetupSearch``): Auto checks the saved IP instead, so the status
+    /// leaves blocked, and step 2 searches when it shows.
+    @Test func onceAllowedBeforeSetupsStep2AutoChecksTheSavedIP() {
+        #expect(LocalNetworkRetry.afterProbe(.allowed, discovery: .auto, searchWaitsForSetup: true) == .reconnect)
+        #expect(LocalNetworkRetry.afterProbe(.blocked, discovery: .auto, searchWaitsForSetup: true) == .keepWaiting)
     }
 
     /// Some other socket failure says nothing about the permission: the
     /// full attempt finds out, and the menu bar shows what it finds.
     @Test func anotherFailureTriesTheSpeakerToFindOut() {
-        #expect(LocalNetworkRetry.afterProbe(.failed("bind failed"), discovery: .auto) == .rediscover)
-        #expect(LocalNetworkRetry.afterProbe(.failed("bind failed"), discovery: .manual) == .reconnect)
+        #expect(LocalNetworkRetry.afterProbe(.failed("bind failed"), discovery: .auto, searchWaitsForSetup: false) == .rediscover)
+        #expect(LocalNetworkRetry.afterProbe(.failed("bind failed"), discovery: .manual, searchWaitsForSetup: false) == .reconnect)
     }
 
     // MARK: - The probe: one M-SEARCH, sent and not listened for

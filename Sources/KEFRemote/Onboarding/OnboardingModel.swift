@@ -29,8 +29,9 @@ struct OnboardingActions {
 /// Restart and continue clicked on step 1 (allowed during this run: Accessibility): restarting, …
 /// Skip for now clicked on step 1
 /// step 2 Find your speaker shown (allSteps)
-/// Find speaker clicked
+/// step 2 looks for the speaker as it shows (Auto, nothing answering yet)
 /// Find speaker result: No KEF speaker answered
+/// Find speaker clicked
 /// Enter the IP instead clicked
 /// Save clicked: 192.168.1.80
 /// Continue clicked on step 2
@@ -78,7 +79,17 @@ final class OnboardingModel: ObservableObject {
         if mode == .allSteps {
             allStepsLeftOn = newStep
             actions.stepShown(newStep)
+            if newStep == .findSpeaker { lookOnShowingStep2() }
         }
+    }
+
+    /// Step 2 looks for the speaker as it shows, in Auto: the app's own
+    /// launch search waited for it (``SetupSearch``).
+    private func lookOnShowingStep2() {
+        let onShow = FindSpeakerOnShow(discovery: settings.discovery, connection: menuBar.status)
+        log.info(onShow.logLine)
+        guard onShow == .search else { return }
+        Task { await search() }
     }
 
     var canContinue: Bool {
@@ -170,6 +181,11 @@ final class OnboardingModel: ObservableObject {
 
     func findSpeaker() async {
         log.info("Find speaker clicked")
+        await search()
+    }
+
+    /// Look for the speaker, from a click or as step 2 shows.
+    private func search() async {
         searchFoundNothing = false
         let outcome = await actions.findSpeaker()
         switch outcome {
