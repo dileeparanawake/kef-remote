@@ -176,7 +176,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 244 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 306 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input and standby choices, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 ## How it works
 
