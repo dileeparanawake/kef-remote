@@ -152,12 +152,20 @@ final class PermissionsModel: ObservableObject {
 
     /// Open the permission's pane in System Settings. For Accessibility,
     /// the first click also asks macOS, which adds KEF Remote to the list
-    /// so he only has to switch it on.
+    /// so he only has to switch it on: asking is the only call that adds
+    /// it; otherwise he'd have to find the app with + himself. The prompt
+    /// is a system dialog, so the app's windows stay back while it's up
+    /// (``WindowFront``; hand test round 7, where the Mac stopped taking
+    /// clicks during this step).
     func openSettings(for permission: Permission) {
         if permission == .accessibility && !hasAskedForAccessibility {
             hasAskedForAccessibility = true
+            AgentWindowPresenter.systemPromptShown()
             let trusted = MediaKeyInterceptor.checkAccessibility(prompt: true)
-            log.info("asked macOS for Accessibility (system prompt, once a run): trusted=\(trusted)")
+            log.info(
+                "asked macOS for Accessibility (system prompt, once a run): trusted=\(trusted); "
+                + "windows stay back for \(WindowFront.holdBackAfterSystemPrompt)"
+            )
         }
         let url = permission.settingsURL
         if NSWorkspace.shared.open(url) {
