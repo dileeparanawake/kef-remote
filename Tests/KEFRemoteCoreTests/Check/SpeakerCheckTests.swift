@@ -6,18 +6,24 @@ struct SpeakerCheckTests {
     let wifiOn = SourceByte(isPoweredOn: true, isInversed: false, standby: .sixtyMinutes, input: .wifi)
     let forty = VolumeState(level: 40, isMuted: false)
 
-    /// Runs the check and keeps every line it shows.
+    /// Runs the check and keeps every line it shows. Pass the speaker's
+    /// clock when its timing matters.
     private func run(
-        _ connection: SpeakerConnection, includingInputs: Bool = false, log: KEFLog = MockKEFLog()
+        _ connection: SpeakerConnection, includingInputs: Bool = false, log: KEFLog = MockKEFLog(),
+        clock: CheckClock = SimulatedClock()
     ) async -> (report: CheckReport, lines: [String]) {
         var lines: [String] = []
-        let check = SpeakerCheck(connection: connection, log: log, onLine: { lines.append($0) })
+        let check = SpeakerCheck(connection: connection, log: log, clock: clock, onLine: { lines.append($0) })
         let report = await check.run(includingInputs: includingInputs)
         return (report, lines)
     }
 
     private func verdict(of name: String, in report: CheckReport) -> CheckStepResult.Verdict? {
         report.steps.first { $0.name == name }?.verdict
+    }
+
+    private func detail(of name: String, in report: CheckReport) -> String? {
+        report.steps.first { $0.name == name }?.detail
     }
 
     // MARK: - A working speaker
@@ -82,6 +88,113 @@ struct SpeakerCheckTests {
 
         #expect(report.passed)
         #expect(speaker.source == off)
+    }
+
+    // MARK: - A speaker that is slow to power on and off
+
+    /// Like the real one: 7 s to power on or off, and a quick second
+    /// power change isn't taken.
+    private func slowSpeaker(_ source: SourceByte, clock: SimulatedClock, keepsInputOnPowerOn: Bool = false) -> SimulatedSpeaker {
+        SimulatedSpeaker(
+            volume: forty, source: source, keepsInputOnPowerOn: keepsInputOnPowerOn, clock: clock,
+            powerChangeTime: .seconds(7), ignoresPowerChangesFor: .seconds(12)
+        )
+    }
+
+    @Test func waitsForEachPowerChangeAndSaysHowLongItTook() async {
+        let clock = SimulatedClock()
+        let speaker = slowSpeaker(wifiOn, clock: clock)
+
+        let (report, lines) = await run(speaker, clock: clock)
+
+        #expect(report.passed)
+        #expect(detail(of: "power off", in: report) == "expected off, read off (standby 60 min) after 7 s")
+        #expect(detail(of: "power on", in: report) == "expected on, read on after 7 s")
+        #expect(lines.contains("Waiting 15 s before the next power change"))
+        #expect(speaker.source == wifiOn)
+    }
+
+    @Test func givesUpOnAPowerChangeAfterTwentySeconds() async {
+        let clock = SimulatedClock()
+        let speaker = SimulatedSpeaker(volume: forty, source: wifiOn, clock: clock, powerChangeTime: .seconds(30))
+
+        let (report, _) = await run(speaker, clock: clock)
+
+        #expect(!report.passed)
+        #expect(verdict(of: "power off", in: report) == .fail)
+        #expect(detail(of: "power off", in: report) == "expected off, read on after 20 s")
+        #expect(!speaker.hasCrashed)
+    }
+
+    @Test func aSpeakerThatStartsOffIsTurnedOnFirstAndOffLast() async {
+        let clock = SimulatedClock()
+        let off = wifiOn.with(isPoweredOn: false)
+        let speaker = slowSpeaker(off, clock: clock)
+
+        let (report, lines) = await run(speaker, includingInputs: true, clock: clock)
+
+        #expect(report.passed)
+        #expect(report.steps.first?.name == "power on (it was off)")
+        #expect(report.steps.first?.detail == "expected on, read on after 7 s")
+        #expect(lines.contains { $0.hasPrefix("The speaker is off. Turning it on first") })
+        #expect(lines.contains("put back: expected off, read off (standby 60 min) after 7 s"))
+        #expect(speaker.source == off)
+    }
+
+    @Test func neverSendsInputStandbyOrSwapWhileTheSpeakerIsOff() async {
+        let speaker = SimulatedSpeaker(volume: forty, source: wifiOn)
+        let faulty = FaultySpeaker(speaker)
+        // Power on is acknowledged but never happens.
+        faulty.ignoresWrite = { $0.isPowerOnWrite && !speaker.source.isPoweredOn }
+        var writesWhileOff: [Data] = []
+        faulty.failsSend = { data in
+            // A write to a speaker that is off, not turning it on, that
+            // changes anything but power.
+            let current = speaker.source
+            if data.isSourceWrite, !data.isPowerOnWrite, !current.isPoweredOn,
+               SourceByte(byte: data[3]).with(isPoweredOn: false) != current {
+                writesWhileOff.append(data)
+            }
+            return false
+        }
+
+        let (report, _) = await run(faulty, includingInputs: true)
+
+        #expect(writesWhileOff.isEmpty)
+        #expect(!speaker.hasCrashed)
+        #expect(verdict(of: "power on", in: report) == .fail)
+        #expect(detail(of: "standby 20 min", in: report) == SpeakerCheck.notSentWhileOff)
+        #expect(detail(of: "input Aux", in: report) == SpeakerCheck.notSentWhileOff)
+        #expect(report.restore?.verdict == .fail)
+    }
+
+    // MARK: - Power on with an input (the v0.3.0 write)
+
+    @Test func powerOnWithAnInputPassesWhenTheInputTakes() async {
+        let speaker = SimulatedSpeaker(volume: forty, source: wifiOn)
+
+        let (report, _) = await run(speaker)
+
+        #expect(verdict(of: "power on to Optical", in: report) == .pass)
+        #expect(detail(of: "power on to Optical", in: report) == "expected on to Optical, read on to Optical after 0 s")
+        #expect(verdict(of: "input back to Wi-Fi", in: report) == .pass)
+        #expect(speaker.source == wifiOn)
+    }
+
+    @Test func powerOnThatKeepsTheOldInputFailsAndSaysSo() async {
+        let clock = SimulatedClock()
+        let speaker = slowSpeaker(wifiOn, clock: clock, keepsInputOnPowerOn: true)
+
+        let (report, _) = await run(speaker, clock: clock)
+
+        #expect(verdict(of: "power on to Optical", in: report) == .fail)
+        #expect(detail(of: "power on to Optical", in: report)
+            == "expected on to Optical, read on to Wi-Fi after 20 s: it powered on but kept Wi-Fi, "
+            + "so the input must be sent separately after power-on")
+        // The rest carries on, and the start goes back.
+        #expect(verdict(of: "standby never", in: report) == .pass)
+        #expect(report.restore?.verdict == .pass)
+        #expect(speaker.source == wifiOn)
     }
 
     @Test func neverLeavesTwentyMinutesOnASpeakerThatIsOff() async {
@@ -156,22 +269,6 @@ struct SpeakerCheckTests {
         #expect(speaker.volume == forty)
     }
 
-    @Test func doesNotWriteTwentyMinutesWhenTheSpeakerStaysOff() async {
-        let speaker = SimulatedSpeaker(volume: forty, source: wifiOn)
-        let faulty = FaultySpeaker(speaker)
-        // Power on is acknowledged but never happens.
-        faulty.ignoresWrite = { $0.isPowerOnWrite && !speaker.source.isPoweredOn }
-
-        let (report, _) = await run(faulty)
-
-        #expect(!speaker.hasCrashed)
-        #expect(verdict(of: "power on", in: report) == .fail)
-        let twenty = report.steps.first { $0.name == "standby 20 min" }
-        #expect(twenty?.verdict == .fail)
-        #expect(twenty?.detail == "not sent: the speaker is off, and 20 min standby while off crashes it")
-        #expect(report.restore?.verdict == .fail)
-    }
-
     @Test func aSpeakerThatCannotBeReadIsLeftAlone() async {
         let mock = MockSpeakerConnection()
         mock.errorToThrow = .commandTimeout
@@ -193,7 +290,7 @@ struct SpeakerCheckTests {
         #expect(lines.first == "Start: volume 40%, power on, input Wi-Fi, standby 60 min, left/right normal")
         #expect(lines.contains("PASS  volume up: expected 42%, read 42% [sent 53 25 81 2A, read 52 25 81 2A 00]"))
         #expect(lines.contains { $0.hasPrefix("PASS  put back: volume 40%, power on, input Wi-Fi, standby 60 min, left/right normal") })
-        #expect(lines.last == "Done: 12 passed, 0 failed. Starting state put back.")
+        #expect(lines.last == "Done: 15 passed, 0 failed. Starting state put back.")
         #expect(report.summary == lines.last)
     }
 

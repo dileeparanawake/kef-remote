@@ -24,16 +24,21 @@ let isDryRun = arguments.contains("--dry-run")
 
 let connection: SpeakerConnection
 let log: KEFLog
-let settle: () async -> Void
+let clock: CheckClock
 
 if isDryRun {
-    print("Dry run: a simulated speaker, nothing is sent and nothing is logged")
+    print("Dry run: a simulated speaker on simulated time, nothing is sent and nothing is logged")
+    // Like the first real run: it starts off, and is slow to power on and off.
+    let simulatedClock = SimulatedClock()
     connection = SimulatedSpeaker(
         volume: VolumeState(level: 30, isMuted: false),
-        source: SourceByte(isPoweredOn: true, isInversed: false, standby: .sixtyMinutes, input: .optical)
+        source: SourceByte(isPoweredOn: false, isInversed: false, standby: .sixtyMinutes, input: .optical),
+        clock: simulatedClock,
+        powerChangeTime: .seconds(7),
+        ignoresPowerChangesFor: .seconds(12)
     )
     log = HandlerLog { _, _ in }
-    settle = {}
+    clock = simulatedClock
 } else {
     let config: AppConfig
     do {
@@ -53,9 +58,9 @@ if isDryRun {
     print("Checking the speaker at \(ip)\(includingInputs ? ", with inputs" : "")")
     connection = TCPSpeakerConnection(host: ip, log: fileLog.write)
     log = fileLog
-    settle = SpeakerCheck.standardSettle
+    clock = RealCheckClock()
 }
 
-let check = SpeakerCheck(connection: connection, log: log, settle: settle, onLine: { print($0) })
+let check = SpeakerCheck(connection: connection, log: log, clock: clock, onLine: { print($0) })
 let report = await check.run(includingInputs: includingInputs)
 exit(report.passed ? 0 : 1)

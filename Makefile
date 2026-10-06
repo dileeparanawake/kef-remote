@@ -16,6 +16,7 @@ discover:
 # back. It changes what the speaker plays: only when nobody is listening.
 # INPUTS=1 also visits each input; DRY_RUN=1 uses a simulated speaker.
 # KEF Remote must be quit: the speaker takes one connection at a time.
+# Takes a few minutes: it waits for each power change, up to 20 s, then 15 s more.
 speaker-check:
 	@if [ -z "$(DRY_RUN)" ] && pgrep -x KEFRemote >/dev/null; then \
 		echo "KEF Remote is running and holds the speaker's one connection. Quit it first (make kill)."; \

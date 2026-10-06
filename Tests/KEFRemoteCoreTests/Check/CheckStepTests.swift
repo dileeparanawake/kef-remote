@@ -24,13 +24,13 @@ struct CheckStepTests {
         let plan = CheckStep.plan(from: start, includingInputs: false)
         #expect(plan.map(\.name) == [
             "volume up", "volume down", "mute", "unmute",
-            "power off", "power on",
+            "power off", "power on", "power off again", "power on to Optical", "input back to Wi-Fi",
             "standby 20 min", "standby 60 min", "standby never", "standby back to 60 min",
             "left/right swap", "left/right swap back",
         ])
         #expect(plan.map(\.action) == [
             .raiseVolume(by: 2), .lowerVolume(by: 2), .mute, .unmute,
-            .powerOff, .powerOn,
+            .powerOff, .powerOn, .powerOff, .powerOnApplying(.optical), .setInput(.wifi),
             .setStandby(.twentyMinutes), .setStandby(.sixtyMinutes), .setStandby(.never),
             .setStandby(.sixtyMinutes),
             .setLeftRightSwapped(true), .setLeftRightSwapped(false),
@@ -40,6 +40,12 @@ struct CheckStepTests {
     @Test func turnsTheSpeakerOnFirstWhenItStartsOff() {
         let plan = CheckStep.plan(from: status(isPoweredOn: false), includingInputs: false)
         #expect(plan.first == CheckStep(name: "power on (it was off)", action: .powerOn))
+    }
+
+    @Test func powerOnAsksForAnInputTheSpeakerIsNotOn() {
+        #expect(CheckStep.powerOnInputToTry(from: .optical) == .wifi)
+        #expect(CheckStep.powerOnInputToTry(from: .wifi) == .optical)
+        #expect(CheckStep.powerOnInputToTry(from: .bluetoothUnpaired) == .optical)
     }
 
     @Test func swapsFromWhicheverWayTheSpeakerStarts() {
@@ -58,12 +64,15 @@ struct CheckStepTests {
     @Test func withInputsVisitsEachOneThenGoesBack() {
         let plan = CheckStep.plan(from: status(input: .bluetoothUnpaired), includingInputs: true)
         let inputSteps = plan.filter { if case .setInput = $0.action { return true }; return false }
+        // The first is after the power-on-with-input step.
         #expect(inputSteps.map(\.name) == [
+            "input back to Bluetooth",
             "input Optical", "input Wi-Fi", "input Bluetooth", "input Aux", "input USB",
             "input back to Bluetooth",
         ])
         // Bluetooth is chosen with the paired code, even to go back to it.
         #expect(inputSteps.map(\.action) == [
+            .setInput(.bluetoothPaired),
             .setInput(.optical), .setInput(.wifi), .setInput(.bluetoothPaired), .setInput(.aux),
             .setInput(.usb), .setInput(.bluetoothPaired),
         ])
@@ -77,9 +86,10 @@ struct CheckStepTests {
         ])
     }
 
-    @Test func leavesInputsAloneWithoutTheFlag() {
+    @Test func withoutTheFlagOnlySwitchesBackAfterPowerOn() {
         let plan = CheckStep.plan(from: start, includingInputs: false)
-        #expect(!plan.contains { if case .setInput = $0.action { return true }; return false })
+        let inputSteps = plan.filter { if case .setInput = $0.action { return true }; return false }
+        #expect(inputSteps.map(\.name) == ["input back to Wi-Fi"])
     }
 
     // MARK: - What each step should read back
@@ -103,6 +113,8 @@ struct CheckStepTests {
     @Test func sourceStepsExpectWhatTheySet() {
         #expect(CheckAction.powerOff.expectation(before: start) == .poweredOff)
         #expect(CheckAction.powerOn.expectation(before: start) == .poweredOn)
+        #expect(CheckAction.powerOnApplying(.optical).expectation(before: start) == .poweredOnTo(.optical))
+        #expect(CheckAction.powerOnApplying(.dontChange).expectation(before: start) == .poweredOnTo(.wifi))
         #expect(CheckAction.setStandby(.never).expectation(before: start) == .standby(.never))
         #expect(CheckAction.setInput(.aux).expectation(before: start) == .input(.aux))
         #expect(CheckAction.setLeftRightSwapped(true).expectation(before: start) == .leftRightSwapped(true))
@@ -152,6 +164,25 @@ struct CheckStepTests {
             == CheckComparison(passed: false, detail: "expected left/right swapped, read left/right normal"))
     }
 
+    @Test func powerOnToAnInputSaysWhetherTheInputTook() {
+        let off = SourceByte(isPoweredOn: false, isInversed: false, standby: .never, input: .wifi)
+        let expectation = CheckExpectation.poweredOnTo(.optical)
+
+        #expect(expectation.compare(.source(off)) == CheckComparison(passed: false, detail: "expected on to Optical, read off"))
+        #expect(expectation.compare(.source(off.with(isPoweredOn: true).with(input: .optical)))
+            == CheckComparison(passed: true, detail: "expected on to Optical, read on to Optical"))
+        let keptWifi = expectation.compare(.source(off.with(isPoweredOn: true)))
+        #expect(!keptWifi.passed)
+        #expect(keptWifi.line(waited: .seconds(20)) == "expected on to Optical, read on to Wi-Fi after 20 s: "
+            + "it powered on but kept Wi-Fi, so the input must be sent separately after power-on")
+    }
+
+    @Test func aLineSaysHowLongItWaitedOnlyWhenGiven() {
+        let comparison = CheckComparison(passed: true, detail: "expected on, read on")
+        #expect(comparison.line(waited: .milliseconds(7400)) == "expected on, read on after 7 s")
+        #expect(comparison.line(waited: nil) == "expected on, read on")
+    }
+
     @Test func standbyAndPowerSayWhatTheyRead() {
         let on = SourceByte(isPoweredOn: true, isInversed: false, standby: .never, input: .wifi)
         #expect(CheckExpectation.poweredOn.compare(.source(on))
@@ -160,18 +191,25 @@ struct CheckStepTests {
             == CheckComparison(passed: false, detail: "expected standby 20 min, read standby never"))
     }
 
-    // MARK: - Never 20 min while off
+    // MARK: - Nothing but power and volume while off
 
-    @Test func refusesToWriteTwentyMinutesToASpeakerThatIsOff() {
-        #expect(CheckAction.setStandby(.twentyMinutes).wouldLeaveTwentyMinutesWhileOff(before: status(isPoweredOn: false)))
-        #expect(!CheckAction.setStandby(.twentyMinutes).wouldLeaveTwentyMinutesWhileOff(before: status()))
-        // Moving off 20 min while off is safe; any other write keeps 20 min.
-        let offWithTwenty = status(isPoweredOn: false, standby: .twentyMinutes)
-        #expect(!CheckAction.setStandby(.sixtyMinutes).wouldLeaveTwentyMinutesWhileOff(before: offWithTwenty))
-        #expect(CheckAction.setInput(.aux).wouldLeaveTwentyMinutesWhileOff(before: offWithTwenty))
-        #expect(CheckAction.setLeftRightSwapped(true).wouldLeaveTwentyMinutesWhileOff(before: offWithTwenty))
-        // Power off has its own workaround in the controller.
-        #expect(!CheckAction.powerOff.wouldLeaveTwentyMinutesWhileOff(before: status(standby: .twentyMinutes)))
+    @Test func sendsNoInputStandbyOrSwapToASpeakerThatIsOff() {
+        let off = status(isPoweredOn: false)
+        #expect(CheckAction.setStandby(.sixtyMinutes).isIgnoredWhileOff(before: off))
+        #expect(CheckAction.setInput(.aux).isIgnoredWhileOff(before: off))
+        #expect(CheckAction.setLeftRightSwapped(true).isIgnoredWhileOff(before: off))
+        #expect(!CheckAction.setStandby(.twentyMinutes).isIgnoredWhileOff(before: status()))
+        // Power and volume still go: they work while off.
+        #expect(!CheckAction.powerOn.isIgnoredWhileOff(before: off))
+        #expect(!CheckAction.powerOnApplying(.optical).isIgnoredWhileOff(before: off))
+        #expect(!CheckAction.mute.isIgnoredWhileOff(before: off))
+    }
+
+    @Test func onlyPowerStepsWaitTwentySeconds() {
+        #expect(CheckAction.powerOff.readBackLimit == .seconds(20))
+        #expect(CheckAction.powerOnApplying(.wifi).readBackLimit == .seconds(20))
+        #expect(CheckAction.setInput(.aux).readBackLimit == .seconds(5))
+        #expect(CheckAction.mute.readBackLimit == .zero)
     }
 
     @Test func aSpeakerThatStartedOffWithTwentyMinutesEndsOnSixty() {

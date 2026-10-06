@@ -8,7 +8,11 @@ public enum CheckAction: Equatable {
     case mute
     case unmute
     case powerOff
+    /// Power on with Don't change: the speaker keeps its input and standby.
     case powerOn
+    /// Power on the way the app does with an input chosen: power and
+    /// input in one write (``SpeakerController/powerOn(applying:)``).
+    case powerOnApplying(PowerOnInput)
     case setStandby(StandbyMode)
     case setInput(InputSource)
     case setLeftRightSwapped(Bool)
@@ -32,10 +36,12 @@ public struct CheckStep: Equatable {
 
     /// Every step, in order, for a speaker that starts as `start`.
     ///
-    /// A speaker that starts off is turned on first, so the volume and
-    /// standby steps run on a speaker that is on. Standby steps come after
-    /// the power cycle, while it is on. Putting everything back is not a
-    /// step: ``SpeakerCheck`` does that even when a step fails.
+    /// A speaker that starts off is turned on first: it ignores input,
+    /// standby and left/right while off, so every other step runs with it
+    /// on. The second power cycle tests the power-on write with an input
+    /// in it, then switches back. Putting everything back is not a step:
+    /// ``SpeakerCheck`` does that even when a step fails, and turns a
+    /// speaker that started off back off at the very end.
     public static func plan(from start: SpeakerStatus, includingInputs: Bool) -> [CheckStep] {
         var steps: [CheckStep] = []
         if !start.isPoweredOn {
@@ -44,6 +50,10 @@ public struct CheckStep: Equatable {
         steps += volumeAndMute(from: start.volume, on: nil)
         steps.append(CheckStep(name: "power off", action: .powerOff))
         steps.append(CheckStep(name: "power on", action: .powerOn))
+        let powerOnInput = powerOnInputToTry(from: start.input)
+        steps.append(CheckStep(name: "power off again", action: .powerOff))
+        steps.append(CheckStep(name: "power on to \(powerOnInput.label)", action: .powerOnApplying(powerOnInput)))
+        steps.append(CheckStep(name: "input back to \(start.input.label)", action: .setInput(start.input.codeToSelect)))
         for mode in StandbyMode.allCases {
             steps.append(CheckStep(name: "standby \(mode.checkName)", action: .setStandby(mode)))
         }
@@ -58,6 +68,13 @@ public struct CheckStep: Equatable {
             steps.append(CheckStep(name: "input back to \(start.input.label)", action: .setInput(start.input.codeToSelect)))
         }
         return steps
+    }
+
+    /// The input the power-on step asks for: one the speaker isn't on, so
+    /// the read-back shows whether the input in the power-on write took.
+    /// Optical or Wi-Fi, which are always there to choose.
+    static func powerOnInputToTry(from input: InputSource) -> PowerOnInput {
+        input.isSameInput(as: .optical) ? .wifi : .optical
     }
 
     private static func volumeAndMute(from volume: VolumeState, on input: InputSource?) -> [CheckStep] {
@@ -91,6 +108,8 @@ extension CheckAction {
             return .poweredOff
         case .powerOn:
             return .poweredOn
+        case .powerOnApplying(let choice):
+            return .poweredOnTo(choice.input ?? before.input)
         case .setStandby(let mode):
             return .standby(mode)
         case .setInput(let input):
@@ -100,27 +119,34 @@ extension CheckAction {
         }
     }
 
-    /// Whether sending this to a speaker in `before` would leave it off
-    /// with 20-minute standby, which crashes it. Power off is not one: the
-    /// controller moves 20 to 60 minutes first.
-    public func wouldLeaveTwentyMinutesWhileOff(before: SpeakerStatus) -> Bool {
+    /// Whether this is an input, standby or left/right write to a speaker
+    /// that is off, which the check never sends. In the first real check
+    /// (6 Oct 2026) every such write to a speaker that was off read back
+    /// unchanged, so the speaker ignores them while off. And a write that
+    /// leaves it off with 20-minute standby crashes it. Power off is not
+    /// one: the controller moves 20 to 60 minutes first, while it is on.
+    public func isIgnoredWhileOff(before: SpeakerStatus) -> Bool {
         guard !before.isPoweredOn else { return false }
         switch self {
-        case .setStandby(let mode):
-            return mode == .twentyMinutes
-        case .setInput, .setLeftRightSwapped:
-            // The write keeps the standby time the speaker has.
-            return before.standby == .twentyMinutes
-        default:
-            return false
+        case .setStandby, .setInput, .setLeftRightSwapped: return true
+        default: return false
         }
     }
 
-    /// Power and input changes take the speaker a moment.
-    var needsSettling: Bool {
+    /// Turns the speaker on or off, which takes it a while.
+    var changesPower: Bool {
         switch self {
-        case .powerOn, .powerOff, .setInput: return true
+        case .powerOn, .powerOff, .powerOnApplying: return true
         default: return false
+        }
+    }
+
+    /// How long to keep reading back before the step fails.
+    var readBackLimit: Duration {
+        switch self {
+        case .powerOn, .powerOff, .powerOnApplying: return SpeakerCheck.powerChangeLimit
+        case .setStandby, .setInput, .setLeftRightSwapped: return SpeakerCheck.sourceWriteLimit
+        case .raiseVolume, .lowerVolume, .mute, .unmute: return .zero
         }
     }
 }
@@ -131,6 +157,8 @@ public enum CheckExpectation: Equatable {
     /// Off, and never with 20-minute standby.
     case poweredOff
     case poweredOn
+    /// On, and on this input.
+    case poweredOnTo(InputSource)
     case standby(StandbyMode)
     /// Bluetooth passes as either code: see ``compare(_:)``.
     case input(InputSource)
@@ -163,6 +191,19 @@ public enum CheckExpectation: Equatable {
             return CheckComparison(passed: true, detail: "expected off, read off (standby \(read.standby.checkName))")
         case (.poweredOn, .source(let read)):
             return CheckComparison(passed: read.isPoweredOn, detail: "expected on, read \(read.isPoweredOn ? "on" : "off")")
+        case (.poweredOnTo(let expected), .source(let read)):
+            let wanted = "expected on to \(expected.label)"
+            guard read.isPoweredOn else {
+                return CheckComparison(passed: false, detail: "\(wanted), read off")
+            }
+            guard read.input.isSameInput(as: expected) else {
+                return CheckComparison(
+                    passed: false,
+                    detail: "\(wanted), read on to \(read.input.label)",
+                    why: "it powered on but kept \(read.input.label), so the input must be sent separately after power-on"
+                )
+            }
+            return CheckComparison(passed: true, detail: "\(wanted), read on to \(read.input.label)")
         case (.standby(let expected), .source(let read)):
             return CheckComparison(
                 passed: read.standby == expected,
@@ -198,11 +239,23 @@ public enum CheckReading: Equatable {
 /// Whether a step's read-back matched, and what was expected and read.
 public struct CheckComparison: Equatable {
     public let passed: Bool
+    /// What was expected and read.
     public let detail: String
+    /// What a failure means, shown after how long it waited.
+    public let why: String?
 
-    public init(passed: Bool, detail: String) {
+    public init(passed: Bool, detail: String, why: String? = nil) {
         self.passed = passed
         self.detail = detail
+        self.why = why
+    }
+
+    /// The detail, how long it waited (when given), then why.
+    func line(waited: Duration?) -> String {
+        var line = detail
+        if let waited { line += " after \(SpeakerCheck.seconds(waited)) s" }
+        if let why { line += ": \(why)" }
+        return line
     }
 }
 

@@ -34,8 +34,14 @@ extension Data {
         count == 4 && self[1] == KEFCommand.volumeRegister && self[0] == 0x53 && self[3] >= 128
     }
 
-    /// A source write that turns the speaker on (power bit clear).
+    /// A write to the source byte.
+    var isSourceWrite: Bool {
+        count == 4 && self[0] == 0x53 && self[1] == KEFCommand.sourceRegister
+    }
+
+    /// A source write with the power bit on (clear): it turns the speaker
+    /// on, or keeps it on.
     var isPowerOnWrite: Bool {
-        count == 4 && self[1] == KEFCommand.sourceRegister && self[0] == 0x53 && SourceByte(byte: self[3]).isPoweredOn
+        isSourceWrite && SourceByte(byte: self[3]).isPoweredOn
     }
 }

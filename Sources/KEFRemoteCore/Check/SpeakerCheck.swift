@@ -11,38 +11,53 @@ import Foundation
 /// exchange that gets no answer stops the steps and goes straight to
 /// putting things back.
 ///
+/// The real speaker is slow to power on and off, so after a power change
+/// it reads back every second until it matches, says how long it took,
+/// and rests before the next power change.
+///
 /// Each line goes to `onLine` (the terminal) and to `log` (the log file).
 public final class SpeakerCheck {
-    /// The wait after a power or input change on the real speaker, before
-    /// reading it back.
-    public static let standardSettle: @Sendable () async -> Void = {
-        try? await Task.sleep(for: .seconds(2))
-    }
+    // "The real speaker takes a while to power on and off; cycling it
+    // quickly looks like failure because requests aren't taken. Needs
+    // ~15-20 s between power on and power off." (Dileepa, after the first
+    // real check on 6 Oct 2026, where power on still read off 2 s later.)
 
-    /// Why a step that would leave 20-minute standby on a speaker that is
-    /// off is not sent.
-    static let notSentWhileOff = "not sent: the speaker is off, and 20 min standby while off crashes it"
+    /// How long to keep reading back after a power change before failing.
+    public static let powerChangeLimit: Duration = .seconds(20)
+    /// How long to wait after one power change lands before the next.
+    public static let restBetweenPowerChanges: Duration = .seconds(15)
+    /// How long to keep reading back an input, standby or left/right
+    /// change. The speaker usually shows them at once; this is grace.
+    public static let sourceWriteLimit: Duration = .seconds(5)
+    /// How often to read back while waiting.
+    public static let pollInterval: Duration = .seconds(1)
+
+    /// Why an input, standby or left/right step is not sent.
+    static let notSentWhileOff = "not sent: the speaker is off, and it ignores input, standby and left/right while off"
 
     private let recorder: RecordingConnection
     private let controller: SpeakerController
     private let log: KEFLog
-    private let settle: () async -> Void
+    private let clock: CheckClock
     private let onLine: (String) -> Void
+    /// When the last power change landed (or was given up on).
+    private var lastPowerChange: Duration?
 
     /// - Parameters:
-    ///   - settle: Waits after power and input changes (none in tests).
+    ///   - clock: Times the waits: ``RealCheckClock`` for the real
+    ///     speaker, the simulated speaker's own clock otherwise.
     ///   - onLine: Gets each line to show, in order.
     public init(
         connection: SpeakerConnection,
         log: KEFLog,
-        settle: @escaping () async -> Void = {},
+        clock: CheckClock,
         onLine: @escaping (String) -> Void = { _ in }
     ) {
         let recorder = RecordingConnection(connection)
         self.recorder = recorder
         self.controller = SpeakerController(connection: recorder, log: log.write)
         self.log = log
-        self.settle = settle
+        self.clock = clock
         self.onLine = onLine
     }
 
@@ -61,6 +76,10 @@ public final class SpeakerCheck {
             return finish(CheckReport(steps: [result], restore: nil))
         }
         show("Start: \(Self.describe(start))", at: .info)
+        if !start.isPoweredOn {
+            show("The speaker is off. Turning it on first: it ignores input, standby and left/right "
+                + "while off, so those are only sent while it's on. It goes off again at the end.", at: .info)
+        }
 
         var results: [CheckStepResult] = []
         for step in CheckStep.plan(from: start, includingInputs: includingInputs) {
@@ -86,17 +105,17 @@ public final class SpeakerCheck {
         let mark = recorder.mark
         do {
             let before = try await controller.getState()
-            guard !step.action.wouldLeaveTwentyMinutesWhileOff(before: before) else {
+            guard !step.action.isIgnoredWhileOff(before: before) else {
                 return (CheckStepResult(name: step.name, verdict: .fail, detail: Self.notSentWhileOff), true)
             }
             let expectation = step.action.expectation(before: before)
+            if step.action.changesPower { await restBeforePowerChange() }
             try await send(step.action)
-            if step.action.needsSettling { await settle() }
-            let reading: CheckReading = expectation.readsVolume
-                ? .volume(try await controller.getVolumeState())
-                : .source(try await controller.getSourceByte())
-            let comparison = expectation.compare(reading)
-            return (result(step.name, comparison.passed ? .pass : .fail, comparison.detail, since: mark), true)
+            let (comparison, waited) = try await readBack(expectation, within: step.action.readBackLimit)
+            if step.action.changesPower { lastPowerChange = clock.now }
+            let showsWait = step.action.changesPower || waited > .zero
+            let detail = comparison.line(waited: showsWait ? waited : nil)
+            return (result(step.name, comparison.passed ? .pass : .fail, detail, since: mark), true)
         } catch {
             return (result(step.name, .fail, "no answer (\(error))", since: mark), false)
         }
@@ -111,10 +130,45 @@ public final class SpeakerCheck {
         case .powerOff: try await controller.powerOff()
         // Don't change: the speaker keeps the input and standby it has.
         case .powerOn: try await controller.powerOn()
+        case .powerOnApplying(let choice): try await controller.powerOn(applying: SpeakerSettings(powerOnInput: choice))
         case .setStandby(let mode): try await controller.setStandby(mode)
         case .setInput(let input): try await controller.setInput(input)
         case .setLeftRightSwapped(let isSwapped): try await controller.setLeftRightSwapped(isSwapped)
         }
+    }
+
+    // MARK: - Waiting on the speaker
+
+    /// Read back until the speaker shows what was expected, every
+    /// ``pollInterval``, for up to `limit`. Returns the last comparison
+    /// and how long it waited.
+    private func readBack(_ expectation: CheckExpectation, within limit: Duration) async throws -> (CheckComparison, waited: Duration) {
+        let started = clock.now
+        while true {
+            let reading: CheckReading = expectation.readsVolume
+                ? .volume(try await controller.getVolumeState())
+                : .source(try await controller.getSourceByte())
+            let comparison = expectation.compare(reading)
+            let waited = clock.now - started
+            if comparison.passed || waited >= limit {
+                return (comparison, waited)
+            }
+            await clock.sleep(for: Self.pollInterval)
+        }
+    }
+
+    /// Wait out what's left of ``restBetweenPowerChanges`` since the last one.
+    private func restBeforePowerChange() async {
+        guard let last = lastPowerChange else { return }
+        let rest = last + Self.restBetweenPowerChanges - clock.now
+        guard rest > .zero else { return }
+        show("Waiting \(Self.seconds(rest)) s before the next power change", at: .info)
+        await clock.sleep(for: rest)
+    }
+
+    /// Whole seconds, for the lines.
+    static func seconds(_ duration: Duration) -> Int64 {
+        duration.components.seconds
     }
 
     // MARK: - Putting the starting state back
@@ -169,33 +223,27 @@ public final class SpeakerCheck {
         let mark = recorder.mark
         var problems: [String] = []
 
-        // On first, so the input and standby writes never meet a speaker
-        // that is off.
+        // On first: the speaker ignores input, standby and left/right while off.
         problems += await attempt("power on") { [self] in
             guard try await !controller.getSourceByte().isPoweredOn else { return }
-            try await controller.powerOn()
-            await settle()
+            try await changePower(to: .poweredOn) { try await self.controller.powerOn() }
         }
         problems += await attempt("input") { [self] in
             let now = try await controller.getState()
             guard !now.input.isSameInput(as: target.input) else { return }
-            let action = CheckAction.setInput(target.input.codeToSelect)
-            guard !action.wouldLeaveTwentyMinutesWhileOff(before: now) else { throw NotSentWhileOff() }
+            guard now.isPoweredOn else { throw CheckProblem(Self.notSentWhileOff) }
             try await controller.setInput(target.input.codeToSelect)
-            await settle()
         }
         problems += await attempt("standby") { [self] in
             let now = try await controller.getState()
             guard now.standby != target.standby else { return }
-            let action = CheckAction.setStandby(target.standby)
-            guard !action.wouldLeaveTwentyMinutesWhileOff(before: now) else { throw NotSentWhileOff() }
+            guard now.isPoweredOn else { throw CheckProblem(Self.notSentWhileOff) }
             try await controller.setStandby(target.standby)
         }
         problems += await attempt("left/right") { [self] in
             let now = try await controller.getState()
             guard now.isInversed != target.isInversed else { return }
-            let action = CheckAction.setLeftRightSwapped(target.isInversed)
-            guard !action.wouldLeaveTwentyMinutesWhileOff(before: now) else { throw NotSentWhileOff() }
+            guard now.isPoweredOn else { throw CheckProblem(Self.notSentWhileOff) }
             try await controller.setLeftRightSwapped(target.isInversed)
         }
         problems += await attempt("volume") { [self] in
@@ -215,13 +263,18 @@ public final class SpeakerCheck {
         if !target.isPoweredOn {
             // Last, through the controller, so 20 min becomes 60 first.
             problems += await attempt("power off") { [self] in
-                try await controller.powerOff()
-                await settle()
+                try await changePower(to: .poweredOff) { try await self.controller.powerOff() }
             }
         }
 
         do {
-            let end = try await controller.getState()
+            // The last input or standby write may take a moment to show.
+            let started = clock.now
+            var end = try await controller.getState()
+            while !Self.differences(expected: target, read: end).isEmpty, clock.now - started < Self.sourceWriteLimit {
+                await clock.sleep(for: Self.pollInterval)
+                end = try await controller.getState()
+            }
             problems = Self.differences(expected: target, read: end) + problems
         } catch {
             problems.append("could not read it back (\(error))")
@@ -237,6 +290,18 @@ public final class SpeakerCheck {
         return result("put back", .pass, detail, since: mark)
     }
 
+    /// Turn the speaker on or off while putting back: rest first, send,
+    /// read back until it lands, and say how long it took.
+    private func changePower(to expectation: CheckExpectation, _ send: () async throws -> Void) async throws {
+        await restBeforePowerChange()
+        try await send()
+        let (comparison, waited) = try await readBack(expectation, within: Self.powerChangeLimit)
+        lastPowerChange = clock.now
+        let detail = comparison.line(waited: waited)
+        show("put back: \(detail)", at: comparison.passed ? .info : .error)
+        guard comparison.passed else { throw CheckProblem(detail) }
+    }
+
     /// Run one part of putting back. Returns what went wrong, if anything.
     private func attempt(_ what: String, _ body: () async throws -> Void) async -> [String] {
         do {
@@ -248,8 +313,10 @@ public final class SpeakerCheck {
         }
     }
 
-    private struct NotSentWhileOff: Error, CustomStringConvertible {
-        var description: String { SpeakerCheck.notSentWhileOff }
+    /// Why one part of putting back went wrong, in words.
+    private struct CheckProblem: Error, CustomStringConvertible {
+        let description: String
+        init(_ description: String) { self.description = description }
     }
 
     // MARK: - Output
