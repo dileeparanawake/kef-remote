@@ -12,8 +12,11 @@ import SwiftUI
 /// ? Local Network                          [Open Settings]
 ///   So the app can find the speaker.
 ///   Not checked yet: shows once the speaker answers
-///   Privacy & Security > Local Network
+///   In Privacy & Security, click Local Network, then turn on KEF Remote
 /// ```
+///
+/// The Accessibility hint names the row as this Mac's System Settings
+/// does: Device Control and Data Access from macOS 27.
 ///
 /// It only shows ``PermissionsModel/rows``; what each row says is
 /// decided in ``PermissionRow``.
@@ -56,7 +59,7 @@ private struct PermissionRowView: View {
                 Text(row.statusText)
                     .font(.caption)
                     .foregroundStyle(row.needsAttention ? .red : .secondary)
-                Text(row.settingsPath)
+                Text(row.settingsHint)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

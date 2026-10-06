@@ -56,8 +56,8 @@ You only need to do this once. If it says "No such xattr", the flag is already g
 
 When it opens, KEF Remote shows a small window with the two permissions it needs. Each has a button that opens System Settings, and gets a tick once it's allowed.
 
-- **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote.
-- **Local Network** (macOS 15 and later), so the app can find the speaker. macOS asks the first time the app looks for the speaker: click Allow. If you missed it, click Open Settings and turn on KEF Remote under Privacy & Security > Local Network. Its tick shows once the speaker answers.
+- **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote. On macOS 27 this list is called Device Control and Data Access.
+- **Local Network** (macOS 15 and later), so the app can find the speaker. macOS asks the first time the app looks for the speaker: click Allow. If you missed it, click Open Settings, then Local Network, and turn on KEF Remote. Its tick shows once the speaker answers.
 
 To open the window again, click the speaker icon in the menu bar, then Permissions….
 
@@ -99,7 +99,7 @@ Your settings and config file carry over.
 1. Quit 0.1.0: press Cmd+Shift+Q, or quit KEFRemote in Activity Monitor.
 2. Download the latest release (step 1) and replace `KEFRemote.app` in Applications.
 3. Open it. If macOS blocks it, follow step 2.
-4. If the volume keys don't respond, open System Settings > Privacy & Security > Accessibility. Turn KEFRemote off, then on again. Then quit KEF Remote and open it again.
+4. If the volume keys don't respond, open System Settings > Privacy & Security > Accessibility (Device Control and Data Access on macOS 27). Turn KEFRemote off, then on again. Then quit KEF Remote and open it again.
 
 Your config file from 0.1.0 keeps working, with discovery on Auto.
 
