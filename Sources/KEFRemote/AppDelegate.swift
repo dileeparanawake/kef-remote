@@ -638,14 +638,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Input
 
     /// Switch the speaker to `input` now, from Input ▸ in the menu. The
-    /// HUD shows the new input; the menu's tick follows the byte written.
+    /// HUD shows the input the speaker read back, or that it didn't take;
+    /// the menu's tick follows the byte read.
     func switchInput(to input: InputSource) {
         guard let controller = controller(for: "input \(input.label)") else { return }
 
         Task {
             do {
-                try await controller.setInput(input)
-                HUDOverlay.show(.input(input))
+                let result = try await controller.switchInput(to: input)
+                HUDOverlay.show(.afterInputSwitch(result))
             } catch {
                 logger.error("Input switch to \(input.label) failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Input failed"))

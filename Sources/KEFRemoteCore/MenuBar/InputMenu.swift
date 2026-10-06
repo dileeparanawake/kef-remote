@@ -17,7 +17,7 @@ import Foundation
 /// The inputs come in the same order as Input on turn-on in Settings,
 /// only those the speaker has (``SpeakerModel/inputs``).
 /// The tick comes from the speaker's last source byte, read on connect
-/// and written by each switch.
+/// and read back after each switch.
 public struct InputMenu: Equatable, Sendable {
     /// One input in the submenu.
     public struct Item: Equatable, Sendable {
@@ -33,23 +33,26 @@ public struct InputMenu: Equatable, Sendable {
     public static let title = "Input"
 
     public let items: [Item]
-    /// Greyed out while the speaker isn't connected: a switch couldn't
-    /// reach it. It stays in the menu rather than hiding, so the menu
-    /// keeps its shape and Input is where he left it.
+    /// Greyed out while the speaker isn't connected, since a switch
+    /// couldn't reach it, and while it's off, since it ignores input
+    /// writes then (first real check, 6 Oct 2026). It stays in the menu
+    /// rather than hiding, so the menu keeps its shape and Input is where
+    /// he left it.
     public let isEnabled: Bool
 
     /// - Parameters:
-    ///   - speakerInput: The input in the last source byte read or
-    ///     written, or nil before the first read.
+    ///   - speakerSource: The last source byte read or written, or nil
+    ///     before the first read.
     ///   - isConnected: The speaker answered the last exchange.
     ///   - inputs: The inputs the speaker has, in order.
-    public init(speakerInput: InputSource?, isConnected: Bool, inputs: [InputSource]) {
-        isEnabled = isConnected
+    public init(speakerSource: SourceByte?, isConnected: Bool, inputs: [InputSource]) {
+        // Before the first read, power isn't known: a switch reads it first.
+        isEnabled = isConnected && speakerSource?.isPoweredOn != false
         // Once the speaker stops answering, its input may have changed
         // (KEF's remote, or its own app), so tick nothing. It reports
         // Bluetooth as unpaired while nothing is paired, but it's the
         // same Bluetooth item.
-        let ticked = isConnected ? speakerInput?.codeToSelect : nil
+        let ticked = isConnected ? speakerSource?.input.codeToSelect : nil
         items = inputs.map { input in
             Item(input: input, isTicked: input == ticked)
         }

@@ -308,6 +308,40 @@ public class SpeakerController {
         return source.input
     }
 
+    /// How long Input ▸ reads back a switch before saying it didn't take.
+    /// The real speaker showed every input switch at once.
+    public static let inputReadBackLimit: Duration = .seconds(2)
+    /// How often it reads back meanwhile.
+    public static let inputReadBackInterval: Duration = .milliseconds(500)
+
+    /// Switch the input from Input ▸, then read it back, so the HUD names
+    /// the input the speaker is on, not the one asked for. A speaker that
+    /// is off isn't sent it: it ignores input writes while off.
+    public func switchInput(to input: InputSource) async throws -> InputSwitchResult {
+        let source = try await getSourceByte()
+        guard source.isPoweredOn else {
+            log(.info, "switchInput: \(input.label) not sent: the speaker is off, and it ignores input while off")
+            return .speakerOff
+        }
+        log(.info, "switchInput: \(source.input.label) -> \(input.label)")
+        try await writeSource(source.with(input: input))
+        let started = clock.now
+        while true {
+            let now = try await getSourceByte()
+            if now.input.isSameInput(as: input) {
+                log(.info, "switchInput: the speaker is on \(now.input.label)")
+                return .switched(now.input)
+            }
+            let waited = clock.now - started
+            if waited >= Self.inputReadBackLimit {
+                log(.warning, "switchInput: asked for \(input.label), the speaker stayed on \(now.input.label) "
+                    + "after \(waited.components.seconds) s (it may not have that input)")
+                return .notTaken(asked: input, stayedOn: now.input)
+            }
+            await clock.sleep(for: Self.inputReadBackInterval)
+        }
+    }
+
     /// Set the input source. Preserves power, standby, and inverse settings.
     public func setInput(_ input: InputSource) async throws {
         let source = try await getSourceByte()

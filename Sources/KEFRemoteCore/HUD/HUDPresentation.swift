@@ -22,6 +22,18 @@ extension HUDState {
     }
 }
 
+extension HUDState {
+    /// The HUD after Input ▸: the input the speaker read back, or why
+    /// not. Never the input it only asked for.
+    public static func afterInputSwitch(_ result: InputSwitchResult) -> HUDState {
+        switch result {
+        case .switched(let input): return .input(input)
+        case .notTaken(let asked, _): return .error("\(asked.label) not available")
+        case .speakerOff: return .error("Speaker is off")
+        }
+    }
+}
+
 /// How a ``HUDState`` looks: the icon and the line under it.
 ///
 /// `HUDOverlay` draws it; this decides it, so it can be tested.

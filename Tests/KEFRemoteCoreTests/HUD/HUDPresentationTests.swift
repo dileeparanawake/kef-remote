@@ -66,6 +66,23 @@ struct HUDPresentationTests {
         #expect(HUDState.failure(KEFError.invalidResponse, otherwise: "Power failed") == .error("Power failed"))
     }
 
+    // MARK: - After an input switch
+
+    @Test func aSwitchThatTookShowsTheInputTheSpeakerIsOn() {
+        #expect(HUDState.afterInputSwitch(.switched(.bluetoothUnpaired)) == .input(.bluetoothUnpaired))
+        #expect(HUDPresentation(.afterInputSwitch(.switched(.bluetoothUnpaired))).label == "Bluetooth")
+    }
+
+    /// Not the input it asked for: the LSX stayed on Aux when asked for USB.
+    @Test func aSwitchThatDidNotTakeSaysTheInputIsNotAvailable() {
+        let state = HUDState.afterInputSwitch(.notTaken(asked: .usb, stayedOn: .aux))
+        #expect(state == .error("USB not available"))
+    }
+
+    @Test func aSwitchToASpeakerThatIsOffSaysItIsOff() {
+        #expect(HUDState.afterInputSwitch(.speakerOff) == .error("Speaker is off"))
+    }
+
     @Test func anUnknownErrorKeepsTheCommandsOwnMessage() {
         struct Other: Error {}
         #expect(HUDState.failure(Other(), otherwise: "Command failed") == .error("Command failed"))

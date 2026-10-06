@@ -56,16 +56,20 @@ final class MenuBarModel: ObservableObject {
     }
 
     var inputMenu: InputMenu {
-        InputMenu(speakerInput: speakerSource?.input, isConnected: presentation.isConnected, inputs: speakerModel.inputs)
+        InputMenu(speakerSource: speakerSource, isConnected: presentation.isConnected, inputs: speakerModel.inputs)
     }
 
     /// Show the speaker's source byte as the controller last saw it. Logs
-    /// only a change of input, the part the menu shows.
+    /// only a change of input or power, the parts the menu shows.
     func showSource(_ source: SourceByte?) {
-        let oldInput = speakerSource?.input
+        let old = speakerSource
         speakerSource = source
-        guard source?.input != oldInput else { return }
-        log.info("speaker input \(oldInput?.label ?? "unknown") -> \(source?.input.label ?? "unknown")")
+        if source?.input != old?.input {
+            log.info("speaker input \(old?.input.label ?? "unknown") -> \(source?.input.label ?? "unknown")")
+        }
+        if let source, source.isPoweredOn != old?.isPoweredOn {
+            log.info("speaker power \(source.isPoweredOn ? "on" : "off"): Input \(inputMenu.isEnabled ? "enabled" : "greyed out")")
+        }
     }
 
     /// Show Accessibility as ``PermissionsModel`` last saw it. Logs only a
