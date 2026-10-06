@@ -52,26 +52,27 @@ xattr -dr com.apple.quarantine /Applications/KEFRemote.app
 
 You only need to do this once. If it says "No such xattr", the flag is already gone.
 
-### 3. Allow the two permissions
+### 3. Follow the setup window
 
-When it opens, KEF Remote shows a small window with the two permissions it needs. Each has a button that opens System Settings, and gets a tick once it's allowed.
+When it opens, KEF Remote shows a setup window with three steps.
 
-- **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote. On macOS 27 this list is called Device Control and Data Access.
-- **Local Network** (macOS 15 and later), so the app can find the speaker. macOS asks the first time the app looks for the speaker: click Allow. If you missed it, click Open Settings, then Local Network, and turn on KEF Remote. Its tick shows within a few seconds of allowing it.
+1. **Permissions.** Each permission has a button that opens System Settings, and gets a tick once it's allowed. Click Continue when both are ticked, or Skip for now.
+   - **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote. On macOS 27 this list is called Device Control and Data Access. If the window then shows Restart KEF Remote, click it: the volume keys start once it opens again.
+   - **Local Network** (macOS 15 and later), so the app can find the speaker. macOS asks the first time the app looks for the speaker: click Allow. If you missed it, click Open Settings, then Local Network, and turn on KEF Remote. Its tick shows within a few seconds of allowing it.
+2. **Find your speaker.** Leave it on Auto and click Find speaker. It says "Found LSX at" and the speaker's IP. If it has found the speaker already, it says so straight away. If it says "Not found", check the speaker is on and on the same network, or click Enter the IP instead (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). Click Continue once it's found.
+3. **You're set.** It shows the keys to use. Click Done.
 
-To open the window again, click the speaker icon in the menu bar, then Permissions….
+It only opens once. To check the permissions again, click the speaker icon in the menu bar, then Permissions….
 
-### 4. Check it's connected
-
-When it opens, KEF Remote looks for the speaker on your network and saves its IP. Click the speaker icon in the menu bar. It should say "Connected to LSX".
+### 4. Try it
 
 Press Cmd+Shift+O to turn the speaker on. Then press Control + volume up. A small panel in the middle of the screen shows the volume. If nothing happens, quit KEF Remote from the menu bar icon and open it again.
 
-If the icon has a red dot, the menu's first line says what's wrong and what to do. Usually it says "click Find speaker". Find speaker is in the same menu.
+If the menu bar icon has a red dot, the menu's first line says what's wrong and what to do. Usually it says "click Find speaker". Find speaker is in the same menu.
 
 ### If it can't find the speaker
 
-Set the IP by hand:
+Set the IP by hand. In the setup window, choose Manual, type the speaker's IP and click Save. Later, from Settings:
 
 1. Click the menu bar icon and choose Settings….
 2. Under Speaker, set Discovery to Manual.
@@ -81,7 +82,7 @@ In Manual, KEF Remote uses that IP and never looks for the speaker by itself. Sw
 
 To find the IP, look in KEF's own app on your phone: it shows the speaker's IP in the speaker's settings while it's connected. Or open your router's admin page and look at its list of connected devices for one named LSX or KEF.
 
-The IP and the discovery mode are saved in `~/.kef-remote/config.json`.
+The IP, the discovery mode and whether you've finished setup are saved in `~/.kef-remote/config.json`.
 
 ### Upgrading from 0.2.0
 
@@ -185,7 +186,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 497 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 532 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when it opens, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening. It takes a few minutes, as it waits for the speaker to power on and off.
 
