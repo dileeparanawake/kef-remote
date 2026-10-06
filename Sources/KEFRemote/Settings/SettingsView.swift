@@ -16,13 +16,27 @@ import SwiftUI
 /// Media keys   Modifier [Control]   "Control + the volume keys … changes the speaker"
 /// Shortcuts    Power on/off, Volume up, Volume down, Mute, Quit
 ///              "Optional extra keys. They work alongside the volume keys above."
+///
+///              Privacy: KEF Remote collects nothing        (a link to the notice)
 /// ```
 struct SettingsView: View {
     @ObservedObject var model: SettingsModel
     /// The live speaker and connection, as the menu bar shows them.
     @ObservedObject var menuBar: MenuBarModel
 
+    private let log = AppLogger(subsystem: "com.kef-remote", category: "settings")
+
     var body: some View {
+        VStack(spacing: 0) {
+            form
+            PrivacyLink(title: PrivacyNotice.settingsTitle, log: log)
+                .padding(.bottom, 16)
+        }
+        .frame(width: 440)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var form: some View {
         Form {
             Section("Speaker") {
                 Picker("Discovery", selection: Binding(
@@ -111,8 +125,6 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-        .frame(width: 440)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// The speaker's own swap, as last read, applied when clicked.
