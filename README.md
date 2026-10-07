@@ -159,6 +159,8 @@ Input ▸ comes next. It ticks the input the speaker is on. Pick another and the
 
 Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote. Permissions… shows a tick when both permissions are allowed. When one is off, it says so, such as "Permissions… (1 needs you)".
 
+Send feedback… opens an email to me, with the log attached if you agree.
+
 ## Known limitations
 
 | Limitation | What to do for now |
@@ -183,7 +185,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 463 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 479 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening. It takes a few minutes, as it waits for the speaker to power on and off.
 

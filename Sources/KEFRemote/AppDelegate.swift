@@ -24,6 +24,7 @@ import os
 /// 9. Switches the speaker's input from Input ▸ in the menu, ticked from
 ///    the last source byte the controller read or wrote; swaps left and
 ///    right from Settings, shown from the same byte
+/// 10. Writes feedback from Send feedback… in the menu (``FeedbackSender``)
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -201,6 +202,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Open the permissions guide and bring it to the front.
     func showPermissions(source: PermissionsWindowController.Source) {
         permissionsWindow.show(source: source)
+    }
+
+    /// Write feedback to Dileepa from the menu, naming the saved speaker.
+    func sendFeedback() {
+        FeedbackSender().send(speaker: config.speaker)
     }
 
     // MARK: - Permissions
