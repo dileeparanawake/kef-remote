@@ -53,27 +53,68 @@ test-build: kill
 	@echo "Watch the log with: make logs-tail"
 
 # Start a hand test from a clean slate, like a stranger's first run:
-# saves your config.json aside, then builds this branch under a new
-# test bundle ID (…KEFRemote.test1, .test2, …) and launches it. macOS
-# treats each as a brand-new app: it asks for Local Network and
-# Accessibility again, with empty preferences. That's the only way to
-# see the Local Network prompt again (Terminal can't reset it), and it
-# changes no privacy setting. Each run leaves a KEFRemote entry in the
-# Privacy & Security lists. `make test-restore` puts your config back.
+# saves your config.json aside, clears the test identity's preferences,
+# then builds this branch under the test bundle ID and launches it.
+#
+#   make test-fresh           one fixed ID, …KEFRemote.test: one entry
+#                             in each Privacy & Security list, reused
+#   make test-fresh NEW_ID=1  a new ID (…KEFRemote.test1, .test2, …):
+#                             macOS asks for Local Network again
+#
+# The fixed ID keeps its Local Network and Accessibility answers. A new
+# ID is the only way to see the Local Network prompt again (Terminal
+# can't reset it); each leaves one more entry in the lists. test-fresh
+# changes no privacy setting itself: it prints the tccutil line that
+# resets Accessibility, for you to run. `make test-restore` puts your
+# config back; `make test-clean` lists the resets for every test ID.
 BUNDLE_ID = com.dileeparanawake.KEFRemote
+TEST_BUNDLE_ID = $(BUNDLE_ID).test
 CONFIG_FILE = $(HOME)/.kef-remote/config.json
 CONFIG_BACKUP = $(HOME)/.kef-remote/config.before-test.json
 PREFS_BACKUP = $(HOME)/.kef-remote/preferences.before-test.plist
-TEST_RUN_FILE = $(TEST_BUILD_DIR)/test-run-number
+# The last NEW_ID number. Kept in ~/.kef-remote, so every worktree counts
+# on from the same number.
+TEST_RUN_FILE = $(HOME)/.kef-remote/test-run-number
+# Before that, each checkout kept its own count in .build. The highest
+# of all of them is the last number macOS has seen.
+LAST_TEST_RUN = $(shell { cat "$(TEST_RUN_FILE)" 2>/dev/null; \
+	git worktree list --porcelain | sed -n 's/^worktree //p' | \
+	while read -r dir; do cat "$$dir/$(TEST_BUILD_DIR)/test-run-number" 2>/dev/null; done; \
+	echo 0; } | sort -n | tail -1)
 
 test-fresh: kill
 	@# A second run keeps the first backup: that one is the real setup.
 	@if [ -f "$(CONFIG_BACKUP)" ]; then rm -f "$(CONFIG_FILE)"; echo "Backup already there; removed the test config"; \
 	elif [ -f "$(CONFIG_FILE)" ]; then mv "$(CONFIG_FILE)" "$(CONFIG_BACKUP)"; echo "Saved config.json to $(CONFIG_BACKUP)"; fi
-	@mkdir -p $(TEST_BUILD_DIR)
-	@N=$$(( $$(cat $(TEST_RUN_FILE) 2>/dev/null || echo 0) + 1 )); echo $$N > $(TEST_RUN_FILE); \
-	echo "Test identity: $(BUNDLE_ID).test$$N (new to macOS: it asks for both permissions)"; \
-	$(MAKE) test-build XCODE_ARGS="PRODUCT_BUNDLE_IDENTIFIER=$(BUNDLE_ID).test$$N"
+	@if [ -n "$(NEW_ID)" ]; then \
+		N=$$(( $(LAST_TEST_RUN) + 1 )); mkdir -p "$$(dirname "$(TEST_RUN_FILE)")"; echo $$N > "$(TEST_RUN_FILE)"; \
+		ID=$(TEST_BUNDLE_ID)$$N; \
+		echo "Test identity: $$ID (new to macOS: it asks for both permissions)"; \
+	else \
+		ID=$(TEST_BUNDLE_ID); \
+		echo "Test identity: $$ID (macOS remembers its permissions)"; \
+	fi; \
+	defaults delete $$ID 2>/dev/null && echo "Cleared $$ID's preferences"; \
+	$(MAKE) test-build XCODE_ARGS="PRODUCT_BUNDLE_IDENTIFIER=$$ID" && \
+	if [ -z "$(NEW_ID)" ]; then \
+		echo ""; \
+		echo "To see the Accessibility step again, run this, then quit and reopen the app:"; \
+		echo "  tccutil reset Accessibility $$ID"; \
+		echo "To see the Local Network prompt again: make test-fresh NEW_ID=1"; \
+	fi
+
+# List (doesn't run) the tccutil lines that remove every test ID's
+# privacy answers: the fixed …KEFRemote.test and each NEW_ID one.
+test-clean:
+	@echo "Run these to reset the test IDs' privacy answers:"
+	@echo "  tccutil reset All $(TEST_BUNDLE_ID)"
+	@N=$(LAST_TEST_RUN); I=1; while [ $$I -le $$N ]; do \
+		echo "  tccutil reset All $(TEST_BUNDLE_ID)$$I"; I=$$((I + 1)); \
+	done
+	@echo ""
+	@echo "That clears Accessibility and the other lists tccutil manages."
+	@echo "Local Network entries can't be removed from Terminal: tccutil"
+	@echo "doesn't manage them, and macOS keeps one per app ID it has seen."
 
 # Put back the config test-fresh saved, and any preferences an older
 # test-fresh cleared from the real app.
@@ -228,4 +269,4 @@ kef-raw-standby:
 	@test -n "$(MIN)" || (echo "Usage: make kef-raw-standby MIN=<0|20|60>"; exit 1)
 	$(KEFCTL) --standby $(MIN)
 
-.PHONY: test-fresh test-restore test discover speaker-check app-icon run test-build package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby
+.PHONY: test-fresh test-clean test-restore test discover speaker-check app-icon run test-build package kill logs-tail logs-recent logs-full logs-errors logs-warnings logs-debug logs-stream logs-stream-debug logs-stream-errors logs-stop kef-on kef-off kef-status kef-mute kef-unmute kef-toggle kef-play kef-next kef-previous kef-raw-volume kef-raw-raise kef-raw-lower kef-raw-input kef-raw-standby

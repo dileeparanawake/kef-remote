@@ -13,7 +13,6 @@ struct PermissionRowTests {
 
         #expect(row.title == "Accessibility")
         #expect(row.purpose == "So the volume keys reach the speaker.")
-        #expect(row.settingsPath == "Privacy & Security > Accessibility")
     }
 
     @Test func localNetworkIsForFindingTheSpeaker() {
@@ -21,7 +20,6 @@ struct PermissionRowTests {
 
         #expect(row.title == "Local Network")
         #expect(row.purpose == "So the app can find the speaker.")
-        #expect(row.settingsPath == "Privacy & Security > Local Network")
     }
 
     // MARK: - The tick, and the words beside it
@@ -63,17 +61,48 @@ struct PermissionRowTests {
 
     // MARK: - System Settings panes
 
-    /// The legacy pane ID still opens Privacy & Security on macOS 14, 15
-    /// and 26+: the Settings extension declares it as its
-    /// `legacyBundleIdentifier`.
-    @Test func accessibilityOpensPrivacyAccessibility() {
+    /// Hand test, 6 Oct (macOS 27): the legacy pane ID,
+    /// `com.apple.preference.security`, opened only the top of Privacy &
+    /// Security. The pane's own extension ID is used on every macOS.
+    @Test func accessibilityOpensTheAccessibilityRowByTheExtensionsID() {
         #expect(Permission.accessibility.settingsURL.absoluteString
-            == "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+            == "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_Accessibility")
     }
 
-    @Test func localNetworkOpensPrivacyLocalNetwork() {
+    /// The pane lists no Local Network anchor, so the link opens Privacy
+    /// & Security and the hint says where to click next.
+    @Test func localNetworkOpensPrivacyAndSecurityWithNoAnchor() {
         #expect(Permission.localNetwork.settingsURL.absoluteString
-            == "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")
+            == "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension")
+    }
+
+    @Test func localNetworksHintSaysWhatToClickNext() {
+        for major in [14, 15, 26, 27] {
+            #expect(Permission.localNetwork.settingsHint(onMacOS: major)
+                == "In Privacy & Security, click Local Network, then turn on KEF Remote", "macOS \(major)")
+        }
+    }
+
+    @Test func accessibilitysHintNamesTheRowUpToMacOS26() {
+        for major in [14, 15, 26] {
+            #expect(Permission.accessibility.settingsHint(onMacOS: major)
+                == "Privacy & Security > Accessibility", "macOS \(major)")
+        }
+    }
+
+    /// macOS 27 renamed the row (the pane's `ACCESSIBILITY` string, read
+    /// on his Mac on 6 Oct 2026), so the hint names what he'll see.
+    @Test func accessibilitysHintNamesTheRenamedRowFromMacOS27() {
+        for major in [27, 28] {
+            #expect(Permission.accessibility.settingsHint(onMacOS: major)
+                == "Privacy & Security > Device Control and Data Access", "macOS \(major)")
+        }
+    }
+
+    @Test func theRowShowsThisMacsHint() {
+        for permission in Permission.allCases {
+            #expect(PermissionRow(permission, status: .notGranted).settingsHint == permission.settingsHint)
+        }
     }
 
     // MARK: - When the guide opens by itself

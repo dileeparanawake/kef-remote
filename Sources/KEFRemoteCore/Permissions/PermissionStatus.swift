@@ -6,6 +6,7 @@ import Foundation
 /// Accessibility:  AXIsProcessTrusted() ──> granted | notGranted
 /// Local Network:  notCheckedYet ──speaker answered──> granted
 ///                               ──macOS blocked it──> notGranted
+///                 notGranted ──a probe got out (LocalNetworkRetry)──> granted
 /// ```
 public enum PermissionStatus: String, Equatable, Sendable {
     case granted

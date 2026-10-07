@@ -19,7 +19,7 @@ public struct PermissionRow: Equatable, Sendable {
 
     public var title: String { permission.title }
     public var purpose: String { permission.purpose }
-    public var settingsPath: String { permission.settingsPath }
+    public var settingsHint: String { permission.settingsHint }
 
     /// Red in the window: he has to do something.
     public var needsAttention: Bool { status == .notGranted }
