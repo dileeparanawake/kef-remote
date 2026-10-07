@@ -50,4 +50,22 @@ struct MenuTrackingShortcutsTests {
             == "menu opened: shortcuts already off (off the home network)")
         #expect(MenuTrackingShortcuts.Change.leave.logLine == nil)
     }
+
+    // MARK: - The line in the menu
+
+    /// Round 6 hand test: nothing said the shortcuts were off while the
+    /// menu was open. One quiet line says so, on the home network, where
+    /// they're on and the open menu pauses them.
+    @Test func onTheHomeNetworkTheMenuSaysShortcutsArePaused() {
+        let line = MenuTrackingShortcuts.menuLine(status: .connected)
+        #expect(line == "Shortcuts paused while this menu is open")
+        for status in [ConnectionStatus.noSpeaker, .searching, .connecting, .notConnected, .localNetworkBlocked] {
+            #expect(MenuTrackingShortcuts.menuLine(status: status) == line)
+        }
+    }
+
+    /// Off the home network the shortcuts are off anyway: nothing to say.
+    @Test func offTheHomeNetworkThereIsNoLine() {
+        #expect(MenuTrackingShortcuts.menuLine(status: .dormant) == nil)
+    }
 }

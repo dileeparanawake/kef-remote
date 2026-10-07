@@ -7,7 +7,8 @@ import Foundation
 /// and also opened Apple Music. The interceptor decided each half on its
 /// own, so a key-down that reached the Mac before Control did (the Mac
 /// starts its player on the key-down) and a key-up with Control held
-/// (sent to the speaker) did both. Now a key-up follows its key-down.
+/// (sent to the speaker) did both. A volume key could do the same, so
+/// a key-up follows its key-down.
 public struct MediaKeyPressRouter: Sendable {
     public enum Route: Equatable, Sendable {
         /// Pass the event on: the Mac handles the key.

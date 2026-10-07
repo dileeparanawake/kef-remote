@@ -1,21 +1,24 @@
 import Foundation
 
-/// Whether opening the menu reads the speaker's source byte again.
+/// Whether opening the menu, or Settings, reads the speaker's source byte
+/// again.
 ///
 /// The speaker changes by itself: AirPlay from the Mac switched it to
 /// Wi-Fi while the menu still said Optical, until a volume key read it
 /// (hand test round 5). So each open reads it, at most once, so Input ▸
-/// and Turn speaker on/off show what the speaker is now:
+/// and Turn speaker on/off show what the speaker is now, and so do
+/// Settings' "Don't change (now 60 min)" and "Now: swapped" (``SpeakerNow``):
 ///
 /// ```
-/// menu opened ─┬─ not connected ............ skip (a read would only time out)
+/// opened ──────┬─ not connected ............ skip (a read would only time out)
 ///              ├─ an exchange in flight .... skip (the connection takes one at a time)
 ///              ├─ read under 3 s ago ....... skip (it's fresh)
 ///              └─ otherwise ................ read once
 /// ```
 ///
-/// Each open logs ``logLine`` under `menubar`.
-public enum MenuOpenRead: Equatable, Sendable {
+/// Each open logs ``logLine(on:)``: the menu under `menubar`, Settings
+/// under `settings`.
+public enum SourceByteRefresh: Equatable, Sendable {
     /// Read the source byte. `lastReadAgo` is nil before the first read.
     case read(lastReadAgo: Duration?)
     case skipNotConnected
@@ -52,18 +55,42 @@ public enum MenuOpenRead: Equatable, Sendable {
         return false
     }
 
-    public var logLine: String {
+    /// What opened, for the log line.
+    public enum Opening: Sendable {
+        /// The menu bar menu: it shows the input.
+        case menu
+        /// The settings window: it shows standby, input and swap.
+        case settings
+
+        var name: String {
+            switch self {
+            case .menu: "menu"
+            case .settings: "Settings"
+            }
+        }
+
+        /// What the read is for, as the line names it.
+        var readsFor: String {
+            switch self {
+            case .menu: "input"
+            case .settings: "source byte"
+            }
+        }
+    }
+
+    public func logLine(on opening: Opening) -> String {
+        let (name, what) = (opening.name, opening.readsFor)
         switch self {
         case .read(let ago?):
-            return "menu opened: reading the speaker's input (last read \(ago.components.seconds) s ago)"
+            return "\(name) opened: reading the speaker's \(what) (last read \(ago.components.seconds) s ago)"
         case .read(nil):
-            return "menu opened: reading the speaker's input (not read yet)"
+            return "\(name) opened: reading the speaker's \(what) (not read yet)"
         case .skipNotConnected:
-            return "menu opened: not reading the input, the speaker isn't connected"
+            return "\(name) opened: not reading the \(what), the speaker isn't connected"
         case .skipBusy:
-            return "menu opened: not reading the input, a command is talking to the speaker"
+            return "\(name) opened: not reading the \(what), a command is talking to the speaker"
         case .skipReadRecently(let ago):
-            return "menu opened: input read \(ago.components.seconds) s ago, not reading it again"
+            return "\(name) opened: \(what) read \(ago.components.seconds) s ago, not reading it again"
         }
     }
 }

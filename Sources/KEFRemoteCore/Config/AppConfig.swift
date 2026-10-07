@@ -64,9 +64,31 @@ public struct AppConfig: Codable, Equatable {
     /// `"onboarding": {"finished": true}` once Done is clicked in setup.
     public struct OnboardingConfig: Codable, Equatable, Sendable {
         public var finished: Bool
+        /// Set by Restart and continue on step 1 (``PermissionsStepContinue``),
+        /// so the copy that starts next opens setup on step 2. Cleared
+        /// once step 2 shows (``clearResume(onShowing:)``).
+        public var resumeAtFindSpeaker: Bool
 
-        public init(finished: Bool = false) {
+        public init(finished: Bool = false, resumeAtFindSpeaker: Bool = false) {
             self.finished = finished
+            self.resumeAtFindSpeaker = resumeAtFindSpeaker
+        }
+
+        /// A block saved before Restart and continue existed has only
+        /// `finished`: it doesn't resume.
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            finished = try container.decode(Bool.self, forKey: .finished)
+            resumeAtFindSpeaker = try container.decodeIfPresent(Bool.self, forKey: .resumeAtFindSpeaker) ?? false
+        }
+
+        /// Clear the resume flag as `step` shows, if it's the step it
+        /// asked for.
+        /// - Returns: True when it cleared it: save, and log it.
+        public mutating func clearResume(onShowing step: OnboardingStep) -> Bool {
+            guard resumeAtFindSpeaker, step == .findSpeaker else { return false }
+            resumeAtFindSpeaker = false
+            return true
         }
     }
 

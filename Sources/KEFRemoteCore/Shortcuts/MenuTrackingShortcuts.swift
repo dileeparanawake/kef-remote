@@ -61,4 +61,12 @@ public struct MenuTrackingShortcuts: Equatable, Sendable {
         disabledForMenu = false
         return .enable
     }
+
+    /// A quiet, greyed-out line in the menu bar menu, so he knows a
+    /// shortcut pressed now does nothing (hand test round 6). Only on the
+    /// home network: off it (``ConnectionStatus/dormant``) the shortcuts
+    /// are off anyway, and the menu's first lines say why.
+    public static func menuLine(status: ConnectionStatus) -> String? {
+        status == .dormant ? nil : "Shortcuts paused while this menu is open"
+    }
 }

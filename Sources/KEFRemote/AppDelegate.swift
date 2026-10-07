@@ -93,9 +93,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     )
 
-    /// Reads the speaker's input again when the menu opens (``MenuOpenRead``).
+    /// Reads the speaker's source byte again when the menu opens (``SourceByteRefresh``).
     private let menuOpenWatcher = MenuOpenWatcher()
     private let menuBarLogger = AppLogger(subsystem: "com.kef-remote", category: "menubar")
+    private let settingsLogger = AppLogger(subsystem: "com.kef-remote", category: "settings")
 
     private lazy var settingsWindow = SettingsWindowController(
         model: settingsModel, menuBar: menuBar, sendFeedback: { [weak self] in self?.sendFeedback() }
@@ -118,9 +119,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             restart: { [weak self] in
                 guard let self else { return }
                 AppRelauncher.relaunch(log: logger)
-            }
+            },
+            restartAndContinue: { [weak self] in self?.restartAndContinueSetup() ?? false },
+            stepShown: { [weak self] step in self?.setupStepShown(step) }
         )
     )
+    /// Setup's decisions that the app makes: where it reopens after a restart.
+    private let onboardingLogger = AppLogger(subsystem: "com.kef-remote", category: "onboarding")
     private lazy var onboardingWindow = OnboardingWindowController(model: onboarding)
     /// Feeds each connection status to ``permissions`` (Local Network).
     private var connectionWatch: AnyCancellable?
@@ -240,9 +245,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         discoverInBackground(trigger: .findSpeakerInMenu)
     }
 
-    /// Open the settings window and bring it to the front.
+    /// Open the settings window and bring it to the front, and read what
+    /// the speaker is set to now for its Speaker tab.
     func showSettings(source: SettingsWindowController.Source) {
         settingsWindow.show(source: source)
+        refreshSourceByte(on: .settings, log: settingsLogger)
     }
 
     /// Open the permissions step of the setup window, and bring it to the
@@ -369,12 +376,42 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if permissions.accessibility != .granted {
             logger.warning("Accessibility not granted — media keys will not work")
         }
-        guard let opening = Onboarding.windowAtLaunch(isFinished: finished, accessibility: permissions.accessibility) else {
+        let resumeAtFindSpeaker = config.onboarding?.resumeAtFindSpeaker ?? false
+        guard let opening = Onboarding.windowAtLaunch(
+            isFinished: finished, resumeAtFindSpeaker: resumeAtFindSpeaker, accessibility: permissions.accessibility
+        ) else {
             logger.info("Setup finished and Accessibility allowed: no window at launch")
             return
         }
         logger.info("Opening the setup window at launch (\(opening.rawValue)): setup finished=\(finished)")
+        if opening == .afterRestart {
+            onboardingLogger.info("launched by Restart and continue: setup reopens on step 2")
+        }
         onboardingWindow.show(opening, source: .launch)
+    }
+
+    /// Restart and continue on setup step 1: save that setup goes on at
+    /// step 2, then quit and open again, so the new copy starts with the
+    /// permissions he just allowed.
+    /// - Returns: False if the new copy couldn't be started.
+    private func restartAndContinueSetup() -> Bool {
+        var onboarding = config.onboarding ?? .init()
+        onboarding.resumeAtFindSpeaker = true
+        config.onboarding = onboarding
+        saveConfig(what: "onboarding resumeAtFindSpeaker=true")
+        let restarted = AppRelauncher.relaunch(log: logger)
+        if !restarted {
+            onboardingLogger.warning("Restart and continue: could not restart, going on to step 2 in this copy")
+        }
+        return restarted
+    }
+
+    /// Step 2 showed: clear the resume flag Restart and continue saved,
+    /// so a later launch opens where he leaves setup.
+    private func setupStepShown(_ step: OnboardingStep) {
+        guard config.onboarding?.clearResume(onShowing: step) == true else { return }
+        onboardingLogger.info("step \(step.number) shown after Restart and continue: resume flag cleared")
+        saveConfig(what: "onboarding resumeAtFindSpeaker=false")
     }
 
     /// Done in the setup window: don't open all the steps again.
@@ -723,18 +760,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let volumeStep = 5
 
     private func setupMediaKeyCallbacks() {
-        mediaKeys.onMediaKey = { [weak self] key in
-            switch key {
-            case .volume(let command): self?.runVolumeCommand(command)
-            case .playback(let command): self?.runPlayback(command)
-            }
-        }
+        mediaKeys.onVolumeKey = { [weak self] command in self?.runVolumeCommand(command) }
     }
 
     /// Volume up, down or mute: from a modifier + media key, or from a
     /// recorded shortcut. The HUD shows the new level, or Muted.
     private func runVolumeCommand(_ command: VolumeCommand) {
-        guard let controller = controller(for: "\(MediaKey.volume(command))") else { return }
+        guard let controller = controller(for: "\(command)") else { return }
 
         Task {
             do {
@@ -757,26 +789,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Playback commands
-
-    /// Play/pause, next or previous: from a modifier + media key, or from a
-    /// recorded shortcut. On Wi-Fi and Bluetooth the HUD shows the command;
-    /// on another input it says where it works.
-    private func runPlayback(_ command: PlaybackCommand) {
-        guard let controller = controller(for: command.name) else { return }
-
-        Task {
-            do {
-                let result = try await controller.sendPlayback(command)
-                HUDOverlay.show(.afterPlayback(command, result))
-            } catch {
-                logger.error("\(command.name) failed: \(error.localizedDescription)")
-                HUDOverlay.show(.failure(error, otherwise: "Command failed"))
-                handleCommandError(error)
-            }
-        }
-    }
-
     // MARK: - Shortcuts
 
     /// Turn each shortcut press into a command, and start listening. The
@@ -789,9 +801,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case .volumeUp: self.runVolumeCommand(.up)
             case .volumeDown: self.runVolumeCommand(.down)
             case .mute: self.runVolumeCommand(.mute)
-            case .playPause: self.runPlayback(.playPause)
-            case .nextTrack: self.runPlayback(.next)
-            case .previousTrack: self.runPlayback(.previous)
             case .quit: NSApplication.shared.terminate(nil)
             }
         }
@@ -858,25 +867,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Menu open
+    // MARK: - Menu and Settings open
 
-    /// The speaker changes input by itself (AirPlay switches it to Wi-Fi),
-    /// so read the source byte as the menu opens, when ``MenuOpenRead``
-    /// says to. Input ▸ and Turn speaker on/off follow the byte read.
+    /// Input ▸ and Turn speaker on/off follow the byte read.
     private func menuOpened() {
+        refreshSourceByte(on: .menu, log: menuBarLogger)
+    }
+
+    /// The speaker changes by itself (AirPlay switches it to Wi-Fi; KEF's
+    /// app can swap left and right), so read the source byte as the menu
+    /// or Settings opens, when ``SourceByteRefresh`` says to. The menu and
+    /// Settings › Speaker (``SpeakerNow``) follow the byte read.
+    private func refreshSourceByte(on opening: SourceByteRefresh.Opening, log: AppLogger) {
         guard let controller else {
-            menuBarLogger.info(MenuOpenRead.skipNotConnected.logLine)
+            log.info(SourceByteRefresh.skipNotConnected.logLine(on: opening))
             return
         }
-        let read = controller.menuOpenRead(isConnected: menuBar.presentation.isConnected)
-        menuBarLogger.info(read.logLine)
+        let read = controller.sourceByteRefresh(isConnected: menuBar.presentation.isConnected)
+        log.info(read.logLine(on: opening))
         guard read.reads else { return }
 
         Task {
             do {
                 _ = try await controller.getSourceByte()
             } catch {
-                logger.error("Menu-open read failed: \(error.localizedDescription)")
+                logger.error("Source byte read on \(opening) open failed: \(error.localizedDescription)")
                 handleCommandError(error)
             }
         }

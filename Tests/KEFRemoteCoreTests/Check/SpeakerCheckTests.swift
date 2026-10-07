@@ -9,13 +9,12 @@ struct SpeakerCheckTests {
     /// Runs the check and keeps every line it shows. Pass the speaker's
     /// clock when its timing matters.
     private func run(
-        _ connection: SpeakerConnection, includingInputs: Bool = false, includingPlayback: Bool = false,
-        model: SpeakerModel = .other,
+        _ connection: SpeakerConnection, includingInputs: Bool = false, model: SpeakerModel = .other,
         log: KEFLog = MockKEFLog(), clock: SpeakerClock = SimulatedClock()
     ) async -> (report: CheckReport, lines: [String]) {
         var lines: [String] = []
         let check = SpeakerCheck(connection: connection, log: log, clock: clock, onLine: { lines.append($0) })
-        let report = await check.run(includingInputs: includingInputs, includingPlayback: includingPlayback, model: model)
+        let report = await check.run(includingInputs: includingInputs, model: model)
         return (report, lines)
     }
 
@@ -39,31 +38,6 @@ struct SpeakerCheckTests {
         #expect(report.restore?.verdict == .pass)
         #expect(speaker.volume == forty)
         #expect(speaker.source == wifiOn)
-    }
-
-    /// Play/pause can't be read back: the step passes on the speaker's ack.
-    @Test func playPausePassesOnTheAckAndIsPressedTwice() async {
-        let speaker = SimulatedSpeaker(volume: forty, source: wifiOn)
-
-        let (report, lines) = await run(speaker, includingPlayback: true)
-
-        #expect(report.passed)
-        #expect(speaker.playbackReceived == [.playPause, .playPause])
-        #expect(lines.contains(
-            "PASS  play/pause: sent, and the speaker acked (it can't be read back) [sent 53 31 81 81, read 52 30 81 12 00]"
-        ))
-        #expect(verdict(of: "play/pause back", in: report) == .pass)
-    }
-
-    @Test func withPlaybackOnOpticalItSaysWhyThereIsNone() async {
-        let speaker = SimulatedSpeaker(volume: forty, source: wifiOn.with(input: .optical))
-
-        let (_, lines) = await run(speaker, includingPlayback: true)
-
-        #expect(speaker.playbackReceived.isEmpty)
-        #expect(lines.contains(
-            "Play/pause: not tried, the speaker is on Optical (it works on Wi-Fi and Bluetooth; add INPUTS=1 to try it on each)"
-        ))
     }
 
     @Test func swapsLeftAndRightThenBack() async {

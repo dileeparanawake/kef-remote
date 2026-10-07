@@ -9,6 +9,11 @@ struct OnboardingActions {
     var finish: () -> Void
     /// Quit and open again, so the volume keys start.
     var restart: () -> Void
+    /// Save that setup goes on at step 2, then quit and open again
+    /// (``PermissionsStepContinue``). False if the restart failed.
+    var restartAndContinue: () -> Bool
+    /// A step showed with all the steps: step 2 clears the resume flag.
+    var stepShown: (OnboardingStep) -> Void
 }
 
 /// State for the setup window: which step, and each click.
@@ -21,6 +26,7 @@ struct OnboardingActions {
 /// Each step shown and each click logs one line under `onboarding`:
 /// ```
 /// step 1 Permissions shown (allSteps)
+/// Restart and continue clicked on step 1 (allowed during this run: Accessibility): restarting, …
 /// Skip for now clicked on step 1
 /// step 2 Find your speaker shown (allSteps)
 /// Find speaker clicked
@@ -68,8 +74,11 @@ final class OnboardingModel: ObservableObject {
 
     func go(to newStep: OnboardingStep) {
         step = newStep
-        if mode == .allSteps { allStepsLeftOn = newStep }
         log.info("step \(newStep.number) \(newStep.title) shown (\(mode.rawValue))")
+        if mode == .allSteps {
+            allStepsLeftOn = newStep
+            actions.stepShown(newStep)
+        }
     }
 
     var canContinue: Bool {
@@ -80,8 +89,37 @@ final class OnboardingModel: ObservableObject {
         )
     }
 
+    /// Step 1's main button: Continue, or Restart and continue when a
+    /// permission was allowed during this run.
+    var permissionsContinue: PermissionsStepContinue {
+        PermissionsStepContinue(
+            accessibility: permissions.accessibility,
+            localNetwork: permissions.localNetwork,
+            grantedThisRun: permissions.grantedThisRun
+        )
+    }
+
+    /// The line under the permissions in place of the volume keys line,
+    /// on step 1 of all the steps only: the permissions guide alone has
+    /// no Continue.
+    var permissionsRestartLine: String? {
+        mode == .allSteps ? permissionsContinue.line : nil
+    }
+
+    var continueTitle: String {
+        step == .permissions ? permissionsContinue.title : "Continue"
+    }
+
     func continueClicked() {
-        log.info("Continue clicked on step \(step.number)")
+        guard step == .permissions else {
+            log.info("Continue clicked on step \(step.number)")
+            if let next = step.next { go(to: next) }
+            return
+        }
+        let button = permissionsContinue
+        log.info(button.clickLogLine)
+        if case .restartAndContinue = button, actions.restartAndContinue() { return }
+        // Plain Continue, or a restart that failed: go on in this copy.
         if let next = step.next { go(to: next) }
     }
 

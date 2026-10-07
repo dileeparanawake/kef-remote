@@ -56,8 +56,8 @@ You only need to do this once. If it says "No such xattr", the flag is already g
 
 When it opens, KEF Remote shows a setup window with three steps.
 
-1. **Permissions.** Each permission has a button that opens System Settings, and gets a tick once it's allowed. Click Continue when both are ticked, or Skip for now.
-   - **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote. On macOS 27 this list is called Device Control and Data Access. Once it's allowed, the window says "Volume keys ready ✓". If it shows Restart KEF Remote instead, click it: the volume keys start once it opens again.
+1. **Permissions.** Each permission has a button that opens System Settings, and gets a tick once it's allowed. Click Continue when both are ticked, or Skip for now. If you allowed either one just now, the button says Restart and continue: KEF Remote restarts once so the permissions take effect, and the window opens again at step 2.
+   - **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote. On macOS 27 this list is called Device Control and Data Access. Once it's allowed, the window says "Volume keys ready ✓", or that the restart will start them.
    - **Local Network** (macOS 15 and later), so the app can find the speaker. macOS asks the first time the app looks for the speaker: click Allow. If you missed it, click Open Settings, then Local Network, and turn on KEF Remote. Its tick shows within a few seconds of allowing it.
 2. **Find your speaker.** Leave it on Auto and click Find speaker. It says "Looking for the speaker…", then "Found LSX at" the speaker's IP, "Connecting…" and then "Connected." Before any search it says "Not found yet". If it has found the speaker already, it says so straight away. If it says "Not found", check the speaker is on and on the same network, or click Enter the IP instead (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). Click Continue once it's found.
 3. **You're set.** It shows the keys to use. Click Done. The Privacy link under them opens the privacy notice: KEF Remote collects nothing.
@@ -113,14 +113,13 @@ Your config file from 0.1.0 keeps working, with discovery on Auto.
 - **Input when it turns on.** Choose the input, such as Optical, the speaker switches to when KEF Remote turns it on.
 - **Standby time.** Choose 20 minutes, 60 minutes or never.
 - **Swap left and right** in Settings, if your speakers are the other way round.
-- **Play, pause and skip.** Control + Play/Pause, Next or Previous controls what the speaker is playing over Wi-Fi (AirPlay, Spotify Connect) or Bluetooth, and the panel says what it sent. On Optical or Aux there's nothing for the speaker to play, so the panel says it works on Wi-Fi and Bluetooth. On AirPlay from your Mac, see [Known limitations](#known-limitations).
 - **Turn the speaker on or off from the menu**, with your input and standby choices applied when it turns on.
 - **Settings in tabs** (Speaker, Keys, About), so it fits a 13-inch screen.
 - **Made by Dileepa** in the menu, a link to my site.
 
 ## Set the speaker up
 
-Under Speaker, on the Speaker tab of Settings, three settings set the speaker up for you. Each row says under it when it applies. Input on turn-on and Standby start at Don't change, so KEF Remote leaves the speaker as it is until you pick something.
+Under Speaker, on the Speaker tab of Settings, three settings set the speaker up for you. Each row says under it when it applies. Input on turn-on and Standby start at Don't change, so KEF Remote leaves the speaker as it is until you pick something. Don't change says what the speaker has now, such as "Don't change (now 60 min)", and Swap left and right says "Now: swapped" or "Now: normal". KEF Remote reads the speaker again when you open Settings, so these are current even after KEF's own app changed them.
 
 | Setting | When it applies | What it does |
 |---|---|---|
@@ -135,17 +134,14 @@ Under Speaker, on the Speaker tab of Settings, three settings set the speaker up
 | Control + Volume Up (F12) | Speaker volume up by 5 |
 | Control + Volume Down (F11) | Speaker volume down by 5 |
 | Control + Mute (F10) | Mute or unmute the speaker |
-| Control + Play/Pause (F8) | Play or pause what the speaker is playing (Wi-Fi and Bluetooth) |
-| Control + Next (F9) | Next track (Wi-Fi and Bluetooth) |
-| Control + Previous (F7) | Previous track (Wi-Fi and Bluetooth) |
 | Cmd + Shift + O | Turn the speaker on, or off if it's on |
 | Cmd + Shift + Q | Quit KEF Remote |
 
-If your function keys are set to work as standard F keys, hold Fn as well for the volume and play keys. Without Control, the keys work on the Mac as usual, so Play/Pause still controls music playing on the Mac.
+If your function keys are set to work as standard F keys, hold Fn as well for the volume keys. Without Control, the keys work on the Mac as usual.
 
 Cmd+Shift+Q is also the macOS shortcut for Log Out. While KEF Remote is running it should get the shortcut first. If macOS asks whether you want to log out instead, click Cancel. Then quit from the menu bar icon: click it, then Quit KEF Remote.
 
-To use a different key from Control, or change the shortcuts, open Settings from the menu bar icon and click Keys. To change a shortcut, click its field and press the new keys; Delete clears it. Volume up, volume down, mute, play/pause, next and previous have no shortcut until you record one. Changes apply straight away. While one of KEF Remote's menus is open, its shortcuts pause, and they come back when it closes.
+To use a different key from Control, or change the shortcuts, open Settings from the menu bar icon and click Keys. To change a shortcut, click its field and press the new keys; Delete clears it. Volume up, volume down and mute have no shortcut until you record one. Changes apply straight away. While one of KEF Remote's menus is open, its shortcuts pause, and they come back when it closes. The menu bar menu says so, under Settings….
 
 ## Menu bar icon
 
@@ -172,7 +168,7 @@ Input ▸ is under it. Its title names the input the speaker is on, such as "Inp
 
 Each time you open the menu, KEF Remote reads the speaker again, so the input and the on or off are current even when the speaker changed by itself, such as AirPlay switching it to Wi-Fi. It skips the read if it read the speaker in the last 3 seconds, or while another command is talking to it.
 
-Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote. Permissions… shows a tick when both permissions are allowed. When one is off, it says so, such as "Permissions… (1 needs you)".
+Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote. Permissions… shows a tick when both permissions are allowed. When one is off, it says so, such as "Permissions… (1 needs you)". On your home network, a greyed-out line under Settings… says "Shortcuts paused while this menu is open": shortcuts do nothing until you close the menu.
 
 Send feedback… opens an email to me, with the log attached if you agree.
 
@@ -191,7 +187,6 @@ Settings… has three tabs, so it fits a 13-inch screen:
 | Finding the speaker needs the Mac and the speaker on the same network, with local network access allowed. | Set the IP in Settings (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). |
 | Open Settings for Local Network opens Privacy & Security, not the Local Network list (macOS has no link to it). | Click Local Network, then turn on KEF Remote. |
 | It doesn't start at login. | Add it in System Settings > General > Login Items. |
-| On AirPlay from your Mac, Control + Play/Pause, Next and Previous may do nothing. | Use the Mac's own play key (without Control): the speaker can't pause a stream your Mac is sending. |
 | Fast repeated key presses can get lost. After an error, presses are ignored for about two seconds while it reconnects. | Press the keys one at a time. |
 | After the Mac sleeps, the icon can still say connected until the next key press. | Press a volume key or open the menu; the icon updates. |
 | Turning the speaker on at wake and off at sleep is in the code, but off by default and untested. | Leave `powerOnWake` and `powerOffSleep` set to `false` in the config file. |
@@ -210,7 +205,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 686 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, the Dock icon while a window is open, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network, and searches again by itself after a miss), the connection check, the menu bar's states, its Input menu, its Turn speaker on/off item and when opening it reads the speaker again, the Settings tabs, the volume keys line in setup, play/pause and which inputs it works on, the media keys, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 686 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, the Dock icon while a window is open, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network, and searches again by itself after a miss), the connection check, the menu bar's states, its Input menu, its Turn speaker on/off item and when opening it reads the speaker again, the Settings tabs, the volume keys line in setup, the media keys, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening. It takes a few minutes, as it waits for the speaker to power on and off.
 
@@ -218,7 +213,7 @@ To check a real speaker end to end, quit the app and run `make speaker-check` (a
 
 ![A key press goes to KEF Remote, which sends the command to the speaker over TCP port 50001. An SSDP search on the local network finds the speaker, which replies with its IP.](docs/images/how-it-works.svg)
 
-The app talks to the speaker over TCP on port 50001, the protocol the KEF Control app uses. Volume and mute live in one register, and power, input and standby are packed into the bits of another. Play/pause, next and previous are written to a third, which can't be read back.
+The app talks to the speaker over TCP on port 50001, the protocol the KEF Control app uses. Volume and mute live in one register, and power, input and standby are packed into the bits of another.
 
 To find the speaker, it sends an SSDP search (the same one UPnP devices answer) and reads each reply's description to pick out the KEF. It saves the IP, and searches again if the speaker stops answering there. A search it starts by itself tries twice more, 3 seconds apart, before saying no speaker, as a speaker in standby can miss the first.
 

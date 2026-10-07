@@ -76,9 +76,8 @@ public final class SpeakerCheck {
     }
 
     /// Run the check. With `includingInputs`, also switch to each input
-    /// `model` has and repeat the volume and mute steps there. With
-    /// `includingPlayback`, also press play/pause twice on Wi-Fi and Bluetooth.
-    public func run(includingInputs: Bool, includingPlayback: Bool = false, model: SpeakerModel = .other) async -> CheckReport {
+    /// `model` has and repeat the volume and mute steps there.
+    public func run(includingInputs: Bool, model: SpeakerModel = .other) async -> CheckReport {
         let start: SpeakerStatus
         do {
             start = try await controller.getState()
@@ -96,14 +95,8 @@ public final class SpeakerCheck {
                 + "while off, so those are only sent while it's on. It goes off again at the end.", at: .info)
         }
 
-        if includingPlayback && !includingInputs && !start.input.hasPlayback {
-            show("Play/pause: not tried, the speaker is on \(start.input.label) "
-                + "(it works on Wi-Fi and Bluetooth; add INPUTS=1 to try it on each)", at: .info)
-        }
-
         var results: [CheckStepResult] = []
-        let plan = CheckStep.plan(from: start, includingInputs: includingInputs, includingPlayback: includingPlayback, model: model)
-        for step in plan {
+        for step in CheckStep.plan(from: start, includingInputs: includingInputs, model: model) {
             var (result, answered) = await perform(step)
             results.append(result)
             show(result)
@@ -135,9 +128,6 @@ public final class SpeakerCheck {
             if case .raiseVolumeRightAfterPowerOn = step.action {
                 return (try await pressAsPowerComesOn(step, before: before, since: mark), true)
             }
-            if case .playPause = step.action {
-                return (try await playPause(step, since: mark), true)
-            }
             let expectation = step.action.expectation(before: before)
             if step.action.changesPower { await restBeforePowerChange() }
             try await send(step.action)
@@ -165,21 +155,6 @@ public final class SpeakerCheck {
         case .setStandby(let mode): try await controller.setStandby(mode)
         case .setInput(let input): try await controller.setInput(input)
         case .setLeftRightSwapped(let isSwapped): try await controller.setLeftRightSwapped(isSwapped)
-        // perform(_:) sends it through playPause(_:since:), which reports whether it went.
-        case .playPause: _ = try await controller.sendPlayback(.playPause)
-        }
-    }
-
-    /// "play/pause": send it as the app does. It can't be read back, so it
-    /// passes on the ack, and fails if the controller didn't send it.
-    private func playPause(_ step: CheckStep, since mark: Int) async throws -> CheckStepResult {
-        switch try await controller.sendPlayback(.playPause) {
-        case .sent:
-            return result(step.name, .pass, "sent, and the speaker acked (it can't be read back)", since: mark)
-        case .notOnThisInput(let input):
-            return result(step.name, .fail, "not sent: the speaker is on \(input.label)", since: mark)
-        case .speakerOff:
-            return result(step.name, .fail, "not sent: the speaker is off", since: mark)
         }
     }
 

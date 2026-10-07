@@ -15,8 +15,6 @@ discover:
 # Run every speaker command, read each back, then put the starting state
 # back. It changes what the speaker plays: only when nobody is listening.
 # INPUTS=1 also visits each input; DRY_RUN=1 uses a simulated speaker.
-# PLAYBACK=1 also presses play/pause twice on Wi-Fi and Bluetooth (the
-# starting input, and each one INPUTS=1 visits). It starts music, so it's off by default.
 # KEF Remote must be quit: the speaker takes one connection at a time.
 # Takes a few minutes: it waits for each power change, up to 20 s, then 15 s more.
 speaker-check:
@@ -24,7 +22,7 @@ speaker-check:
 		echo "KEF Remote is running and holds the speaker's one connection. Quit it first (make kill)."; \
 		exit 1; \
 	fi
-	swift run --disable-sandbox kef-check $(if $(INPUTS),--inputs) $(if $(PLAYBACK),--playback) $(if $(DRY_RUN),--dry-run)
+	swift run --disable-sandbox kef-check $(if $(INPUTS),--inputs) $(if $(DRY_RUN),--dry-run)
 
 # Redraw the app icon's PNGs from Design/AppIcon.svg (commit the results)
 APP_ICON_SET = Sources/KEFRemote/Assets.xcassets/AppIcon.appiconset

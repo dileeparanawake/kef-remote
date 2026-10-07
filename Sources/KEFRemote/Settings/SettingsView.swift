@@ -11,13 +11,14 @@ import SwiftUI
 /// Speaker   Connection   Discovery (Auto | Manual)
 ///             Auto:      Speaker LSX · IP 192.168.1.80 · Status Connected (Find again)
 ///             Manual:    IP [192.168.1.80] (Save)
-///           Speaker      Input on turn-on [Don't change]
+///           Speaker      Input on turn-on [Don't change (now Optical)]
 ///                          "When KEF Remote turns the speaker on."
-///                        Standby [Don't change]
+///                        Standby [Don't change (now 60 min)]
 ///                          "Now, and each time KEF Remote connects."
 ///                        Swap left and right [off]
 ///                          "Now. The speaker remembers it."
-/// Keys      Media keys   Modifier [Control]   "Control + the volume and play keys …"
+///                          "Now: normal"
+/// Keys      Media keys   Modifier [Control]   "Control + the volume keys …"
 ///           Shortcuts    Power on/off, Volume up, … Quit
 ///                        "Optional extra keys. They work alongside the keys above."
 /// About     KEF Remote   Version 0.3.0 (3)
@@ -87,12 +88,14 @@ struct SettingsView: View {
             // Each row applies at a different time, so each says when
             // under its title (a second Text in a grouped Form's label).
             Section("Speaker") {
+                // Don't change says what the speaker has now (``SpeakerNow``).
+                let now = SpeakerNow(speakerSource: menuBar.speakerSource, isConnected: menuBar.presentation.isConnected)
                 Picker(selection: Binding(
                     get: { model.powerOnInput },
                     set: { model.setPowerOnInput($0) }
                 )) {
                     ForEach(model.powerOnInputChoices, id: \.self) { choice in
-                        Text(choice.label).tag(choice)
+                        Text(now.label(for: choice)).tag(choice)
                     }
                 } label: {
                     Text("Input on turn-on")
@@ -105,7 +108,7 @@ struct SettingsView: View {
                     set: { model.setStandby($0) }
                 )) {
                     ForEach(StandbyChoice.allCases, id: \.self) { choice in
-                        Text(choice.label).tag(choice)
+                        Text(now.label(for: choice)).tag(choice)
                     }
                 } label: {
                     Text("Standby")
@@ -113,7 +116,7 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.menu)
 
-                swapLeftRight
+                swapLeftRight(now: now)
             }
         }
     }
@@ -132,7 +135,7 @@ struct SettingsView: View {
                 .pickerStyle(.menu)
 
                 // One line per way in: the modifier works with the keyboard's own keys.
-                Text("\(model.modifier.displayName) + the volume and play keys 🔉 🔊 🔇 ⏮ ⏯ ⏭ control the speaker, not the Mac.")
+                Text("\(model.modifier.displayName) + the volume keys 🔉 🔊 🔇 change the speaker, not the Mac.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -187,8 +190,9 @@ struct SettingsView: View {
         }
     }
 
-    /// The speaker's own swap, as last read, applied when clicked.
-    @ViewBuilder private var swapLeftRight: some View {
+    /// The speaker's own swap, as last read, applied when clicked. Its
+    /// third line says which way the speaker is now.
+    @ViewBuilder private func swapLeftRight(now: SpeakerNow) -> some View {
         let shown = SwapLeftRightSwitch(
             speakerSource: menuBar.speakerSource,
             isConnected: menuBar.presentation.isConnected,
@@ -200,6 +204,7 @@ struct SettingsView: View {
         )) {
             Text(SwapLeftRightSwitch.title)
             Text(SwapLeftRightSwitch.settingsCaption)
+            Text(now.swapCaption)
         }
         .toggleStyle(.switch)
         .disabled(!shown.isEnabled)
