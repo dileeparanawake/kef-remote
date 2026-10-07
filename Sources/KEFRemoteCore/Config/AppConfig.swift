@@ -39,11 +39,15 @@ public struct AppConfig: Codable, Equatable {
 
     public struct SpeakerConfig: Codable, Equatable, Sendable {
         public var name: String?
+        /// The model name from discovery, such as "SP3994" for an LSX
+        /// (see ``SpeakerModel``). Saved from 0.3.0; older files have none.
+        public var model: String?
         public var mac: String?
         public var lastKnownIp: String?
 
-        public init(name: String? = nil, mac: String? = nil, lastKnownIp: String? = nil) {
+        public init(name: String? = nil, model: String? = nil, mac: String? = nil, lastKnownIp: String? = nil) {
             self.name = name
+            self.model = model
             self.mac = mac
             self.lastKnownIp = lastKnownIp
         }

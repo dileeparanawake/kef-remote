@@ -47,7 +47,7 @@ struct SettingsView: View {
                     get: { model.powerOnInput },
                     set: { model.setPowerOnInput($0) }
                 )) {
-                    ForEach(PowerOnInput.allCases, id: \.self) { choice in
+                    ForEach(model.powerOnInputChoices, id: \.self) { choice in
                         Text(choice.label).tag(choice)
                     }
                 }

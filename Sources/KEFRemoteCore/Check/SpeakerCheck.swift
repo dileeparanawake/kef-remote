@@ -4,7 +4,7 @@ import Foundation
 /// `make speaker-check` does, so an agent can check the speaker end to
 /// end without Dileepa.
 ///
-/// It reads the starting state, runs the steps in ``CheckStep/plan(from:includingInputs:)``
+/// It reads the starting state, runs the steps in ``CheckStep/plan(from:includingInputs:model:)``
 /// through ``SpeakerController`` (so the 20-minute standby workaround
 /// applies), then puts the starting state back, even after a failure.
 /// A wrong read-back fails that step and the check carries on; an
@@ -13,7 +13,8 @@ import Foundation
 ///
 /// The real speaker is slow to power on and off, so after a power change
 /// it reads back every second until it matches, says how long it took,
-/// and rests before the next power change.
+/// and rests before the next power change. Once power comes on, it waits
+/// for the volume to settle before the next step.
 ///
 /// Each line goes to `onLine` (the terminal) and to `log` (the log file).
 public final class SpeakerCheck {
@@ -32,38 +33,51 @@ public final class SpeakerCheck {
     /// How often to read back while waiting.
     public static let pollInterval: Duration = .seconds(1)
 
+    // Second real check (6 Oct 2026): right as the LSX came on it read
+    // 45% muted, and the volume moved under the next two steps (volume
+    // down expected 45% muted, read 43% muted). kefctl, polling every
+    // second, saw 45% unmuted all through power on, so it's brief.
+
+    /// How long to wait for the volume to settle once power comes on.
+    public static let volumeSettleLimit: Duration = .seconds(5)
+    /// How far apart two volume reads are that must agree to call it settled.
+    public static let volumeSettleInterval: Duration = .seconds(1)
+    /// How often "volume up right after power on" reads power while it
+    /// waits, so the press lands in the muted moment, not a second after.
+    public static let pressPollInterval: Duration = .milliseconds(250)
+
     /// Why an input, standby or left/right step is not sent.
     static let notSentWhileOff = "not sent: the speaker is off, and it ignores input, standby and left/right while off"
 
     private let recorder: RecordingConnection
     private let controller: SpeakerController
     private let log: KEFLog
-    private let clock: CheckClock
+    private let clock: SpeakerClock
     private let onLine: (String) -> Void
     /// When the last power change landed (or was given up on).
     private var lastPowerChange: Duration?
 
     /// - Parameters:
-    ///   - clock: Times the waits: ``RealCheckClock`` for the real
+    ///   - clock: Times the waits: ``RealSpeakerClock`` for the real
     ///     speaker, the simulated speaker's own clock otherwise.
     ///   - onLine: Gets each line to show, in order.
     public init(
         connection: SpeakerConnection,
         log: KEFLog,
-        clock: CheckClock,
+        clock: SpeakerClock,
         onLine: @escaping (String) -> Void = { _ in }
     ) {
         let recorder = RecordingConnection(connection)
         self.recorder = recorder
-        self.controller = SpeakerController(connection: recorder, log: log.write)
+        self.controller = SpeakerController(connection: recorder, log: log.write, clock: clock)
         self.log = log
         self.clock = clock
         self.onLine = onLine
     }
 
     /// Run the check. With `includingInputs`, also switch to each input
-    /// and repeat the volume and mute steps there.
-    public func run(includingInputs: Bool) async -> CheckReport {
+    /// `model` has and repeat the volume and mute steps there.
+    public func run(includingInputs: Bool, model: SpeakerModel = .other) async -> CheckReport {
         let start: SpeakerStatus
         do {
             start = try await controller.getState()
@@ -82,10 +96,13 @@ public final class SpeakerCheck {
         }
 
         var results: [CheckStepResult] = []
-        for step in CheckStep.plan(from: start, includingInputs: includingInputs) {
-            let (result, answered) = await perform(step)
+        for step in CheckStep.plan(from: start, includingInputs: includingInputs, model: model) {
+            var (result, answered) = await perform(step)
             results.append(result)
             show(result)
+            if answered, result.verdict == .pass, step.action.turnsPowerOn {
+                answered = await settleVolumeAfterPowerOn()
+            }
             if !answered {
                 show("Stopping: the speaker didn't answer. Putting the starting state back.", at: .warning)
                 break
@@ -108,6 +125,9 @@ public final class SpeakerCheck {
             guard !step.action.isIgnoredWhileOff(before: before) else {
                 return (CheckStepResult(name: step.name, verdict: .fail, detail: Self.notSentWhileOff), true)
             }
+            if case .raiseVolumeRightAfterPowerOn = step.action {
+                return (try await pressAsPowerComesOn(step, before: before, since: mark), true)
+            }
             let expectation = step.action.expectation(before: before)
             if step.action.changesPower { await restBeforePowerChange() }
             try await send(step.action)
@@ -123,7 +143,8 @@ public final class SpeakerCheck {
 
     private func send(_ action: CheckAction) async throws {
         switch action {
-        case .raiseVolume(let amount): try await controller.raiseVolume(by: amount)
+        case .raiseVolume(let amount), .raiseVolumeRightAfterPowerOn(let amount):
+            try await controller.raiseVolume(by: amount)
         case .lowerVolume(let amount): try await controller.lowerVolume(by: amount)
         case .mute: try await controller.mute()
         case .unmute: try await controller.unmute()
@@ -137,12 +158,65 @@ public final class SpeakerCheck {
         }
     }
 
+    /// "volume up right after power on": turn the speaker off, then on,
+    /// and press volume up as soon as power reads on, the moment the LSX
+    /// read muted in the second real check (6 Oct 2026). Passes when, once
+    /// the volume settles, it is muted or not as it was before: a press
+    /// then must not keep a mute the speaker only showed. Says what the
+    /// press read, so a real run shows whether the speaker showed muted.
+    /// Puts the volume back after.
+    private func pressAsPowerComesOn(_ step: CheckStep, before: SpeakerStatus, since mark: Int) async throws -> CheckStepResult {
+        show("\(step.name): turning the speaker off and on, to press volume up as power comes on", at: .info)
+        if before.isPoweredOn {
+            await restBeforePowerChange()
+            try await controller.powerOff()
+            let (off, waited) = try await readBack(.poweredOff, within: Self.powerChangeLimit)
+            lastPowerChange = clock.now
+            guard off.passed else {
+                return result(step.name, .fail, "could not turn it off first: \(off.line(waited: waited))", since: mark)
+            }
+        }
+        await restBeforePowerChange()
+        try await controller.powerOn()
+        let (on, waited) = try await readBack(.poweredOn, within: Self.powerChangeLimit, every: Self.pressPollInterval)
+        lastPowerChange = clock.now
+        guard on.passed else {
+            return result(step.name, .fail, "did not come back on: \(on.line(waited: waited))", since: mark)
+        }
+
+        let pressMark = recorder.mark
+        try await send(step.action)
+        let pressReads = recorder.volumeReads(since: pressMark)
+        let settled = try await settleVolume()
+        let comparison = step.action.expectation(before: before).compare(.volume(settled))
+        var detail = "\(comparison.detail) once settled; \(Self.describePress(pressReads))"
+        if let why = comparison.why { detail += ": \(why)" }
+        let stepResult = result(step.name, comparison.passed ? .pass : .fail, detail, since: mark)
+
+        try await putVolumeBack(to: before.volume)
+        return stepResult
+    }
+
+    /// What a press read: "the press read 40% muted, then 40% 1 s later
+    /// (the speaker showed muted as it came on)". The second read is the
+    /// controller's ``PowerOnMuteGuard``.
+    static func describePress(_ reads: [VolumeState]) -> String {
+        guard let first = reads.first else { return "the press read nothing" }
+        var text = "the press read \(first.checkName)"
+        guard reads.count > 1, let second = reads.last else { return text }
+        text += ", then \(second.checkName) \(seconds(PowerOnMuteGuard.readAgainAfter)) s later"
+        if first.isMuted && !second.isMuted { text += " (the speaker showed muted as it came on)" }
+        return text
+    }
+
     // MARK: - Waiting on the speaker
 
     /// Read back until the speaker shows what was expected, every
-    /// ``pollInterval``, for up to `limit`. Returns the last comparison
-    /// and how long it waited.
-    private func readBack(_ expectation: CheckExpectation, within limit: Duration) async throws -> (CheckComparison, waited: Duration) {
+    /// `interval`, for up to `limit`. Returns the last comparison and how
+    /// long it waited.
+    private func readBack(
+        _ expectation: CheckExpectation, within limit: Duration, every interval: Duration = pollInterval
+    ) async throws -> (CheckComparison, waited: Duration) {
         let started = clock.now
         while true {
             let reading: CheckReading = expectation.readsVolume
@@ -153,7 +227,40 @@ public final class SpeakerCheck {
             if comparison.passed || waited >= limit {
                 return (comparison, waited)
             }
-            await clock.sleep(for: Self.pollInterval)
+            await clock.sleep(for: interval)
+        }
+    }
+
+    /// Read the volume every ``volumeSettleInterval`` until two reads in a
+    /// row agree, for up to ``volumeSettleLimit``, and say which. Gives up
+    /// waiting rather than failing: the next step reads it again anyway.
+    @discardableResult
+    private func settleVolume() async throws -> VolumeState {
+        let started = clock.now
+        var last = try await controller.getVolumeState()
+        while clock.now - started < Self.volumeSettleLimit {
+            await clock.sleep(for: Self.volumeSettleInterval)
+            let next = try await controller.getVolumeState()
+            if next == last {
+                show("Volume settled at \(next.checkName) \(Self.seconds(clock.now - started)) s after power on", at: .info)
+                return next
+            }
+            last = next
+        }
+        show("Volume still changing \(Self.seconds(Self.volumeSettleLimit)) s after power on "
+            + "(last read \(last.checkName)); carrying on", at: .warning)
+        return last
+    }
+
+    /// ``settleVolume()`` between steps. False when the speaker didn't
+    /// answer, which stops the check.
+    private func settleVolumeAfterPowerOn() async -> Bool {
+        do {
+            try await settleVolume()
+            return true
+        } catch {
+            show("Volume could not be read after power on (\(error))", at: .error)
+            return false
         }
     }
 
@@ -247,18 +354,7 @@ public final class SpeakerCheck {
             try await controller.setLeftRightSwapped(target.isInversed)
         }
         problems += await attempt("volume") { [self] in
-            let now = try await controller.getVolumeState()
-            guard now != target.volume else { return }
-            if target.volume.isMuted {
-                // Mute first, then move the level: raise and lower keep the
-                // mute, so the level is never heard on the way.
-                try await controller.mute()
-                let change = target.volume.level - now.level
-                if change > 0 { try await controller.raiseVolume(by: change) }
-                if change < 0 { try await controller.lowerVolume(by: -change) }
-            } else {
-                try await controller.setVolume(target.volume.level)
-            }
+            try await putVolumeBack(to: target.volume)
         }
         if !target.isPoweredOn {
             // Last, through the controller, so 20 min becomes 60 first.
@@ -290,6 +386,22 @@ public final class SpeakerCheck {
         return result("put back", .pass, detail, since: mark)
     }
 
+    /// Set the volume to `target`, muted or not.
+    private func putVolumeBack(to target: VolumeState) async throws {
+        let now = try await controller.getVolumeState()
+        guard now != target else { return }
+        if target.isMuted {
+            // Mute first, then move the level: raise and lower keep the
+            // mute, so the level is never heard on the way.
+            try await controller.mute()
+            let change = target.level - now.level
+            if change > 0 { try await controller.raiseVolume(by: change) }
+            if change < 0 { try await controller.lowerVolume(by: -change) }
+        } else {
+            try await controller.setVolume(target.level)
+        }
+    }
+
     /// Turn the speaker on or off while putting back: rest first, send,
     /// read back until it lands, and say how long it took.
     private func changePower(to expectation: CheckExpectation, _ send: () async throws -> Void) async throws {
@@ -300,6 +412,8 @@ public final class SpeakerCheck {
         let detail = comparison.line(waited: waited)
         show("put back: \(detail)", at: comparison.passed ? .info : .error)
         guard comparison.passed else { throw CheckProblem(detail) }
+        // The volume is put back after this, so it must be the real one.
+        if expectation == .poweredOn { try await settleVolume() }
     }
 
     /// Run one part of putting back. Returns what went wrong, if anything.

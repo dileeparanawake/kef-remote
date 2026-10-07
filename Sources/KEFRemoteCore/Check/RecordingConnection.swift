@@ -32,6 +32,13 @@ final class RecordingConnection: SpeakerConnection {
         exchanges[mark...].last { $0.isWrite }?.sent
     }
 
+    /// Each volume the speaker read back since `mark`, in order.
+    func volumeReads(since mark: Int) -> [VolumeState] {
+        exchanges[mark...]
+            .filter { $0.sent == KEFCommand.getVolume() }
+            .compactMap { KEFCommand.parseResponse($0.reply).map(VolumeCoding.decode) }
+    }
+
     /// The speaker's reply to the last read since `mark`.
     func lastReadReply(since mark: Int) -> Data? {
         exchanges[mark...].last { !$0.isWrite }?.reply

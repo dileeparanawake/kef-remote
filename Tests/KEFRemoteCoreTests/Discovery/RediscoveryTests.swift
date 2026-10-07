@@ -22,13 +22,27 @@ struct RediscoveryTests {
 
         let updated = try await finder().rediscover(saved)
 
-        #expect(updated == AppConfig.SpeakerConfig(name: "LSX", mac: "a1:b2:c3:d4:e5:f6", lastKnownIp: "192.168.1.80"))
+        #expect(updated == AppConfig.SpeakerConfig(
+            name: "LSX", model: "SP3994", mac: "a1:b2:c3:d4:e5:f6", lastKnownIp: "192.168.1.80"
+        ))
     }
 
-    @Test func withNoSpeakerSavedTheFirstKEFIsSavedWithItsMACAndName() async throws {
+    @Test func withNoSpeakerSavedTheFirstKEFIsSavedWithItsMACNameAndModel() async throws {
         let updated = try await finder().rediscover(nil)
 
-        #expect(updated == AppConfig.SpeakerConfig(name: "LSX", mac: "A1B2C3D4E5F6", lastKnownIp: "192.168.1.80"))
+        #expect(updated == AppConfig.SpeakerConfig(
+            name: "LSX", model: "SP3994", mac: "A1B2C3D4E5F6", lastKnownIp: "192.168.1.80"
+        ))
+    }
+
+    /// A config from before 0.3.0 has a name but no model.
+    @Test func aSavedSpeakerWithNoModelGainsIt() async throws {
+        let saved = AppConfig.SpeakerConfig(name: "LSX", mac: "A1B2C3D4E5F6", lastKnownIp: "192.168.1.80")
+
+        let updated = try await finder().rediscover(saved)
+
+        #expect(updated?.model == "SP3994")
+        #expect(SpeakerModel(updated) == .lsx)
     }
 
     @Test func aSavedIPWithNoMACGainsTheMAC() async throws {

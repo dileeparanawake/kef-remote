@@ -42,6 +42,8 @@ final class SettingsModel: ObservableObject {
     @Published private(set) var modifier: MediaKeyModifier
     @Published private(set) var discovery: DiscoveryMode
     @Published private(set) var powerOnInput: PowerOnInput
+    /// Which speaker it is: an LSX has no USB for Input on turn-on.
+    @Published private(set) var speakerModel: SpeakerModel
     @Published private(set) var standby: StandbyChoice
     /// The swap he just clicked, shown while the speaker writes it (see
     /// ``SwapLeftRightSwitch``). The switch otherwise shows the speaker's.
@@ -52,14 +54,23 @@ final class SettingsModel: ObservableObject {
     private let actions: SettingsActions
     private let log = AppLogger(subsystem: "com.kef-remote", category: "settings")
 
-    init(savedIP: String?, discovery: DiscoveryMode, speakerSettings: SpeakerSettings, actions: SettingsActions) {
+    init(
+        savedIP: String?, speakerModel: SpeakerModel, discovery: DiscoveryMode,
+        speakerSettings: SpeakerSettings, actions: SettingsActions
+    ) {
         self.savedIP = savedIP
+        self.speakerModel = speakerModel
         self.ipText = savedIP ?? ""
         self.discovery = discovery
         self.powerOnInput = speakerSettings.powerOnInput
         self.standby = speakerSettings.standby
         self.modifier = MediaKeyModifier.stored
         self.actions = actions
+    }
+
+    /// The choices Input on turn-on lists: no USB on an LSX.
+    var powerOnInputChoices: [PowerOnInput] {
+        speakerModel.powerOnChoices(keeping: powerOnInput)
     }
 
     /// True when the field holds a valid IP that is not saved yet.
@@ -152,6 +163,13 @@ final class SettingsModel: ObservableObject {
     /// has already stored it and swapped the hot key, so it works now.
     func shortcutRecorded(_ action: ShortcutAction, as shortcut: KeyboardShortcuts.Shortcut?) {
         log.info("shortcut recorded: \(action.label) = \(shortcut.map { "\($0)" } ?? "cleared")")
+    }
+
+    /// Show which speaker discovery found, for the inputs it has.
+    func showSpeakerModel(_ model: SpeakerModel) {
+        guard model != speakerModel else { return }
+        log.info("speaker model \(speakerModel.label) -> \(model.label)")
+        speakerModel = model
     }
 
     /// Show an IP the app saved itself (after discovery). Leaves the

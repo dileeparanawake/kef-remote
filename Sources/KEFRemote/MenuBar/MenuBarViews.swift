@@ -50,7 +50,8 @@ struct MenuBarIcon: View {
 /// connected (``MenuBarPresentation/offersFindSpeaker``). The
 /// Permissions… item says whether any permission needs him
 /// (``PermissionsGuide/menuItemTitle(rows:)``). Input ▸ switches the
-/// speaker's input now, ticked on the one it's on (``InputMenu``).
+/// speaker's input now, ticked on the one it's on, and greyed out while the
+/// speaker is off or not connected (``InputMenu``).
 /// Support KEF Remote…
 /// joins the links once its page exists (``MenuLink``).
 struct MenuBarMenu: View {

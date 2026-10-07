@@ -106,7 +106,7 @@ Your config file from 0.1.0 keeps working, with discovery on Auto.
 ## What's new in 0.3.0
 
 - **A permissions guide.** The first time it opens, a small window shows the two permissions it needs, opens the right page of System Settings, and ticks each one off.
-- **Switch the input from the menu.** Input ▸ in the menu bar switches the speaker to Optical, Wi-Fi, Bluetooth, Aux or USB now.
+- **Switch the input from the menu.** Input ▸ in the menu bar switches the speaker to Optical, Wi-Fi, Bluetooth, Aux or USB now. The LSX has no USB input, so it isn't offered there.
 - **Input when it turns on.** Choose the input, such as Optical, the speaker switches to when KEF Remote turns it on.
 - **Standby time.** Choose 20 minutes, 60 minutes or never.
 - **Swap left and right** in Settings, if your speakers are the other way round.
@@ -118,7 +118,7 @@ Under Speaker defaults in Settings, three settings set the speaker up for you. I
 
 | Setting | What it does |
 |---|---|
-| Input on turn-on | The input the speaker switches to when KEF Remote turns it on: Optical, Wi-Fi, Bluetooth, Aux or USB. It doesn't apply when you turn it on with KEF's own remote, or if it's already on. |
+| Input on turn-on | The input the speaker switches to when KEF Remote turns it on: Optical, Wi-Fi, Bluetooth, Aux or USB (the LS50 Wireless only: the LSX has no USB input). It doesn't apply when you turn it on with KEF's own remote, or if it's already on. |
 | Standby | How long the speaker waits with no sound before it goes to standby: 20 min, 60 min or Never. KEF Remote sets it when you choose it, and each time it connects. |
 | Swap left and right | Swaps which speaker plays the left channel. The switch shows how the speaker is set now, and changes it straight away. The speaker remembers it, so KEF Remote doesn't save it. It's greyed out while KEF Remote isn't connected. |
 
@@ -155,7 +155,7 @@ The red dot is a shape as well as a colour, so you can see it without colour vis
 
 The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker" or "Volume keys off: allow Accessibility". Find speaker looks for the speaker on the network and saves its IP.
 
-Input ▸ comes next. It ticks the input the speaker is on. Pick another and the speaker switches straight away, and the new input shows on screen. It's greyed out while KEF Remote isn't connected.
+Input ▸ comes next. It ticks the input the speaker is on. Pick another and the speaker switches straight away, and the input it's now on shows on screen. If it didn't switch, the screen says so, such as "USB not available". If the speaker is off, the screen says so, as it ignores a new input then. It's greyed out while KEF Remote isn't connected. On an LSX it lists no USB, as the LSX has none.
 
 Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote. Permissions… shows a tick when both permissions are allowed. When one is off, it says so, such as "Permissions… (1 needs you)".
 
@@ -183,7 +183,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 418 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 463 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening. It takes a few minutes, as it waits for the speaker to power on and off.
 

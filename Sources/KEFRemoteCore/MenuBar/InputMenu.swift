@@ -11,12 +11,13 @@ import Foundation
 ///             Wi-Fi
 ///             Bluetooth
 ///             Aux
-///             USB
+///             USB      (not on an LSX)
 /// ```
 ///
-/// The inputs come in the same order as Input on turn-on in Settings.
+/// The inputs come in the same order as Input on turn-on in Settings,
+/// only those the speaker has (``SpeakerModel/inputs``).
 /// The tick comes from the speaker's last source byte, read on connect
-/// and written by each switch.
+/// and read back after each switch.
 public struct InputMenu: Equatable, Sendable {
     /// One input in the submenu.
     public struct Item: Equatable, Sendable {
@@ -32,23 +33,29 @@ public struct InputMenu: Equatable, Sendable {
     public static let title = "Input"
 
     public let items: [Item]
-    /// Greyed out while the speaker isn't connected: a switch couldn't
-    /// reach it. It stays in the menu rather than hiding, so the menu
-    /// keeps its shape and Input is where he left it.
+    /// Greyed out while the speaker isn't connected, since a switch
+    /// couldn't reach it. It stays in the menu rather than hiding, so the
+    /// menu keeps its shape and Input is where he left it.
+    ///
+    /// Not greyed while the last read said off: KEF's own remote can turn
+    /// the speaker on without the app seeing it, which would leave Input
+    /// greyed. A switch reads the speaker first instead, and says "Speaker
+    /// is off" if it is (``SpeakerController/switchInput(to:)``).
     public let isEnabled: Bool
 
     /// - Parameters:
-    ///   - speakerInput: The input in the last source byte read or
-    ///     written, or nil before the first read.
+    ///   - speakerSource: The last source byte read or written, or nil
+    ///     before the first read.
     ///   - isConnected: The speaker answered the last exchange.
-    public init(speakerInput: InputSource?, isConnected: Bool) {
+    ///   - inputs: The inputs the speaker has, in order.
+    public init(speakerSource: SourceByte?, isConnected: Bool, inputs: [InputSource]) {
         isEnabled = isConnected
         // Once the speaker stops answering, its input may have changed
         // (KEF's remote, or its own app), so tick nothing. It reports
         // Bluetooth as unpaired while nothing is paired, but it's the
         // same Bluetooth item.
-        let ticked = isConnected ? speakerInput?.codeToSelect : nil
-        items = PowerOnInput.allCases.compactMap(\.input).map { input in
+        let ticked = isConnected ? speakerSource?.input.codeToSelect : nil
+        items = inputs.map { input in
             Item(input: input, isTicked: input == ticked)
         }
     }
