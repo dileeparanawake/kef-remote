@@ -57,7 +57,8 @@ struct SpeakerControllerPowerTests {
         ]
         try await controller.powerOn(applying: SpeakerSettings(powerOnInput: .optical))
         #expect(log.messages(at: .info).contains(
-            "powerOn: sending power=on input=optical standby=never (was input=wifi; power-on input: Optical)"
+            "powerOn: sending power=on input=optical standby=never "
+            + "(was input=wifi standby=never; power-on input: Optical, standby: Don't change)"
         ))
     }
 

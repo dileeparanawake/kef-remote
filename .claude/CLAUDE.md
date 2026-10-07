@@ -65,7 +65,7 @@ Use `make <target>` for common operations. Key targets:
 - **Registers:** 0x25 (volume), 0x30 (source/power/standby)
 - **Volume encoding:** 0-100 unmuted, 128-228 muted (byte - 128 = actual volume)
 - **Source byte:** Packed bitfield — bit 7 = power, bit 6 = inverse L/R, bits 5-4 = standby mode, bits 3-0 = input source
-- **Standby management:** Use "never" standby while awake; switch to 20-minute standby before sleep/power-off
+- **Standby management:** Settings' standby time is set on connect, when chosen and in the power-on write. On wake use the chosen time ("never" if Don't change); switch to 20-minute standby before sleep/power-off. Never write 20 minutes to a speaker that is off
 - **Quirk:** Power off with 20-minute standby crashes the speaker — always switch to 60-minute standby before powering off
 
 ## Testing

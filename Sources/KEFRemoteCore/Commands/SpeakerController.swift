@@ -242,7 +242,8 @@ public class SpeakerController {
     private func writePowerOn(from source: SourceByte, applying settings: SpeakerSettings) async throws {
         let byte = settings.powerOnByte(from: source)
         log(.info, "powerOn: sending power=on input=\(byte.input) standby=\(byte.standby) "
-            + "(was input=\(source.input); power-on input: \(settings.powerOnInput.label))")
+            + "(was input=\(source.input) standby=\(source.standby); "
+            + "power-on input: \(settings.powerOnInput.label), standby: \(settings.standby.label))")
         try await writeSource(byte)
     }
 
@@ -291,5 +292,30 @@ public class SpeakerController {
         let source = try await getSourceByte()
         let modified = source.with(standby: mode)
         try await writeSource(modified)
+    }
+
+    /// Write the standby time `settings` asks for at this moment (see
+    /// ``SpeakerSettings/standbyToWrite(for:)``), and log it with `reason`.
+    /// Sends nothing for Don't change, and only reads when the speaker
+    /// already has that time.
+    public func applyStandby(_ settings: SpeakerSettings, for reason: StandbyReason) async throws {
+        guard let mode = settings.standbyToWrite(for: reason) else {
+            log(.info, "standby: \(settings.standby.label), leaving the speaker's (\(reason.rawValue))")
+            return
+        }
+        let source = try await getSourceByte()
+        guard source.standby != mode else {
+            log(.info, "standby: already \(mode) (\(reason.rawValue))")
+            return
+        }
+        // A write with the power bit off and 20 min standby is what crashes
+        // the speaker (see writePowerOff). The power-on write sets it instead.
+        guard source.isPoweredOn || mode != .twentyMinutes else {
+            log(.info, "standby: not writing \(mode) while the speaker is off (it crashes); "
+                + "the next power-on sets it (\(reason.rawValue))")
+            return
+        }
+        log(.info, "standby: \(source.standby) -> \(mode) (\(reason.rawValue))")
+        try await writeSource(source.with(standby: mode))
     }
 }

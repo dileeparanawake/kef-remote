@@ -73,7 +73,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.logger.info("Media key modifier is now \(choice.rawValue)")
             },
             applyDiscovery: { [weak self] mode in self?.applyDiscovery(mode) },
-            applyPowerOnInput: { [weak self] choice in self?.applyPowerOnInput(choice) }
+            applyPowerOnInput: { [weak self] choice in self?.applyPowerOnInput(choice) },
+            applyStandby: { [weak self] choice in self?.applyStandbyChoice(choice) }
         )
     )
 
@@ -313,11 +314,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         checkSpeaker(controller, on: conn, origin: origin)
     }
 
-    /// Check the speaker answers. If the saved IP has gone stale, look
-    /// for the speaker now rather than on the first key press.
+    /// Check the speaker answers, then set the chosen standby time. If the
+    /// saved IP has gone stale, look for the speaker now rather than on
+    /// the first key press.
     private func checkSpeaker(_ controller: SpeakerController, on conn: TCPSpeakerConnection, origin: CheckOrigin) {
         Task {
             let outcome = await controller.checkConnection(origin, discovery: config.discovery)
+            if outcome == .answered {
+                await applyStandby(for: .connect, with: controller)
+            }
             guard outcome == .rediscover else { return }
             guard conn === connection else {
                 logger.info("Check failed, but a newer connection has taken over; not rediscovering")
@@ -468,6 +473,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         saveConfig(what: "power-on input \(choice.rawValue)")
     }
 
+    /// Save the standby time, and set it now if the speaker is connected.
+    /// Otherwise it is set on the next connect.
+    private func applyStandbyChoice(_ choice: StandbyChoice) {
+        logger.info("Standby \(config.speakerSettings.standby.rawValue) -> \(choice.rawValue)")
+        config.speakerSettings.standby = choice
+        saveConfig(what: "standby \(choice.rawValue)")
+        guard menuBar.status == .connected, let controller else {
+            logger.info("Speaker not connected: the standby time is set on the next connect")
+            return
+        }
+        Task { await applyStandby(for: .chosen, with: controller) }
+    }
+
+    /// Set the standby time for `reason`. A failure is only logged: the
+    /// next command finds out whether the speaker has gone.
+    private func applyStandby(for reason: StandbyReason, with controller: SpeakerController) async {
+        do {
+            try await controller.applyStandby(config.speakerSettings, for: reason)
+        } catch {
+            logger.error("Standby (\(reason.rawValue)) failed: \(error.localizedDescription)")
+        }
+    }
+
     private func saveConfig(what: String) {
         do {
             try AppConfig.save(config, to: configFileURL)
@@ -565,55 +593,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Lifecycle callbacks
 
     private func setupLifecycleCallbacks() {
+        // Each runs its steps in order in one task (see macWoke/macSlept),
+        // so a standby write and a power write never undo each other.
         lifecycle.onWake = { [weak self] in
-            guard let self, self.config.lifecycle.powerOnWake else { return }
-            guard let controller = self.controller(for: "wake power-on") else { return }
-
-            HUDOverlay.show(.waking)
+            guard let self, let controller = self.controller(for: "wake") else { return }
+            let powerOn = self.config.lifecycle.powerOnWake
+            if powerOn { HUDOverlay.show(.waking) }
             Task {
                 do {
-                    try await controller.powerOn(applying: self.config.speakerSettings)
-                    await MainActor.run {
-                        HUDOverlay.show(.powerOn)
-                    }
+                    try await controller.macWoke(self.config.speakerSettings, powerOn: powerOn)
+                    if powerOn { HUDOverlay.show(.powerOn) }
                 } catch {
-                    self.logger.error(
-                        "Wake power-on failed: \(error.localizedDescription)"
-                    )
+                    self.logger.error("Wake steps failed: \(error.localizedDescription)")
+                    guard powerOn else { return }
                     // Replace "Waking..." so it doesn't look stuck.
-                    await MainActor.run {
-                        HUDOverlay.show(.failure(error, otherwise: "Power failed"))
-                    }
+                    HUDOverlay.show(.failure(error, otherwise: "Power failed"))
                     self.handleCommandError(error)
                 }
             }
         }
 
         lifecycle.onSleep = { [weak self] in
-            guard let self, self.config.lifecycle.powerOffSleep else { return }
-            guard let controller = self.controller(for: "sleep power-off") else { return }
-
+            guard let self, let controller = self.controller(for: "sleep") else { return }
             Task {
                 do {
-                    try await controller.powerOff()
+                    try await controller.macSlept(self.config.speakerSettings, powerOff: self.config.lifecycle.powerOffSleep)
                 } catch {
-                    self.logger.error(
-                        "Sleep power-off failed: \(error.localizedDescription)"
-                    )
-                }
-            }
-        }
-
-        lifecycle.onStandbyChange = { [weak self] mode in
-            guard let self, let controller = self.controller(for: "standby \(mode)") else { return }
-
-            Task {
-                do {
-                    try await controller.setStandby(mode)
-                } catch {
-                    self.logger.error(
-                        "Standby change failed: \(error.localizedDescription)"
-                    )
+                    self.logger.error("Sleep steps failed: \(error.localizedDescription)")
                 }
             }
         }
