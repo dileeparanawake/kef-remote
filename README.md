@@ -2,6 +2,8 @@
 
 KEF already has an app, but I built this one to put my speaker on my keyboard. That matters most if you listen over optical for hi-res audio, like I do: the Mac's volume keys can't reach the speaker over optical, so it's back to the clunky remote. If you use AirPlay, the Mac's own volume already works.
 
+I wrote up how I built it: [KEF Remote](https://www.dileeparanawake.com/writing/kef-remote).
+
 KEF Remote is a small macOS app for the KEF LSX. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Cmd+Shift+O turns the speaker on, or off if it's on, and can switch it to optical as it does.
 
 ![KEF Remote: Control plus the volume up key shows a volume panel at 60% on screen, and the KEF speaker plays louder](docs/images/social-preview.png)
