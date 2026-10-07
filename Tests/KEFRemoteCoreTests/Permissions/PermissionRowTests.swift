@@ -122,21 +122,6 @@ struct PermissionRowTests {
         #expect(rows.map(\.status) == [.granted, .notCheckedYet])
     }
 
-    // MARK: - Restart, when the volume keys need one
-
-    @Test func accessibilityAllowedButTheKeysDidNotStartNeedsARestart() {
-        #expect(PermissionsGuide.needsRestart(accessibility: .granted, mediaKeysStarted: false))
-    }
-
-    @Test func keysThatStartedNeedNoRestart() {
-        #expect(!PermissionsGuide.needsRestart(accessibility: .granted, mediaKeysStarted: true))
-    }
-
-    /// Without Accessibility the keys can't start, and a restart won't help.
-    @Test func missingAccessibilityNeedsNoRestart() {
-        #expect(!PermissionsGuide.needsRestart(accessibility: .notGranted, mediaKeysStarted: false))
-    }
-
     // MARK: - The Permissions… item in the menu
 
     /// Hand test, 6 Oct: he wants to see at a glance, in the menu,

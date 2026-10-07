@@ -65,14 +65,6 @@ public enum PermissionsGuide {
         accessibility != .granted
     }
 
-    /// Whether to offer Restart KEF Remote. Once Accessibility is allowed,
-    /// the volume keys start without a restart on most Macs; when macOS
-    /// still refuses the key tap, only a new process gets it. Without
-    /// Accessibility the tap can't start, and a restart wouldn't help.
-    public static func needsRestart(accessibility: PermissionStatus, mediaKeysStarted: Bool) -> Bool {
-        accessibility == .granted && !mediaKeysStarted
-    }
-
     /// The rows, top to bottom.
     public static func rows(accessibility: PermissionStatus, localNetwork: PermissionStatus) -> [PermissionRow] {
         [PermissionRow(.accessibility, status: accessibility), PermissionRow(.localNetwork, status: localNetwork)]

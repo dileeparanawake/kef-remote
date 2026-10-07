@@ -51,6 +51,12 @@ public class SpeakerController {
     /// The source byte last read, or written and acked: play/pause uses
     /// it to skip a read when it shows the speaker on Wi-Fi or Bluetooth.
     private var lastSourceByte: SourceByte?
+    /// When ``lastSourceByte`` was read or acked, on ``clock``.
+    private var lastSourceByteAt: Duration?
+    /// Sends still waiting for the speaker's reply. The connection reads
+    /// replies in order, so a second exchange on top would take the
+    /// first's reply: the menu-open read waits for none (``MenuOpenRead``).
+    private var exchangesInFlight = 0
 
     /// - Parameters:
     ///   - onReply: Called after every send, on the caller's task, with
@@ -84,6 +90,8 @@ public class SpeakerController {
     /// - Logs `.error` with full hex dump on validation failure, then throws
     private func sendAndReceive(_ command: Data, expectResponseBytes: Int) async throws -> Data {
         log(.debug, "SEND: \(command.hexString)")
+        exchangesInFlight += 1
+        defer { exchangesInFlight -= 1 }
         let response: Data
         do {
             response = try await connection.send(command, expectResponseBytes: expectResponseBytes)
@@ -132,7 +140,25 @@ public class SpeakerController {
     /// Keep the source byte the speaker has now, and pass it on to `onSourceByte`.
     private func noteSourceByte(_ source: SourceByte) {
         lastSourceByte = source
+        lastSourceByteAt = clock.now
         onSourceByte(source)
+    }
+
+    // MARK: - Menu open
+
+    /// Whether a command is waiting for the speaker's reply.
+    public var isExchangeInFlight: Bool { exchangesInFlight > 0 }
+
+    /// Time since the source byte was last read, or written and acked;
+    /// nil before the first.
+    public var sourceByteAge: Duration? { lastSourceByteAt.map { clock.now - $0 } }
+
+    /// Whether opening the menu should read the source byte now. The
+    /// caller logs the answer and, if it reads, calls ``getSourceByte()``.
+    ///
+    /// - Parameter isConnected: The speaker answered the last exchange.
+    public func menuOpenRead(isConnected: Bool) -> MenuOpenRead {
+        MenuOpenRead(isConnected: isConnected, isExchangeInFlight: isExchangeInFlight, sourceByteAge: sourceByteAge)
     }
 
     // MARK: - State reads
@@ -283,11 +309,11 @@ public class SpeakerController {
     /// one (``PowerToggleGuard``): a burst of presses is one toggle.
     @discardableResult
     public func togglePower(applying settings: SpeakerSettings = SpeakerSettings()) async throws -> PowerToggleResult {
-        if let refusal = powerToggleLock.withLock({ powerToggleGuard.start(at: clock.now) }) {
+        if let refusal = startPowerChange() {
             log(.info, "togglePower: ignored, \(refusal.reason)")
             return .ignored(refusal)
         }
-        defer { powerToggleLock.withLock { powerToggleGuard.finish(at: clock.now) } }
+        defer { finishPowerChange() }
 
         let source = try await getSourceByte()
         log(.info, "togglePower: \(source.isPoweredOn ? "on → off" : "off → on")")
@@ -297,6 +323,50 @@ public class SpeakerController {
         }
         try await writePowerOn(from: source, applying: settings)
         return .turnedOn
+    }
+
+    /// Turn speaker on / off from the menu: do what the label said, from
+    /// one read of the source byte (``PowerMenuAction/step(isPoweredOn:)``).
+    /// Turning on applies `settings`, and turning off keeps the 20-minute
+    /// standby workaround, as ``togglePower(applying:)`` does. A speaker
+    /// already that way is sent nothing.
+    ///
+    /// It shares the power shortcut's ``PowerToggleGuard``, so a click and
+    /// a press never change the power at once, or straight after each other.
+    @discardableResult
+    public func runPowerMenuAction(_ action: PowerMenuAction, applying settings: SpeakerSettings) async throws -> PowerMenuResult {
+        if let refusal = startPowerChange() {
+            log(.info, "power menu: \(action.title) ignored, \(refusal.reason)")
+            return .ignored(refusal)
+        }
+        defer { finishPowerChange() }
+
+        let source = try await getSourceByte()
+        let step = action.step(isPoweredOn: source.isPoweredOn)
+        switch step {
+        case .alreadyOn:
+            log(.info, "power menu: \(action.title), but the speaker is already on: nothing sent")
+        case .alreadyOff:
+            log(.info, "power menu: \(action.title), but the speaker is already off: nothing sent")
+        case .powerOn:
+            log(.info, "power menu: \(action.title): off → on")
+            try await writePowerOn(from: source, applying: settings)
+        case .powerOff:
+            log(.info, "power menu: \(action.title): on → off")
+            try await writePowerOff(from: source)
+        }
+        return .done(step)
+    }
+
+    /// Start a power change (the shortcut's toggle or the menu's item), or
+    /// say why not (``PowerToggleGuard``). Call ``finishPowerChange()``
+    /// once it ends, whether or not it worked.
+    private func startPowerChange() -> PowerToggleGuard.Refusal? {
+        powerToggleLock.withLock { powerToggleGuard.start(at: clock.now) }
+    }
+
+    private func finishPowerChange() {
+        powerToggleLock.withLock { powerToggleGuard.finish(at: clock.now) }
     }
 
     private func writePowerOn(from source: SourceByte, applying settings: SpeakerSettings) async throws {

@@ -24,8 +24,10 @@ import os
 ///    offers a restart if macOS still refuses them), and shows the red
 ///    dot in the menu bar while it isn't
 /// 9. Switches the speaker's input from Input ▸ in the menu, ticked from
-///    the last source byte the controller read or wrote; swaps left and
-///    right from Settings, shown from the same byte
+///    the last source byte the controller read or wrote, and read again
+///    as the menu opens (``MenuOpenWatcher``); turns the
+///    speaker on or off from the menu, as the label says; swaps
+///    left and right from Settings, shown from the same byte
 /// 10. Writes feedback from Send feedback… in the menu (``FeedbackSender``)
 /// 11. While macOS blocks Local Network, asks again every few seconds and
 ///     tries the speaker once it's allowed (``LocalNetworkRetry``)
@@ -91,7 +93,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
     )
 
-    private lazy var settingsWindow = SettingsWindowController(model: settingsModel, menuBar: menuBar)
+    /// Reads the speaker's input again when the menu opens (``MenuOpenRead``).
+    private let menuOpenWatcher = MenuOpenWatcher()
+    private let menuBarLogger = AppLogger(subsystem: "com.kef-remote", category: "menubar")
+
+    private lazy var settingsWindow = SettingsWindowController(
+        model: settingsModel, menuBar: menuBar, sendFeedback: { [weak self] in self?.sendFeedback() }
+    )
 
     // MARK: - Setup window and permissions
 
@@ -166,6 +174,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         setupShortcuts()
         setupLifecycleCallbacks()
         setupNetworkCallbacks()
+        menuOpenWatcher.onOpen = { [weak self] in self?.menuOpened() }
+        // Any of the app's menus, not only the menu bar's: shortcuts
+        // re-fire while one tracks (``MenuTrackingShortcuts``).
+        menuOpenWatcher.onAnyMenuBegan = { [weak self] in self?.shortcuts.menuBeganTracking() }
+        menuOpenWatcher.onAnyMenuEnded = { [weak self] in self?.shortcuts.menuEndedTracking() }
+        menuOpenWatcher.start()
 
         // 4. Start network monitor — it will call activate() or deactivate()
         //    based on whether we are on the home network.
@@ -328,7 +342,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         logger.info("Accessibility granted — starting the media key tap")
         mediaKeys.start()
-        permissions.showMediaKeys(started: mediaKeys.isRunning)
+        showMediaKeyTap()
+    }
+
+    /// Tell the setup window whether the volume keys work now, after the
+    /// tap was started or stopped (``VolumeKeysLine``).
+    private func showMediaKeyTap() {
+        permissions.showMediaKeyTap(MediaKeyTapState(isActive: isActive, isRunning: mediaKeys.isRunning))
     }
 
     // MARK: - Setup window
@@ -408,6 +428,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.set(.idle(isActive: true, speakerIP: config.speaker?.lastKnownIp), reason: "on home network")
         connectToSpeaker(.savedIP)
         mediaKeys.start()
+        showMediaKeyTap()
         shortcuts.setEnabled(true, reason: "on home network")
         lifecycle.start()
     }
@@ -423,6 +444,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.set(.dormant, reason: "off home network")
 
         mediaKeys.stop()
+        showMediaKeyTap()
         shortcuts.setEnabled(false, reason: "off home network")
         lifecycle.stop()
         disconnectSpeaker()
@@ -794,6 +816,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    // MARK: - Power from the menu
+
+    /// Turn speaker on / off from the menu: what the label said
+    /// (``PowerMenuAction``), with the input and standby defaults on
+    /// turn-on. The HUD shows the new state. A speaker already that way,
+    /// or a click too close to the power shortcut's toggle
+    /// (``PowerToggleGuard``), is sent nothing, and the controller logs it.
+    func runPowerMenuAction(_ action: PowerMenuAction) {
+        guard let controller = controller(for: action.title) else { return }
+
+        Task {
+            do {
+                let result = try await controller.runPowerMenuAction(action, applying: config.speakerSettings)
+                if let state = HUDState.afterPowerMenu(result) { HUDOverlay.show(state) }
+            } catch {
+                logger.error("\(action.title) failed: \(error.localizedDescription)")
+                HUDOverlay.show(.failure(error, otherwise: "Power failed"))
+                handleCommandError(error)
+            }
+        }
+    }
+
     // MARK: - Input
 
     /// Switch the speaker to `input` now, from Input ▸ in the menu. The
@@ -809,6 +853,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 logger.error("Input switch to \(input.label) failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Input failed"))
+                handleCommandError(error)
+            }
+        }
+    }
+
+    // MARK: - Menu open
+
+    /// The speaker changes input by itself (AirPlay switches it to Wi-Fi),
+    /// so read the source byte as the menu opens, when ``MenuOpenRead``
+    /// says to. Input ▸ and Turn speaker on/off follow the byte read.
+    private func menuOpened() {
+        guard let controller else {
+            menuBarLogger.info(MenuOpenRead.skipNotConnected.logLine)
+            return
+        }
+        let read = controller.menuOpenRead(isConnected: menuBar.presentation.isConnected)
+        menuBarLogger.info(read.logLine)
+        guard read.reads else { return }
+
+        Task {
+            do {
+                _ = try await controller.getSourceByte()
+            } catch {
+                logger.error("Menu-open read failed: \(error.localizedDescription)")
                 handleCommandError(error)
             }
         }

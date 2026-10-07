@@ -66,6 +66,10 @@ final class MenuBarModel: ObservableObject {
         )
     }
 
+    var powerItem: PowerMenuItem {
+        PowerMenuItem(speakerSource: speakerSource, isConnected: presentation.isConnected)
+    }
+
     var inputMenu: InputMenu {
         InputMenu(speakerSource: speakerSource, isConnected: presentation.isConnected, inputs: speakerModel.inputs)
     }
