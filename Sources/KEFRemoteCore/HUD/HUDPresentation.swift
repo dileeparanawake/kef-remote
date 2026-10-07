@@ -6,6 +6,8 @@ public enum HUDState: Equatable, Sendable {
     case muted
     case powerOn
     case powerOff
+    /// The speaker switched to this input.
+    case input(InputSource)
     case waking
     case error(String)
 }
@@ -43,6 +45,9 @@ public struct HUDPresentation: Equatable, Sendable {
         case .powerOff:
             symbolName = "power"
             label = "Power Off"
+        case .input(let input):
+            symbolName = "hifispeaker.fill"
+            label = input.label
         case .waking:
             symbolName = "antenna.radiowaves.left.and.right"
             label = "Waking..."

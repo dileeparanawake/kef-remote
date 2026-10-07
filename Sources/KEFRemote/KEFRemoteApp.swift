@@ -4,8 +4,8 @@ import SwiftUI
 ///
 /// The app runs as a background agent (no Dock icon). Its only scene is
 /// a menu bar icon with a small menu: whether it is connected, Find
-/// speaker when it isn't, Permissions…, Settings…, a link to who made
-/// it, and Quit.
+/// speaker when it isn't, Input ▸, Permissions…, Settings…, a link to
+/// who made it, and Quit.
 /// The settings window is a plain `NSWindow` owned by ``AppDelegate``
 /// (see ``SettingsWindowController``), so it can open from the menu and
 /// when the app is launched again while it is running. The permissions
@@ -23,6 +23,7 @@ struct KEFRemoteApp: App {
                 model: appDelegate.menuBar,
                 permissions: appDelegate.permissions,
                 findSpeaker: { appDelegate.findSpeaker() },
+                switchInput: { appDelegate.switchInput(to: $0) },
                 openPermissions: { appDelegate.showPermissions(source: .menu) },
                 openSettings: { appDelegate.showSettings(source: .menu) }
             )

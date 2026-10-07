@@ -21,6 +21,8 @@ import os
 /// 8. Opens the permissions guide at launch while Accessibility is
 ///    missing, and from the menu; starts the volume keys once it's granted,
 ///    and shows the red dot in the menu bar while it isn't
+/// 9. Switches the speaker's input from Input ▸ in the menu, ticked from
+///    the last source byte the controller read or wrote
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -316,6 +318,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             log: speakerLogHandler,
             onReply: { [weak self, weak conn] reply in
                 Task { @MainActor in self?.showReply(reply, from: conn) }
+            },
+            onSourceByte: { [weak self, weak conn] source in
+                Task { @MainActor in self?.showSource(source, from: conn) }
             }
         )
         self.connection = conn
@@ -366,11 +371,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Disconnect from the speaker and clear the controller.
+    /// Show the speaker's input in the menu, unless the byte came from a
+    /// connection that has since been dropped.
+    private func showSource(_ source: SourceByte, from conn: TCPSpeakerConnection?) {
+        guard let conn, conn === connection else { return }
+        menuBar.showSource(source)
+    }
+
+    /// Disconnect from the speaker and clear the controller. The input it
+    /// last read goes too: the next connection reads it again.
     private func disconnectSpeaker() {
         connection?.disconnect()
         connection = nil
         controller = nil
+        menuBar.showSource(nil)
     }
 
     /// Save an IP typed in settings, and connect to it.
@@ -596,6 +610,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 logger.error("Power toggle failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Power failed"))
+                handleCommandError(error)
+            }
+        }
+    }
+
+    // MARK: - Input
+
+    /// Switch the speaker to `input` now, from Input ▸ in the menu. The
+    /// HUD shows the new input; the menu's tick follows the byte written.
+    func switchInput(to input: InputSource) {
+        guard let controller = controller(for: "input \(input.label)") else { return }
+
+        Task {
+            do {
+                try await controller.setInput(input)
+                HUDOverlay.show(.input(input))
+            } catch {
+                logger.error("Input switch to \(input.label) failed: \(error.localizedDescription)")
+                HUDOverlay.show(.failure(error, otherwise: "Input failed"))
                 handleCommandError(error)
             }
         }

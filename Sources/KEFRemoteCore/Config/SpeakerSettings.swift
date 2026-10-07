@@ -124,11 +124,18 @@ public enum PowerOnInput: String, Codable, CaseIterable, Sendable {
 
     /// The name Settings shows.
     public var label: String {
+        input?.label ?? "Don't change"
+    }
+}
+
+extension InputSource {
+    /// The name Settings, the Input menu and the HUD show. Bluetooth reads
+    /// the same paired or not: it's one input to whoever is listening.
+    public var label: String {
         switch self {
-        case .dontChange: return "Don't change"
         case .optical: return "Optical"
         case .wifi: return "Wi-Fi"
-        case .bluetooth: return "Bluetooth"
+        case .bluetoothPaired, .bluetoothUnpaired: return "Bluetooth"
         case .aux: return "Aux"
         case .usb: return "USB"
         }

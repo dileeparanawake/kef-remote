@@ -36,6 +36,8 @@ struct MenuBarIcon: View {
 /// Connected to LSX          Volume keys off: allow Accessibility
 /// 192.168.1.80              Click Permissions… to turn it on
 /// ─────────────             ─────────────
+/// Input        ▸            Input        ▸
+/// ─────────────             ─────────────
 /// Permissions… ✓            Permissions… (1 needs you)
 /// Settings…        ⌘,       Settings…        ⌘,
 /// ─────────────             ─────────────
@@ -47,12 +49,15 @@ struct MenuBarIcon: View {
 /// Find speaker shows under the first two lines when the speaker isn't
 /// connected (``MenuBarPresentation/offersFindSpeaker``). The
 /// Permissions… item says whether any permission needs him
-/// (``PermissionsGuide/menuItemTitle(rows:)``). Support KEF Remote…
+/// (``PermissionsGuide/menuItemTitle(rows:)``). Input ▸ switches the
+/// speaker's input now, ticked on the one it's on (``InputMenu``).
+/// Support KEF Remote…
 /// joins the links once its page exists (``MenuLink``).
 struct MenuBarMenu: View {
     @ObservedObject var model: MenuBarModel
     @ObservedObject var permissions: PermissionsModel
     let findSpeaker: () -> Void
+    let switchInput: (InputSource) -> Void
     let openPermissions: () -> Void
     let openSettings: () -> Void
 
@@ -70,6 +75,24 @@ struct MenuBarMenu: View {
                 findSpeaker()
             }
         }
+
+        Divider()
+
+        let inputMenu = model.inputMenu
+        Menu(InputMenu.title) {
+            ForEach(inputMenu.items, id: \.input) { item in
+                // A Toggle is how a SwiftUI menu item gets a tick. Picking
+                // the ticked one switches again, which only shows the HUD.
+                Toggle(item.title, isOn: Binding(
+                    get: { item.isTicked },
+                    set: { _ in
+                        log.info("menu: Input \(item.title) clicked")
+                        switchInput(item.input)
+                    }
+                ))
+            }
+        }
+        .disabled(!inputMenu.isEnabled)
 
         Divider()
 
