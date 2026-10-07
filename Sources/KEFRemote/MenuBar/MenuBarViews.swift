@@ -1,4 +1,5 @@
 import AppKit
+import KEFRemoteCore
 import SwiftUI
 
 /// The menu bar icon. Filled speaker when connected; other shapes say
@@ -36,8 +37,14 @@ struct MenuBarIcon: View {
 /// 192.168.1.80              No answer at 192.168.1.80
 /// ─────────────             Find speaker
 /// Settings…        ⌘,       ─────────────
-/// Quit KEF Remote  ⌘Q       Settings… / Quit
+/// ─────────────             Settings…
+/// Made by Dileepa ↗         ─────────────
+/// ─────────────             Made by Dileepa ↗
+/// Quit KEF Remote  ⌘Q       ─────────────
+///                           Quit
 /// ```
+///
+/// Support KEF Remote… joins the links once its page exists (``MenuLink``).
 struct MenuBarMenu: View {
     @ObservedObject var model: MenuBarModel
     let findSpeaker: () -> Void
@@ -66,10 +73,24 @@ struct MenuBarMenu: View {
         }
         .keyboardShortcut(",")
 
+        Divider()
+
+        ForEach(MenuLink.shown, id: \.self) { link in
+            Button(link.title) { open(link) }
+        }
+
+        Divider()
+
         Button("Quit KEF Remote") {
             log.info("menu: Quit clicked")
             NSApplication.shared.terminate(nil)
         }
         .keyboardShortcut("q")
+    }
+
+    private func open(_ link: MenuLink) {
+        guard let url = link.url else { return }
+        let opened = NSWorkspace.shared.open(url)
+        log.info("menu: \(link.title) clicked, \(opened ? "opened" : "could not open") \(url.absoluteString)")
     }
 }
