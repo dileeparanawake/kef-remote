@@ -6,8 +6,7 @@ struct AppConfigTests {
 
     @Test func defaultConfigHasSensibleDefaults() {
         let config = AppConfig()
-        #expect(config.defaults.input == .optical)
-        #expect(config.defaults.standby == .never)
+        #expect(config.speakerSettings == SpeakerSettings())
         #expect(config.lifecycle.powerOnWake == false)
         #expect(config.lifecycle.powerOffSleep == false)
         #expect(config.lifecycle.powerOffDelay == 60)
@@ -17,7 +16,7 @@ struct AppConfigTests {
     @Test func saveAndLoad() throws {
         var config = AppConfig()
         config.speaker = .init(name: "Test Speaker", mac: "AA:BB:CC:DD:EE:FF", lastKnownIp: "192.168.1.42")
-        config.defaults.input = .usb
+        config.speakerSettings.powerOnInput = .usb
         config.network.homeSSID = "TestNetwork"
 
         let testDir = FileManager.default.temporaryDirectory
@@ -31,7 +30,7 @@ struct AppConfigTests {
         let loaded = try AppConfig.load(from: filePath)
         #expect(loaded.speaker?.name == "Test Speaker")
         #expect(loaded.speaker?.mac == "AA:BB:CC:DD:EE:FF")
-        #expect(loaded.defaults.input == .usb)
+        #expect(loaded.speakerSettings.powerOnInput == .usb)
         #expect(loaded.network.homeSSID == "TestNetwork")
     }
 
@@ -56,7 +55,7 @@ struct AppConfigTests {
         let filePath = testDir.appendingPathComponent("nonexistent.json")
         let config = try AppConfig.load(from: filePath)
         #expect(config.speaker == nil)
-        #expect(config.defaults.input == .optical)
+        #expect(config.speakerSettings.powerOnInput == .dontChange)
     }
 
     // MARK: - Discovery mode
@@ -98,6 +97,44 @@ struct AppConfigTests {
         #expect(try AppConfig.load(from: filePath).discovery == .manual)
     }
 
+    // MARK: - Speaker settings
+
+    /// Every config.json up to 0.2.0 holds a "defaults" block that
+    /// nothing read, with "input": 11 (optical) written by default. It is
+    /// dropped, not carried over: carrying it over would switch a Wi-Fi or
+    /// Bluetooth listener to Optical the first time the app turns the
+    /// speaker on. Everyone starts at Don't change.
+    @Test func anOldDefaultsBlockIsDroppedAndEveryoneStartsAtDontChange() throws {
+        let json = """
+        {
+            "app": { "launchAtLogin": false },
+            "defaults": { "input": 11, "standby": 2 },
+            "discovery": "auto",
+            "lifecycle": { "powerOffDelay": 60, "powerOffSleep": false, "powerOnWake": false },
+            "network": {},
+            "speaker": { "lastKnownIp": "192.168.1.80", "mac": "84171511907E", "name": "LSX" }
+        }
+        """.data(using: .utf8)!
+
+        let config = try JSONDecoder().decode(AppConfig.self, from: json)
+
+        #expect(config.speakerSettings == SpeakerSettings())
+        #expect(config.speaker?.name == "LSX")
+    }
+
+    @Test func savingDropsTheOldDefaultsBlock() throws {
+        let testDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("kef-remote-test-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: testDir) }
+        let filePath = testDir.appendingPathComponent("config.json")
+
+        try AppConfig.save(AppConfig(), to: filePath)
+
+        let saved = try String(contentsOf: filePath, encoding: .utf8)
+        #expect(!saved.contains("\"defaults\""))
+        #expect(saved.contains("\"powerOnInput\" : \"dontChange\""))
+    }
+
     // MARK: - Config decoding edge cases
 
     @Test func decodesConfigWithoutSpeakerSection() throws {
@@ -119,35 +156,6 @@ struct AppConfigTests {
 
         let config = try JSONDecoder().decode(AppConfig.self, from: json)
         #expect(config.speaker == nil)
-        #expect(config.defaults.input == .optical)
-        #expect(config.defaults.standby == .never)
         #expect(config.network.homeSSID == nil)
-    }
-
-    @Test(.disabled("InputSource and StandbyMode use UInt8 raw values — string decoding requires custom Codable"))
-    func decodesConfigWithStringEnumValues() throws {
-        // Config files should support human-readable strings like
-        // "optical" and "never" instead of requiring integer raw
-        // values (11 and 2). This test documents the expected
-        // behaviour and will pass once custom Codable conformance
-        // is added to InputSource and StandbyMode.
-        let json = """
-        {
-            "app": { "launchAtLogin": false },
-            "defaults": { "input": "optical", "standby": "never" },
-            "lifecycle": {
-                "powerOffDelay": 60,
-                "powerOffSleep": false,
-                "powerOnWake": false
-            },
-            "network": {},
-            "speaker": { "lastKnownIp": "192.168.1.81" }
-        }
-        """.data(using: .utf8)!
-
-        let config = try JSONDecoder().decode(AppConfig.self, from: json)
-        #expect(config.defaults.input == .optical)
-        #expect(config.defaults.standby == .never)
-        #expect(config.speaker?.lastKnownIp == "192.168.1.81")
     }
 }

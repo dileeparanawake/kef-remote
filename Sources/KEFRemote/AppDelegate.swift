@@ -62,6 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var settingsModel = SettingsModel(
         savedIP: config.speaker?.lastKnownIp,
         discovery: config.discovery,
+        speakerSettings: config.speakerSettings,
         actions: SettingsActions(
             saveSpeakerIP: { [weak self] ip in self?.saveSpeakerIP(ip) },
             discoverSpeaker: { [weak self] in
@@ -71,7 +72,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.mediaKeys.modifier = choice.eventFlags
                 self?.logger.info("Media key modifier is now \(choice.rawValue)")
             },
-            applyDiscovery: { [weak self] mode in self?.applyDiscovery(mode) }
+            applyDiscovery: { [weak self] mode in self?.applyDiscovery(mode) },
+            applyPowerOnInput: { [weak self] choice in self?.applyPowerOnInput(choice) }
         )
     )
 
@@ -458,6 +460,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// Save the input the speaker switches to when the app turns it on.
+    /// The next power-on reads it from ``config``, so no restart.
+    private func applyPowerOnInput(_ choice: PowerOnInput) {
+        logger.info("Power-on input \(config.speakerSettings.powerOnInput.rawValue) -> \(choice.rawValue)")
+        config.speakerSettings.powerOnInput = choice
+        saveConfig(what: "power-on input \(choice.rawValue)")
+    }
+
     private func saveConfig(what: String) {
         do {
             try AppConfig.save(config, to: configFileURL)
@@ -542,7 +552,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         Task {
             do {
-                let isOn = try await controller.togglePower()
+                let isOn = try await controller.togglePower(applying: config.speakerSettings)
                 HUDOverlay.show(isOn ? .powerOn : .powerOff)
             } catch {
                 logger.error("Power toggle failed: \(error.localizedDescription)")
@@ -562,7 +572,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             HUDOverlay.show(.waking)
             Task {
                 do {
-                    try await controller.powerOn()
+                    try await controller.powerOn(applying: self.config.speakerSettings)
                     await MainActor.run {
                         HUDOverlay.show(.powerOn)
                     }

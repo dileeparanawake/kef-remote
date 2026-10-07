@@ -201,11 +201,12 @@ public class SpeakerController {
 
     // MARK: - Power
 
-    /// Power on the speaker. Reads the source byte and sets the power bit.
-    /// Preserves all other source byte fields (input, standby, inverse).
-    public func powerOn() async throws {
+    /// Power on the speaker. Reads the source byte, then writes it back
+    /// with the power bit set and what `settings` chooses for turning on
+    /// (see ``SpeakerSettings/powerOnByte(from:)``). Other fields are kept.
+    public func powerOn(applying settings: SpeakerSettings = SpeakerSettings()) async throws {
         log(.info, "powerOn")
-        try await writePowerOn(from: try await getSourceByte())
+        try await writePowerOn(from: try await getSourceByte(), applying: settings)
     }
 
     /// Power off the speaker.
@@ -222,23 +223,27 @@ public class SpeakerController {
 
     /// Turn the speaker off if it is on, or on if it is off. Reads the
     /// source byte once and decides from its power bit, so the power-off
-    /// side keeps the 20-minute standby workaround.
+    /// side keeps the 20-minute standby workaround. Turning on applies
+    /// `settings` in the same write, as ``powerOn(applying:)`` does.
     ///
     /// - Returns: Whether the speaker is now on.
     @discardableResult
-    public func togglePower() async throws -> Bool {
+    public func togglePower(applying settings: SpeakerSettings = SpeakerSettings()) async throws -> Bool {
         let source = try await getSourceByte()
         log(.info, "togglePower: \(source.isPoweredOn ? "on → off" : "off → on")")
         if source.isPoweredOn {
             try await writePowerOff(from: source)
             return false
         }
-        try await writePowerOn(from: source)
+        try await writePowerOn(from: source, applying: settings)
         return true
     }
 
-    private func writePowerOn(from source: SourceByte) async throws {
-        try await writeSource(source.with(isPoweredOn: true))
+    private func writePowerOn(from source: SourceByte, applying settings: SpeakerSettings) async throws {
+        let byte = settings.powerOnByte(from: source)
+        log(.info, "powerOn: sending power=on input=\(byte.input) standby=\(byte.standby) "
+            + "(was input=\(source.input); power-on input: \(settings.powerOnInput.label))")
+        try await writeSource(byte)
     }
 
     private func writePowerOff(from source: SourceByte) async throws {
