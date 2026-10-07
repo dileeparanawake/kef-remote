@@ -42,7 +42,6 @@ Use `make <target>` for common operations. Key targets:
 | `make logs-recent` | Last 200 lines from log file (quick agent snapshot) |
 | `make logs-previous` | The run before this one (each launch moves the last run's log to `kef-remote.previous.log`) |
 | `make logs-tail` | Live stream from log file |
-| `make logs-previous` | The run before this one (`kef-remote.previous.log`) |
 | `make logs-errors` | Errors only, from the log file |
 | `make logs-warnings` | Warnings and errors, from the log file |
 | `make logs-debug` | Debug lines (bytes on the wire), from the log file |
