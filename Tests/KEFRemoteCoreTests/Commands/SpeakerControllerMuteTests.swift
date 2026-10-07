@@ -49,14 +49,14 @@ struct SpeakerControllerMuteTests {
         #expect(mock.sentCommands.count == 1)
     }
 
-    // MARK: - toggleMute
+    // MARK: - mute key (press)
 
     @Test func testToggleMuteMutesWhenUnmuted() async throws {
         mock.responses = [
             Data([0x52, 0x25, 0x81, 70, 0x00]),
             Data([0x52, 0x11, 0xFF]),
         ]
-        try await controller.toggleMute()
+        _ = try await controller.press(.mute, step: 5)
         #expect(mock.sentCommands[1] == KEFCommand.setVolume(198))
     }
 
@@ -65,7 +65,7 @@ struct SpeakerControllerMuteTests {
             Data([0x52, 0x25, 0x81, 198, 0x00]),
             Data([0x52, 0x11, 0xFF]),
         ]
-        try await controller.toggleMute()
+        _ = try await controller.press(.mute, step: 5)
         #expect(mock.sentCommands[1] == KEFCommand.setVolume(70))
     }
 
@@ -75,7 +75,7 @@ struct SpeakerControllerMuteTests {
             Data([0x52, 0x25, 0x81, 128, 0x00]),
             Data([0x52, 0x11, 0xFF]),
         ]
-        try await controller.toggleMute()
+        _ = try await controller.press(.mute, step: 5)
         #expect(mock.sentCommands[1] == KEFCommand.setVolume(0))
     }
 }

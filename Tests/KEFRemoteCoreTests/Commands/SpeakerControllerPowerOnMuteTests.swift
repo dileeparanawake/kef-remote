@@ -55,7 +55,7 @@ struct SpeakerControllerPowerOnMuteTests {
         let controller = SpeakerController(connection: speaker, clock: clock)
 
         try await powerOnAndWait(controller, clock)
-        try await controller.toggleMute()
+        _ = try await controller.press(.mute, step: 5)
 
         #expect(speaker.volume == VolumeState(level: 40, isMuted: true))
     }

@@ -146,6 +146,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var controller: SpeakerController?
     private var connection: TCPSpeakerConnection?
+    /// After a failed command: one drop, a wait, one reconnect.
+    private lazy var reconnector: SpeakerReconnector = {
+        let reconnector = SpeakerReconnector(clock: RealSpeakerClock(), log: speakerLogHandler) { wait, run in
+            DispatchQueue.main.asyncAfter(deadline: .now() + wait / .seconds(1), execute: run)
+        }
+        reconnector.dropConnection = { [weak self] in self?.disconnectSpeaker() }
+        reconnector.reconnect = { [weak self] lookForSpeaker in self?.reconnectAfterFailure(lookForSpeaker: lookForSpeaker) }
+        return reconnector
+    }()
     private let mediaKeys = MediaKeyInterceptor()
     private let shortcuts = GlobalShortcuts()
     private let lifecycle = LifecycleManager()
@@ -620,6 +629,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard let conn, conn === connection, !isDiscovering else { return }
         switch reply {
         case .answered:
+            reconnector.speakerAnswered()
             menuBar.set(.connected, reason: "speaker answered")
         case .unreachable(let reason):
             menuBar.set(.notConnected, reason: "speaker unreachable: \(reason)")
@@ -790,7 +800,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             try await controller.setLeftRightSwapped(isSwapped)
         } catch {
             logger.error("Swap left and right failed: \(error.localizedDescription)")
-            handleCommandError(error)
+            handleCommandError(error, from: controller)
             throw error
         }
     }
@@ -820,7 +830,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// was skipped (no IP yet, off the home network, or reconnecting).
     private func controller(for command: String) -> SpeakerController? {
         guard let controller else {
-            logger.warning("Skipped \(command): no speaker connection")
+            if let waitLeft = reconnector.waitLeft {
+                logger.info("Skipped \(command): reconnecting to the speaker in \(SpeakerReconnector.seconds(waitLeft))")
+            } else {
+                logger.warning("Skipped \(command): no speaker connection")
+            }
             return nil
         }
         return controller
@@ -836,26 +850,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Volume up, down or mute: from a modifier + media key, or from a
-    /// recorded shortcut. The HUD shows the new level, or Muted.
+    /// recorded shortcut. The HUD shows the new level, or Muted. Presses
+    /// that come while one waits for the speaker join its one write
+    /// (``VolumePresses``), and the HUD shows where they all landed.
     private func runVolumeCommand(_ command: VolumeCommand) {
         guard let controller = controller(for: "\(command)") else { return }
 
         Task {
             do {
-                switch command {
-                case .up:
-                    try await controller.raiseVolume(by: Self.volumeStep)
-                case .down:
-                    try await controller.lowerVolume(by: Self.volumeStep)
-                case .mute:
-                    try await controller.toggleMute()
-                }
-                let state = try await controller.getVolumeState()
-                HUDOverlay.show(.afterVolumeCommand(command, now: state))
+                let result = try await controller.press(command, step: Self.volumeStep)
+                guard case .sent(let presses, let now) = result else { return }
+                HUDOverlay.show(.afterVolumeCommand(presses.hudCommand, now: now))
             } catch {
                 logger.error("Volume command failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Command failed"))
-                handleCommandError(error)
+                handleCommandError(error, from: controller)
             }
         }
     }
@@ -891,7 +900,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 logger.error("Power toggle failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Power failed"))
-                handleCommandError(error)
+                handleCommandError(error, from: controller)
             }
         }
     }
@@ -913,7 +922,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 logger.error("\(action.title) failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Power failed"))
-                handleCommandError(error)
+                handleCommandError(error, from: controller)
             }
         }
     }
@@ -933,7 +942,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 logger.error("Input switch to \(input.label) failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Input failed"))
-                handleCommandError(error)
+                handleCommandError(error, from: controller)
             }
         }
     }
@@ -963,7 +972,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 _ = try await controller.getSourceByte()
             } catch {
                 logger.error("Source byte read on \(opening) open failed: \(error.localizedDescription)")
-                handleCommandError(error)
+                handleCommandError(error, from: controller)
             }
         }
     }
@@ -986,7 +995,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     guard powerOn else { return }
                     // Replace "Waking..." so it doesn't look stuck.
                     HUDOverlay.show(.failure(error, otherwise: "Power failed"))
-                    self.handleCommandError(error)
+                    self.handleCommandError(error, from: controller)
                 }
             }
         }
@@ -1018,26 +1027,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - Error handling
 
-    /// Recover from a failed command.
-    ///
-    /// If the speaker could not be reached, it may have a new IP, so in
-    /// Auto discovery run discovery (which saves the new IP and reconnects).
-    /// Otherwise disconnect and reconnect to the same IP after 2 seconds.
-    private func handleCommandError(_ error: Error) {
+    /// Recover from a command that failed on `failed`: drop the connection
+    /// once, wait, reconnect once (``SpeakerReconnector``). An error from a
+    /// connection already dropped changes nothing.
+    private func handleCommandError(_ error: Error, from failed: SpeakerController) {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            if let kefError = error as? KEFError, kefError.isConnectionFailure, self.config.discovery.searchesBySelf {
-                self.rediscover(reason: "\(kefError)")
+            guard reconnector.isWaiting || failed === controller else {
+                logger.info("Command failed (\(error)) on a connection already replaced: nothing to recover")
                 return
             }
+            reconnector.commandFailed(error, searchesBySelf: config.discovery.searchesBySelf)
+        }
+    }
 
-            self.disconnectSpeaker()
-            self.logger.info("Command error — disconnecting and reconnecting in 2s")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
-                guard let self, self.isActive else { return }
-                self.logger.info("Reconnecting to speaker")
-                self.connectToSpeaker(.savedIP)
-            }
+    /// The wait after a failure is over. If the speaker is still to be
+    /// reconnected, look for it (it may have a new IP) or connect to the
+    /// saved IP. Something else may have reconnected meanwhile (the
+    /// network came back, an IP typed in Settings, a search).
+    private func reconnectAfterFailure(lookForSpeaker: Bool) {
+        guard isActive else {
+            logger.info("Not reconnecting: off the home network")
+            return
+        }
+        guard controller == nil, !isDiscovering else {
+            logger.info("Not reconnecting: already \(isDiscovering ? "looking for the speaker" : "connected again")")
+            return
+        }
+        if lookForSpeaker {
+            rediscover(reason: "a command could not reach it")
+        } else {
+            connectToSpeaker(.savedIP)
         }
     }
 }
