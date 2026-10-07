@@ -109,16 +109,18 @@ Your config file from 0.1.0 keeps working, with discovery on Auto.
 - **Switch the input from the menu.** Input ▸ in the menu bar switches the speaker to Optical, Wi-Fi, Bluetooth, Aux or USB now.
 - **Input when it turns on.** Choose the input, such as Optical, the speaker switches to when KEF Remote turns it on.
 - **Standby time.** Choose 20 minutes, 60 minutes or never.
+- **Swap left and right** in Settings, if your speakers are the other way round.
 - **Made by Dileepa** in the menu, a link to my site.
 
 ## Set the speaker up
 
-Under Speaker defaults in Settings, two choices set the speaker up for you. Both start at Don't change, so KEF Remote leaves the speaker as it is until you pick something.
+Under Speaker defaults in Settings, three settings set the speaker up for you. Input on turn-on and Standby start at Don't change, so KEF Remote leaves the speaker as it is until you pick something.
 
 | Setting | What it does |
 |---|---|
 | Input on turn-on | The input the speaker switches to when KEF Remote turns it on: Optical, Wi-Fi, Bluetooth, Aux or USB. It doesn't apply when you turn it on with KEF's own remote, or if it's already on. |
 | Standby | How long the speaker waits with no sound before it goes to standby: 20 min, 60 min or Never. KEF Remote sets it when you choose it, and each time it connects. |
+| Swap left and right | Swaps which speaker plays the left channel. The switch shows how the speaker is set now, and changes it straight away. The speaker remembers it, so KEF Remote doesn't save it. It's greyed out while KEF Remote isn't connected. |
 
 ## Shortcuts
 
@@ -181,7 +183,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 337 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input and standby choices, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 351 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 ## How it works
 

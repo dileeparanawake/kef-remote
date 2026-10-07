@@ -287,6 +287,21 @@ public class SpeakerController {
         try await writeSource(source.with(input: input))
     }
 
+    // MARK: - Left and right
+
+    /// Swap the left and right speakers, or put them back. Preserves the
+    /// other source byte fields. The speaker keeps it, so the app doesn't
+    /// save it. Only reads when the speaker is already that way.
+    public func setLeftRightSwapped(_ isSwapped: Bool) async throws {
+        let source = try await getSourceByte()
+        guard source.isInversed != isSwapped else {
+            log(.info, "swap left and right: already \(isSwapped ? "on" : "off")")
+            return
+        }
+        log(.info, "swap left and right: \(source.isInversed ? "on" : "off") -> \(isSwapped ? "on" : "off")")
+        try await writeSource(source.with(isInversed: isSwapped))
+    }
+
     // MARK: - Standby
 
     /// Read the current standby timeout mode.

@@ -127,6 +127,18 @@ import Testing
     #expect(modified.standby == original.standby)
 }
 
+@Test func withInversedChangesOnlyBitSix() {
+    // Start with 0x1B (on, not inversed, 60min, optical)
+    let original = SourceByte(byte: 0x1B)
+    let modified = original.with(isInversed: true)
+    #expect(modified.isInversed == true)
+    #expect(modified.isPoweredOn == original.isPoweredOn)
+    #expect(modified.standby == original.standby)
+    #expect(modified.input == original.input)
+    #expect(modified.encode() == 0x5B)
+    #expect(modified.with(isInversed: false).encode() == 0x1B)
+}
+
 @Test func testWithStandbyPreservesOtherBits() {
     // Start with 0x1B (on, not inversed, 60min, optical)
     let original = SourceByte(byte: 0x1B)
