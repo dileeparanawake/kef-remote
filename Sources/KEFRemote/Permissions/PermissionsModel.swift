@@ -17,6 +17,7 @@ import KEFRemoteCore
 /// [permissions] accessibility notGranted -> granted (guide open)
 /// [permissions] local network notCheckedYet -> granted (connection connected)
 /// [permissions] local network notGranted -> granted (probe)
+/// [permissions] I've allowed it clicked: blocked, showing "Checked: still blocked. …"
 /// [permissions] volume key tap notStarted -> running: "Volume keys ready ✓"
 /// [permissions] volume key tap notStarted -> refused: offering Restart KEF Remote
 /// [permissions] Accessibility allowed during this run: setup step 1 offers Restart and continue
@@ -32,9 +33,17 @@ final class PermissionsModel: ObservableObject {
     /// then offers Restart and continue (``PermissionsStepContinue``).
     @Published private(set) var grantedThisRun = PermissionsGrantedThisRun()
 
+    /// What the last I've allowed it click found, under the Local Network
+    /// row (``LocalNetworkProbe/Result/checkLine``). Nil until clicked.
+    @Published private(set) var localNetworkCheckLine: String?
+
     /// Called when Accessibility is switched on while the app runs, so
     /// the volume keys can start without a restart.
     var onAccessibilityGranted: (() -> Void)?
+
+    /// Asks macOS about Local Network now, for I've allowed it. The app
+    /// fills it in: it owns the probe, and tries the speaker if blocked.
+    var checkLocalNetworkNow: (() -> LocalNetworkProbe.Result)?
 
     /// The system prompt is shown once a run: after that, macOS adds
     /// nothing new, and the pane is what he needs.
@@ -123,6 +132,18 @@ final class PermissionsModel: ObservableObject {
         localNetwork = seen
     }
 
+    /// I've allowed it on the Local Network row: ask macOS now, and say
+    /// what it found under the row.
+    func localNetworkCheckClicked() {
+        guard let checkLocalNetworkNow else {
+            log.error("I've allowed it clicked, but nothing can check Local Network")
+            return
+        }
+        let result = checkLocalNetworkNow()
+        localNetworkCheckLine = result.checkLine
+        log.info("I've allowed it clicked: \(result), showing \"\(result.checkLine)\"")
+    }
+
     /// Count a permission he switched on during this run, logging it once.
     private func noteGrant(_ permission: Permission, from old: PermissionStatus, to new: PermissionStatus) {
         guard grantedThisRun.note(permission, from: old, to: new) else { return }
@@ -131,12 +152,20 @@ final class PermissionsModel: ObservableObject {
 
     /// Open the permission's pane in System Settings. For Accessibility,
     /// the first click also asks macOS, which adds KEF Remote to the list
-    /// so he only has to switch it on.
+    /// so he only has to switch it on: asking is the only call that adds
+    /// it; otherwise he'd have to find the app with + himself. The prompt
+    /// is a system dialog, so the app's windows stay back while it's up
+    /// (``WindowFront``; hand test round 7, where the Mac stopped taking
+    /// clicks during this step).
     func openSettings(for permission: Permission) {
         if permission == .accessibility && !hasAskedForAccessibility {
             hasAskedForAccessibility = true
+            AgentWindowPresenter.systemPromptShown()
             let trusted = MediaKeyInterceptor.checkAccessibility(prompt: true)
-            log.info("asked macOS for Accessibility (system prompt, once a run): trusted=\(trusted)")
+            log.info(
+                "asked macOS for Accessibility (system prompt, once a run): trusted=\(trusted); "
+                + "windows stay back for \(WindowFront.holdBackAfterSystemPrompt)"
+            )
         }
         let url = permission.settingsURL
         if NSWorkspace.shared.open(url) {

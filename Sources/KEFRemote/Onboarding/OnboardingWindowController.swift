@@ -44,10 +44,19 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
         model.onClose = { [weak self] in self?.window?.close() }
     }
 
+    /// Called each time ``show(_:source:)`` opens or brings back the
+    /// window, so the app can check Local Network for its row.
+    var onShown: (() -> Void)?
+
+    /// Whether the window is open, on all the steps or the guide alone.
+    var isOpen: Bool {
+        window?.isVisible == true
+    }
+
     /// Whether the window is open on all the steps, for Permissions…
     /// (``Onboarding/permissionsItemOpens(isFinished:allStepsShowing:)``).
     var isShowingAllSteps: Bool {
-        window?.isVisible == true && model.mode == .allSteps
+        isOpen && model.mode == .allSteps
     }
 
     func show(_ opening: SetupWindowOpening, source: Source) {
@@ -62,16 +71,12 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
         window.title = model.mode == .allSteps ? "Set up KEF Remote" : "KEF Remote Permissions"
         presenter.show(window)
         startRechecking()
+        onShown?()
     }
 
     private func makeWindow() -> NSWindow {
         let window = AgentWindowPresenter.makeWindow(
-            NSHostingController(rootView: OnboardingView(
-                model: model,
-                permissions: model.permissions,
-                settings: model.settings,
-                menuBar: model.menuBar
-            )),
+            NSHostingController(rootView: OnboardingView(model: model)),
             delegate: self
         )
         self.window = window

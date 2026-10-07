@@ -126,6 +126,72 @@ struct LogFileWriterTests {
         #expect(text.contains("this session"))
     }
 
+    // MARK: - The previous run's log
+
+    /// Hand test round 7: the Mac froze and was restarted, and the next
+    /// launch wiped the run's log. The last run's file is kept beside it.
+    @Test func eachLaunchKeepsTheLastRunAsThePreviousLog() throws {
+        let folder = TempFolder()
+        try FileManager.default.createDirectory(at: folder.url, withIntermediateDirectories: true)
+        try "last session\n".write(to: folder.file(), atomically: true, encoding: .utf8)
+
+        let writer = LogFileWriter(fileURL: folder.file(), echo: { _ in })
+        writer.write(.info, category: "c", message: "this session")
+
+        #expect(try contents(of: folder.file("kef-remote.previous.log")) == "last session\n")
+        #expect(!(try contents(of: folder.file())).contains("last session"))
+    }
+
+    @Test func thePreviousLogIsReplacedEachLaunch() throws {
+        let folder = TempFolder()
+        try FileManager.default.createDirectory(at: folder.url, withIntermediateDirectories: true)
+        try "two runs ago\n".write(to: folder.file("kef-remote.previous.log"), atomically: true, encoding: .utf8)
+        try "last session\n".write(to: folder.file(), atomically: true, encoding: .utf8)
+
+        _ = LogFileWriter(fileURL: folder.file(), echo: { _ in })
+
+        #expect(try contents(of: folder.file("kef-remote.previous.log")) == "last session\n")
+    }
+
+    @Test func theFirstLaunchHasNoPreviousLog() throws {
+        let folder = TempFolder()
+
+        let writer = LogFileWriter(fileURL: folder.file(), echo: { _ in })
+        writer.write(.info, category: "c", message: "first")
+
+        #expect(writer.isWritingToFile)
+        #expect(!FileManager.default.fileExists(atPath: folder.file("kef-remote.previous.log").path))
+    }
+
+    /// The new file says where the last run went, so a reader of one
+    /// file knows about the other.
+    @Test func theNewLogSaysWhereThePreviousOneIs() throws {
+        let folder = TempFolder()
+        try FileManager.default.createDirectory(at: folder.url, withIntermediateDirectories: true)
+        try "last session\n".write(to: folder.file(), atomically: true, encoding: .utf8)
+
+        _ = LogFileWriter(fileURL: folder.file(), echo: { _ in })
+
+        #expect(try contents(of: folder.file()).contains("[INFO] [LogFileWriter] Previous run's log kept at "))
+    }
+
+    /// `kef-check` appends after the app's session: it keeps no copy, so
+    /// the previous log stays the app's last run.
+    @Test func appendingKeepsNoPreviousLog() throws {
+        let folder = TempFolder()
+        try FileManager.default.createDirectory(at: folder.url, withIntermediateDirectories: true)
+        try "app session\n".write(to: folder.file(), atomically: true, encoding: .utf8)
+
+        _ = LogFileWriter(fileURL: folder.file(), echo: { _ in }, appending: true)
+
+        #expect(!FileManager.default.fileExists(atPath: folder.file("kef-remote.previous.log").path))
+    }
+
+    @Test func thePreviousLogSitsBesideTheDefaultOne() {
+        #expect(LogFileWriter.previousFileURL(for: LogFileWriter.defaultFileURL).path
+            .hasSuffix("/.kef-remote/logs/kef-remote.previous.log"))
+    }
+
     @Test func appendingKeepsTheLinesAlreadyThere() throws {
         let folder = TempFolder()
         try FileManager.default.createDirectory(at: folder.url, withIntermediateDirectories: true)

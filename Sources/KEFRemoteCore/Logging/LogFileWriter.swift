@@ -8,8 +8,10 @@ import Foundation
 /// - Each line is in the file before `write` returns, so a `kill -9`
 ///   loses nothing already logged.
 /// - The app's file starts empty on each launch (one session per file).
-///   `kef-check` appends instead, so a check run sits after the app's
-///   last session rather than wiping it.
+///   The last session moves to `kef-remote.previous.log` first,
+///   replacing the one before, so a freeze or a restart doesn't wipe
+///   the evidence (hand test round 7). `kef-check` appends instead, so a
+///   check run sits after the app's last session rather than wiping it.
 /// - If the folder or file can't be made, the echo says so once,
 ///   and lines still reach the echo.
 public final class LogFileWriter: @unchecked Sendable {
@@ -26,6 +28,15 @@ public final class LogFileWriter: @unchecked Sendable {
             .appendingPathComponent(".kef-remote")
             .appendingPathComponent("logs")
             .appendingPathComponent("kef-remote.log")
+    }
+
+    /// Where a fresh start keeps the last session: beside `fileURL`,
+    /// `kef-remote.log` -> `kef-remote.previous.log`.
+    public static func previousFileURL(for fileURL: URL) -> URL {
+        let name = fileURL.deletingPathExtension().lastPathComponent
+        return fileURL.deletingLastPathComponent()
+            .appendingPathComponent("\(name).previous")
+            .appendingPathExtension(fileURL.pathExtension)
     }
 
     public let fileURL: URL
@@ -49,6 +60,12 @@ public final class LogFileWriter: @unchecked Sendable {
     public init(fileURL: URL, echo: @escaping Echo = LogFileWriter.standardError, appending: Bool = false) {
         self.fileURL = fileURL
         self.echo = echo
+        // Kept before the fresh file empties it. A failure only costs the
+        // copy, so it's said in the new file rather than stopping the log.
+        var keptPrevious: Result<URL, Error>?
+        if !appending && FileManager.default.fileExists(atPath: fileURL.path) {
+            keptPrevious = Result { try Self.keepAsPrevious(fileURL) }
+        }
         do {
             self.fileHandle = try appending ? Self.openForAppending(fileURL) : Self.openFresh(fileURL)
         } catch {
@@ -56,6 +73,27 @@ public final class LogFileWriter: @unchecked Sendable {
             write(.warning, category: "LogFileWriter",
                   message: "Log file unavailable at \(LogPath.abbreviated(fileURL)) (\(error.localizedDescription)) — lines go to stderr only")
         }
+        switch keptPrevious {
+        case .success(let previous):
+            write(.info, category: "LogFileWriter", message: "Previous run's log kept at \(LogPath.abbreviated(previous))")
+        case .failure(let error):
+            write(.warning, category: "LogFileWriter",
+                  message: "Could not keep the previous run's log (\(error.localizedDescription)): it starts again empty")
+        case nil:
+            break
+        }
+    }
+
+    /// Moves the last session's file to ``previousFileURL(for:)``,
+    /// replacing the one before.
+    private static func keepAsPrevious(_ url: URL) throws -> URL {
+        let previous = previousFileURL(for: url)
+        let files = FileManager.default
+        if files.fileExists(atPath: previous.path) {
+            try files.removeItem(at: previous)
+        }
+        try files.moveItem(at: url, to: previous)
+        return previous
     }
 
     deinit {

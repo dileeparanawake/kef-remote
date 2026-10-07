@@ -30,7 +30,9 @@ import os
 ///    left and right from Settings, shown from the same byte
 /// 10. Writes feedback from Send feedback… in the menu (``FeedbackSender``)
 /// 11. While macOS blocks Local Network, asks again every few seconds and
-///     tries the speaker once it's allowed (``LocalNetworkRetry``)
+///     tries the speaker once it's allowed (``LocalNetworkRetry``); while
+///     the setup window is open, also checks its Local Network row until
+///     it's green, and on I've allowed it
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -270,6 +272,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Saved in config.json; an older file has it written at launch.
     private var isSetupFinished: Bool { config.onboarding?.finished ?? false }
 
+    /// Setup's step 2 has shown during this run (``SetupSearch``).
+    private var findSpeakerStepShown = false
+
+    /// Whether a search the app would start by itself waits for setup's step 2.
+    private func searchWaitsForSetup(_ trigger: DiscoveryTrigger) -> Bool {
+        SetupSearch.waits(trigger, isSetupFinished: isSetupFinished, findSpeakerStepShown: findSpeakerStepShown)
+    }
+
     /// Write feedback to Dileepa from the menu, naming the saved speaker.
     func sendFeedback() {
         FeedbackSender().send(speaker: config.speaker)
@@ -293,41 +303,89 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.startMediaKeysAfterAccessibilityGranted()
         }
         localNetworkBlockWatch = menuBar.$status.sink { [weak self] status in
-            if status == .localNetworkBlocked { self?.retryWhileLocalNetworkBlocked() }
+            if status == .localNetworkBlocked { self?.checkLocalNetworkWhileNeeded(reason: "Local Network blocked") }
         }
+        permissions.checkLocalNetworkNow = { [weak self] in
+            self?.checkLocalNetworkNow() ?? .failed("app is closing")
+        }
+        onboardingWindow.onShown = { [weak self] in self?.setupWindowShown() }
+    }
+
+    /// What the next Local Network tick does (``LocalNetworkRetry``).
+    private var localNetworkTick: LocalNetworkRetry.Tick {
+        LocalNetworkRetry.tick(
+            after: menuBar.status, localNetwork: permissions.localNetwork, setupOpen: onboardingWindow.isOpen
+        )
+    }
+
+    /// The setup window opened. If its Local Network row isn't green,
+    /// ask macOS now and every few seconds while it's open, so the row
+    /// follows System Settings without waiting for the speaker.
+    private func setupWindowShown() {
+        guard localNetworkTick == .checkRow else { return }
+        checkLocalNetworkRow()
+        checkLocalNetworkWhileNeeded(reason: "setup open, Local Network \(permissions.localNetwork.rawValue)")
     }
 
     /// Nothing else tries again after macOS blocks the app, so allowing
     /// Local Network would change nothing until the next key press. Every
     /// ``LocalNetworkRetry/interval``, ask macOS with a probe; once it's
-    /// allowed, try the speaker (``LocalNetworkRetry`` decides how). Stops
-    /// when the menu bar shows any answer but blocked.
-    private func retryWhileLocalNetworkBlocked() {
+    /// allowed, try the speaker (``LocalNetworkRetry`` decides how). While
+    /// the setup window is open, also check a row that isn't green. Stops
+    /// when neither is needed.
+    private func checkLocalNetworkWhileNeeded(reason: String) {
         guard localNetworkRetry == nil else { return }
-        logger.info("Local Network blocked: asking macOS again every \(LocalNetworkRetry.interval) until it's allowed")
+        logger.info("\(reason): asking macOS about Local Network every \(LocalNetworkRetry.interval) while needed")
         localNetworkRetry = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: LocalNetworkRetry.interval)
                 guard let self, !Task.isCancelled else { return }
-                switch LocalNetworkRetry.tick(after: menuBar.status) {
+                switch localNetworkTick {
                 case .wait: continue
                 case .stop:
-                    logger.info("Local Network retry stopped: status is \(menuBar.status.rawValue)")
+                    logger.info(
+                        "Local Network checks stopped: status \(menuBar.status.rawValue), "
+                        + "row \(permissions.localNetwork.rawValue), setup open \(onboardingWindow.isOpen)"
+                    )
                     localNetworkRetry = nil
                     return
                 case .probe:
-                    retryLocalNetworkOnce()
+                    actOnLocalNetworkProbe(localNetworkProbe.run())
+                case .checkRow:
+                    checkLocalNetworkRow()
                 }
             }
         }
     }
 
+    /// Ask macOS for the setup window's row only: nothing was blocked, so
+    /// there's nothing to try again. ``PermissionsModel`` logs a change.
+    private func checkLocalNetworkRow() {
+        let result = localNetworkProbe.run()
+        // Debug: it repeats every few seconds while the window is open.
+        logger.debug("Local Network row check: \(result)")
+        permissions.showProbe(result)
+    }
+
+    /// I've allowed it on the Local Network row: ask macOS now. While
+    /// blocked, an allowed answer also tries the speaker, as a tick does.
+    /// ``PermissionsModel`` logs the click and what it found.
+    private func checkLocalNetworkNow() -> LocalNetworkProbe.Result {
+        let result = localNetworkProbe.run()
+        if menuBar.status == .localNetworkBlocked {
+            actOnLocalNetworkProbe(result)
+        } else {
+            permissions.showProbe(result)
+        }
+        return result
+    }
+
     /// One tick while blocked: one log line, and a full attempt only once
     /// a packet gets out.
-    private func retryLocalNetworkOnce() {
-        let result = localNetworkProbe.run()
+    private func actOnLocalNetworkProbe(_ result: LocalNetworkProbe.Result) {
         permissions.showProbe(result)
-        switch LocalNetworkRetry.afterProbe(result, discovery: config.discovery) {
+        let waits = searchWaitsForSetup(.localNetworkAllowed)
+        switch LocalNetworkRetry.afterProbe(result, discovery: config.discovery, searchWaitsForSetup: waits) {
         case .keepWaiting:
             // Debug: it repeats every few seconds while he hasn't allowed it.
             logger.debug("Local Network still blocked; asking again in \(LocalNetworkRetry.interval)")
@@ -335,7 +393,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             logger.info("Local Network probe: \(result); looking for the speaker again")
             Task { _ = await runDiscovery(trigger: .localNetworkAllowed) }
         case .reconnect:
-            logger.info("Local Network probe: \(result); checking the saved IP again")
+            logger.info("Local Network probe: \(result); checking the saved IP again\(waits ? " (setup's step 2 searches)" : "")")
             reconnect(.savedIP, reason: "Local Network allowed")
         }
     }
@@ -408,7 +466,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Step 2 showed: clear the resume flag Restart and continue saved,
     /// so a later launch opens where he leaves setup.
+    /// Step 2 showing also lets the app's own searches go on: it looked
+    /// for the speaker itself (``SetupSearch``).
     private func setupStepShown(_ step: OnboardingStep) {
+        if step == .findSpeaker && !findSpeakerStepShown {
+            findSpeakerStepShown = true
+            onboardingLogger.info("step 2 shown: the app looks for the speaker by itself from now on")
+        }
         guard config.onboarding?.clearResume(onShowing: step) == true else { return }
         onboardingLogger.info("step \(step.number) shown after Restart and continue: resume flag cleared")
         saveConfig(what: "onboarding resumeAtFindSpeaker=false")
@@ -655,13 +719,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Run discovery without waiting, and show a HUD if it finds nothing.
+    /// Run discovery without waiting, and show a HUD if it finds nothing,
+    /// unless the setup window is open: step 2 shows the result there.
+    /// Before setup's step 2, a search the app starts by itself waits:
+    /// step 2 looks as it shows (``SetupSearch``).
     private func discoverInBackground(trigger: DiscoveryTrigger) {
+        if searchWaitsForSetup(trigger) {
+            logger.info(SetupSearch.waitLogLine(trigger))
+            return
+        }
         Task {
-            switch await runDiscovery(trigger: trigger) {
-            case .notFound: HUDOverlay.show(.error("Speaker not found"))
-            case .failed: HUDOverlay.show(.error("Discovery failed"))
-            case .found, .alreadyRunning: break
+            let outcome = await runDiscovery(trigger: trigger)
+            if let hud = SetupSearch.hud(after: outcome, setupOpen: onboardingWindow.isOpen) {
+                HUDOverlay.show(hud)
+            } else if SetupSearch.hud(after: outcome, setupOpen: false) != nil {
+                logger.info("No HUD for \"\(outcome.message)\": the setup window is open and shows it")
             }
         }
     }
@@ -779,8 +851,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     try await controller.toggleMute()
                 }
                 let state = try await controller.getVolumeState()
-                // Volume keys show the level even while muted; mute shows which way it went.
-                HUDOverlay.show(command == .mute && state.isMuted ? .muted : .volume(level: state.level))
+                HUDOverlay.show(.afterVolumeCommand(command, now: state))
             } catch {
                 logger.error("Volume command failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Command failed"))

@@ -16,46 +16,107 @@ struct LocalNetworkRetryTests {
 
     // MARK: - Each tick, from the menu bar's status
 
+    /// The setup window closed, or the row already green: the tick
+    /// follows only the menu bar's status, as before.
+    private func tick(_ status: ConnectionStatus) -> LocalNetworkRetry.Tick {
+        LocalNetworkRetry.tick(after: status, localNetwork: .granted, setupOpen: false)
+    }
+
     @Test func whileBlockedItAsksMacOSAgain() {
-        #expect(LocalNetworkRetry.tick(after: .localNetworkBlocked) == .probe)
+        #expect(tick(.localNetworkBlocked) == .probe)
+        #expect(LocalNetworkRetry.tick(after: .localNetworkBlocked, localNetwork: .notGranted, setupOpen: true) == .probe)
     }
 
     /// A search or check is running (a retry, or Find speaker): its
     /// answer decides, so the tick lets it finish.
     @Test func whileAnAttemptRunsItWaits() {
-        #expect(LocalNetworkRetry.tick(after: .searching) == .wait)
-        #expect(LocalNetworkRetry.tick(after: .connecting) == .wait)
+        #expect(tick(.searching) == .wait)
+        #expect(tick(.connecting) == .wait)
+        #expect(LocalNetworkRetry.tick(after: .searching, localNetwork: .notCheckedYet, setupOpen: true) == .wait)
     }
 
     /// Any other answer means macOS let the app out: the speaker
     /// answered, or it's off, or the app left the home network.
     @Test func anyOtherAnswerStopsIt() {
         for status in [ConnectionStatus.connected, .notConnected, .noSpeaker, .dormant] {
-            #expect(LocalNetworkRetry.tick(after: status) == .stop, "\(status)")
+            #expect(tick(status) == .stop, "\(status)")
         }
+    }
+
+    // MARK: - While the setup window is open
+
+    /// Hand test round 7: he allowed Local Network in System Settings and
+    /// the row stayed "Not checked yet", because only a blocked status
+    /// asked macOS again. While the setup window is open and the row
+    /// isn't green, each tick asks, so the row turns green by itself.
+    @Test func whileSetupIsOpenARowThatIsNotGreenIsChecked() {
+        for status in [ConnectionStatus.notConnected, .noSpeaker, .dormant] {
+            #expect(LocalNetworkRetry.tick(after: status, localNetwork: .notCheckedYet, setupOpen: true) == .checkRow, "\(status)")
+            #expect(LocalNetworkRetry.tick(after: status, localNetwork: .notGranted, setupOpen: true) == .checkRow, "\(status)")
+        }
+    }
+
+    @Test func aGreenRowIsNotCheckedAgain() {
+        #expect(LocalNetworkRetry.tick(after: .noSpeaker, localNetwork: .granted, setupOpen: true) == .stop)
+    }
+
+    @Test func withSetupClosedAnUncheckedRowWaitsForTheSpeaker() {
+        #expect(LocalNetworkRetry.tick(after: .noSpeaker, localNetwork: .notCheckedYet, setupOpen: false) == .stop)
+    }
+
+    // MARK: - I've allowed it
+
+    @Test func theRowOffersTheCheckUntilItIsGreen() {
+        #expect(PermissionRow(.localNetwork, status: .notCheckedYet).offersAllowedCheck)
+        #expect(PermissionRow(.localNetwork, status: .notGranted).offersAllowedCheck)
+        #expect(!PermissionRow(.localNetwork, status: .granted).offersAllowedCheck)
+    }
+
+    /// Accessibility is read from macOS every second while the window is
+    /// open, so it needs no button.
+    @Test func accessibilityHasNoCheckButton() {
+        #expect(!PermissionRow(.accessibility, status: .notGranted).offersAllowedCheck)
+        #expect(PermissionRow.allowedCheckTitle == "I've allowed it")
+    }
+
+    /// What the click found, under the row. Allowed turns the row green.
+    @Test func theClickSaysWhatItFound() {
+        #expect(LocalNetworkProbe.Result.allowed.checkLine == "Checked: allowed")
+        #expect(LocalNetworkProbe.Result.blocked.checkLine
+            == "Checked: still blocked. Turn on KEF Remote under Local Network, then click again.")
+        #expect(LocalNetworkProbe.Result.failed("bind failed").checkLine
+            == "Couldn't check just now (bind failed). Click again in a moment.")
     }
 
     // MARK: - After asking macOS
 
     @Test func stillBlockedKeepsWaiting() {
-        #expect(LocalNetworkRetry.afterProbe(.blocked, discovery: .auto) == .keepWaiting)
-        #expect(LocalNetworkRetry.afterProbe(.blocked, discovery: .manual) == .keepWaiting)
+        #expect(LocalNetworkRetry.afterProbe(.blocked, discovery: .auto, searchWaitsForSetup: false) == .keepWaiting)
+        #expect(LocalNetworkRetry.afterProbe(.blocked, discovery: .manual, searchWaitsForSetup: false) == .keepWaiting)
     }
 
     @Test func onceAllowedAutoLooksForTheSpeakerAgain() {
-        #expect(LocalNetworkRetry.afterProbe(.allowed, discovery: .auto) == .rediscover)
+        #expect(LocalNetworkRetry.afterProbe(.allowed, discovery: .auto, searchWaitsForSetup: false) == .rediscover)
     }
 
     /// Manual never searches by itself: it checks the IP he typed.
     @Test func onceAllowedManualChecksTheSavedIPAgain() {
-        #expect(LocalNetworkRetry.afterProbe(.allowed, discovery: .manual) == .reconnect)
+        #expect(LocalNetworkRetry.afterProbe(.allowed, discovery: .manual, searchWaitsForSetup: false) == .reconnect)
+    }
+
+    /// Before setup's step 2 the app doesn't search by itself
+    /// (``SetupSearch``): Auto checks the saved IP instead, so the status
+    /// leaves blocked, and step 2 searches when it shows.
+    @Test func onceAllowedBeforeSetupsStep2AutoChecksTheSavedIP() {
+        #expect(LocalNetworkRetry.afterProbe(.allowed, discovery: .auto, searchWaitsForSetup: true) == .reconnect)
+        #expect(LocalNetworkRetry.afterProbe(.blocked, discovery: .auto, searchWaitsForSetup: true) == .keepWaiting)
     }
 
     /// Some other socket failure says nothing about the permission: the
     /// full attempt finds out, and the menu bar shows what it finds.
     @Test func anotherFailureTriesTheSpeakerToFindOut() {
-        #expect(LocalNetworkRetry.afterProbe(.failed("bind failed"), discovery: .auto) == .rediscover)
-        #expect(LocalNetworkRetry.afterProbe(.failed("bind failed"), discovery: .manual) == .reconnect)
+        #expect(LocalNetworkRetry.afterProbe(.failed("bind failed"), discovery: .auto, searchWaitsForSetup: false) == .rediscover)
+        #expect(LocalNetworkRetry.afterProbe(.failed("bind failed"), discovery: .manual, searchWaitsForSetup: false) == .reconnect)
     }
 
     // MARK: - The probe: one M-SEARCH, sent and not listened for
