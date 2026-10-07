@@ -11,6 +11,19 @@ public enum InputSource: UInt8, CaseIterable, Codable, Sendable {
     case bluetoothUnpaired = 0b1111
     case aux              = 0b1010
     case optical          = 0b1011
+
+    /// The code to write to switch to this input. The paired code (1001)
+    /// is the one kefctl writes to select Bluetooth. The unpaired code
+    /// (1111) is how the speaker reports Bluetooth while nothing is
+    /// paired, not a choice to make.
+    public var codeToSelect: InputSource {
+        self == .bluetoothUnpaired ? .bluetoothPaired : self
+    }
+
+    /// Whether `other` is the same input, counting both Bluetooth codes as one.
+    public func isSameInput(as other: InputSource) -> Bool {
+        codeToSelect == other.codeToSelect
+    }
 }
 
 /// Standby timeout mode for the KEF speaker.
@@ -26,6 +39,15 @@ public enum StandbyMode: UInt8, CaseIterable, Codable, Sendable {
     case twentyMinutes = 0b00
     case sixtyMinutes  = 0b01
     case never         = 0b10
+
+    /// The plain name, as Settings and `kef-check` show it.
+    public var label: String {
+        switch self {
+        case .twentyMinutes: return "20 min"
+        case .sixtyMinutes: return "60 min"
+        case .never: return "Never"
+        }
+    }
 }
 
 /// Decodes and encodes the KEF source byte (register 0x30).

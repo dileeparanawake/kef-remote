@@ -61,10 +61,5 @@ struct AppLogger: KEFLog {
 extension LogFileWriter {
     /// The one log file for the app, shared by every `AppLogger`.
     /// Also echoes each line to stderr for Xcode's console.
-    static let app = LogFileWriter(
-        fileURL: FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".kef-remote")
-            .appendingPathComponent("logs")
-            .appendingPathComponent("kef-remote.log")
-    )
+    static let app = LogFileWriter(fileURL: LogFileWriter.defaultFileURL)
 }

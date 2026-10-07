@@ -126,6 +126,35 @@ struct LogFileWriterTests {
         #expect(text.contains("this session"))
     }
 
+    @Test func appendingKeepsTheLinesAlreadyThere() throws {
+        let folder = TempFolder()
+        try FileManager.default.createDirectory(at: folder.url, withIntermediateDirectories: true)
+        try "app session\n".write(to: folder.file(), atomically: true, encoding: .utf8)
+
+        let writer = LogFileWriter(fileURL: folder.file(), echo: { _ in }, appending: true)
+        writer.write(.info, category: "check", message: "check run")
+
+        let lines = try contents(of: folder.file()).split(separator: "\n")
+        #expect(lines.count == 2)
+        #expect(lines[0] == "app session")
+        #expect(lines[1].hasSuffix("[INFO] [check] check run"))
+    }
+
+    @Test func appendingMakesTheFileWhenMissing() throws {
+        let folder = TempFolder()
+        let nested = folder.url.appendingPathComponent("logs").appendingPathComponent("kef-remote.log")
+
+        let writer = LogFileWriter(fileURL: nested, echo: { _ in }, appending: true)
+        writer.write(.info, category: "check", message: "first line")
+
+        #expect(writer.isWritingToFile)
+        #expect(try contents(of: nested).hasSuffix("[INFO] [check] first line\n"))
+    }
+
+    @Test func defaultFileIsTheOneTheMakeTargetsRead() {
+        #expect(LogFileWriter.defaultFileURL.path.hasSuffix("/.kef-remote/logs/kef-remote.log"))
+    }
+
     @Test func saysSoWhenTheFileCannotBeMade() throws {
         let folder = TempFolder()
         try FileManager.default.createDirectory(at: folder.url, withIntermediateDirectories: true)

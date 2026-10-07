@@ -30,6 +30,17 @@ struct KEFLogTests {
         #expect(received.first?.1 == "speaker moved")
     }
 
+    @Test func aLogWritesAtTheLevelItIsGiven() {
+        let log = MockKEFLog()
+        log.write(.debug, "d")
+        log.write(.info, "i")
+        log.write(.warning, "w")
+        log.write(.error, "e")
+
+        #expect(log.entries.map(\.level) == [.debug, .info, .warning, .error])
+        #expect(log.entries.map(\.message) == ["d", "i", "w", "e"])
+    }
+
     @Test func hexStringFormatsBytesAsSpacedUppercasePairs() {
         #expect(Data([0x47, 0x25, 0x80]).hexString == "47 25 80")
         #expect(Data().hexString == "")
