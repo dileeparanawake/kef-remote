@@ -36,7 +36,8 @@ struct MenuBarIcon: View {
 /// Connected to LSX          Can't reach LSX: click Find speaker
 /// 192.168.1.80              No answer at 192.168.1.80
 /// ─────────────             Find speaker
-/// Settings…        ⌘,       ─────────────
+/// Permissions…              ─────────────
+/// Settings…        ⌘,       Permissions…
 /// ─────────────             Settings…
 /// Made by Dileepa ↗         ─────────────
 /// ─────────────             Made by Dileepa ↗
@@ -48,6 +49,7 @@ struct MenuBarIcon: View {
 struct MenuBarMenu: View {
     @ObservedObject var model: MenuBarModel
     let findSpeaker: () -> Void
+    let openPermissions: () -> Void
     let openSettings: () -> Void
 
     private let log = AppLogger(subsystem: "com.kef-remote", category: "menubar")
@@ -66,6 +68,11 @@ struct MenuBarMenu: View {
         }
 
         Divider()
+
+        Button("Permissions…") {
+            log.info("menu: Permissions… clicked")
+            openPermissions()
+        }
 
         Button("Settings…") {
             log.info("menu: Settings… clicked")

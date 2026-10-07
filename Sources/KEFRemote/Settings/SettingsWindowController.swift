@@ -5,7 +5,7 @@ import SwiftUI
 ///
 /// The SwiftUI `Settings` scene can only be opened from inside a SwiftUI
 /// view, and does not bring an agent app to the front. A window we own
-/// can be shown from anywhere, with three AppKit calls.
+/// can be shown from anywhere (see ``AgentWindowPresenter``).
 ///
 /// Logged under `menubar`:
 /// ```
@@ -29,7 +29,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let menuBar: MenuBarModel
     private var window: NSWindow?
     private let log = AppLogger(subsystem: "com.kef-remote", category: "menubar")
-    private static let activationCheckDelay: TimeInterval = 0.3
+    private lazy var presenter = AgentWindowPresenter(name: "settings", log: log)
 
     init(model: SettingsModel, menuBar: MenuBarModel) {
         self.model = model
@@ -38,35 +38,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     func show(source: Source) {
         log.info("settings open requested (source: \(source.rawValue))")
-        let window = self.window ?? makeWindow()
-        bringToFront(window)
-
-        // Activation is asynchronous, so check a moment later. An agent
-        // app's activation can be refused; showing a Dock icon (regular
-        // policy) while the window is open gives it a second chance.
-        DispatchQueue.main.asyncAfter(deadline: .now() + Self.activationCheckDelay) { [self] in
-            logShown(window)
-            guard !NSApp.isActive, NSApp.activationPolicy() == .accessory else { return }
-            log.info("app did not come to the front: policy accessory -> regular")
-            NSApp.setActivationPolicy(.regular)
-            bringToFront(window)
-            DispatchQueue.main.asyncAfter(deadline: .now() + Self.activationCheckDelay) { [self] in
-                logShown(window)
-            }
-        }
-    }
-
-    private func bringToFront(_ window: NSWindow) {
-        NSApp.activate()
-        window.makeKeyAndOrderFront(nil)
-        window.orderFrontRegardless()
-    }
-
-    private func logShown(_ window: NSWindow) {
-        log.info(
-            "settings shown: visible=\(window.isVisible) key=\(window.isKeyWindow) "
-            + "appActive=\(NSApp.isActive) policy=\(Self.describe(NSApp.activationPolicy()))"
-        )
+        presenter.show(window ?? makeWindow())
     }
 
     private func makeWindow() -> NSWindow {
@@ -83,18 +55,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         log.info("settings closed")
-        if NSApp.activationPolicy() == .regular {
-            NSApp.setActivationPolicy(.accessory)
-            log.info("policy regular -> accessory")
-        }
-    }
-
-    private static func describe(_ policy: NSApplication.ActivationPolicy) -> String {
-        switch policy {
-        case .regular: return "regular"
-        case .accessory: return "accessory"
-        case .prohibited: return "prohibited"
-        @unknown default: return "unknown"
-        }
+        presenter.windowClosed()
     }
 }

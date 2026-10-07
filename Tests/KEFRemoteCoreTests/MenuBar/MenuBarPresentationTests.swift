@@ -59,11 +59,12 @@ struct MenuBarPresentationTests {
         #expect(failed.offersFindSpeaker)
     }
 
-    @Test func whenLocalNetworkIsBlockedTheMenuSaysToAllowIt() {
+    /// The second line points to the permissions guide, which opens the pane.
+    @Test func whenLocalNetworkIsBlockedTheMenuSaysToAllowItInPermissions() {
         let blocked = shown(.localNetworkBlocked)
 
         #expect(blocked.title == "Can't reach LSX: allow Local Network in System Settings")
-        #expect(blocked.detail == "Privacy & Security > Local Network > KEF Remote")
+        #expect(blocked.detail == "Click Permissions… to open the setting")
         #expect(blocked.offersFindSpeaker)
     }
 

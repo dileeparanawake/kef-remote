@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import KEFRemoteCore
 import os
 
@@ -17,6 +18,8 @@ import os
 ///    every exchange with the speaker reports whether it answered
 /// 7. Opens the settings window from the menu, or when the app is
 ///    launched again while running, and applies settings changes live
+/// 8. Opens the permissions guide at launch while Accessibility is
+///    missing, and from the menu; starts the volume keys once it's granted
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -74,6 +77,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private lazy var settingsWindow = SettingsWindowController(model: settingsModel, menuBar: menuBar)
 
+    // MARK: - Permissions guide
+
+    private let permissions = PermissionsModel()
+    private lazy var permissionsWindow = PermissionsWindowController(model: permissions)
+    /// Feeds each connection status to ``permissions`` (Local Network).
+    private var connectionWatch: AnyCancellable?
+
     // MARK: - Components
 
     private lazy var finder = SpeakerFinder.onNetwork(log: discoveryLogger)
@@ -104,11 +114,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // 1. Load config from disk.
         loadConfig()
 
-        // 2. Check accessibility permission (needed for media key interception).
-        if !MediaKeyInterceptor.checkAccessibility(prompt: true) {
-            logger.warning(
-                "Accessibility permission not granted — media keys will not work"
-            )
+        // 2. Accessibility (needed for media key interception): while it's
+        //    missing, the permissions guide says why and opens the pane,
+        //    rather than the bare system prompt.
+        setupPermissions()
+        if PermissionsGuide.showsAtLaunch(accessibility: permissions.accessibility) {
+            logger.warning("Accessibility not granted — media keys will not work; showing the permissions guide")
+            showPermissions(source: .launch)
         }
 
         // 3. Set up all component callbacks.
@@ -170,6 +182,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Open the settings window and bring it to the front.
     func showSettings(source: SettingsWindowController.Source) {
         settingsWindow.show(source: source)
+    }
+
+    /// Open the permissions guide and bring it to the front.
+    func showPermissions(source: PermissionsWindowController.Source) {
+        permissionsWindow.show(source: source)
+    }
+
+    // MARK: - Permissions
+
+    /// Local Network has no API: the guide reads it from whether the
+    /// speaker answered. Accessibility switched on while the app runs
+    /// starts the volume keys.
+    private func setupPermissions() {
+        connectionWatch = menuBar.$status.sink { [weak self] status in
+            self?.permissions.showConnection(status)
+        }
+        permissions.onAccessibilityGranted = { [weak self] in
+            self?.startMediaKeysAfterAccessibilityGranted()
+        }
+    }
+
+    /// The event tap could not be made without Accessibility, so make it
+    /// now. Off the home network it starts on ``activate()`` as usual.
+    private func startMediaKeysAfterAccessibilityGranted() {
+        guard isActive else {
+            logger.info("Accessibility granted — media keys will start on the home network")
+            return
+        }
+        logger.info("Accessibility granted — starting the media key tap")
+        mediaKeys.start()
     }
 
     // MARK: - Config
