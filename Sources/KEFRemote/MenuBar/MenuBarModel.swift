@@ -1,7 +1,8 @@
 import Combine
 import KEFRemoteCore
 
-/// What the menu bar shows: whether the speaker is connected, and which one.
+/// What the menu bar shows: whether the speaker is connected, which one,
+/// and whether Accessibility lets the volume keys work.
 ///
 /// `AppDelegate` owns it and sets it as things happen. The menu bar
 /// views only read it. Each real change is logged once, with its reason:
@@ -9,6 +10,7 @@ import KEFRemoteCore
 /// ```
 /// [menubar] status connecting -> notConnected (speaker unreachable: …), red dot on
 /// [menubar] status connecting -> connected (speaker answered), green dot for 4.0 seconds
+/// [menubar] accessibility granted -> notGranted, red dot on
 /// ```
 ///
 /// While it looks for the speaker, ``pulse`` fades the orange dot.
@@ -28,8 +30,36 @@ final class MenuBarModel: ObservableObject {
 
     private let log = AppLogger(subsystem: "com.kef-remote", category: "menubar")
 
+    /// Whether the volume keys may reach the speaker: off, it's a red dot.
+    @Published private(set) var accessibility: PermissionStatus
+
+    /// - Parameter accessibility: As macOS reports it at launch, so the
+    ///   first change logged is a real one.
+    init(accessibility: PermissionStatus) {
+        self.accessibility = accessibility
+    }
+
     var presentation: MenuBarPresentation {
-        MenuBarPresentation(status: status, speakerName: speakerName, ip: speakerIP, isFlashingConnected: isFlashingConnected)
+        MenuBarPresentation(
+            status: status,
+            accessibility: accessibility,
+            speakerName: speakerName,
+            ip: speakerIP,
+            isFlashingConnected: isFlashingConnected
+        )
+    }
+
+    /// Show Accessibility as ``PermissionsModel`` last saw it. Logs only a
+    /// change, and whether it moved the red dot.
+    func showAccessibility(_ newStatus: PermissionStatus) {
+        guard newStatus != accessibility else { return }
+        let old = accessibility
+        let hadDot = presentation.needsAttention
+        accessibility = newStatus
+        let hasDot = presentation.needsAttention
+        let dotChange = hadDot == hasDot ? "" : ", red dot \(hasDot ? "on" : "off")"
+        log.info("accessibility \(old.rawValue) -> \(newStatus.rawValue)\(dotChange)")
+        pulse.run(presentation.dot.pulses)
     }
 
     /// Change the status. A change to the same status is ignored, so

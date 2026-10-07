@@ -21,6 +21,7 @@ struct KEFRemoteApp: App {
         MenuBarExtra {
             MenuBarMenu(
                 model: appDelegate.menuBar,
+                permissions: appDelegate.permissions,
                 findSpeaker: { appDelegate.findSpeaker() },
                 openPermissions: { appDelegate.showPermissions(source: .menu) },
                 openSettings: { appDelegate.showSettings(source: .menu) }

@@ -112,12 +112,12 @@ Your config file from 0.1.0 keeps working, with discovery on Auto.
 
 ## Set the speaker up
 
-Under Speaker in Settings, two choices set the speaker up for you. Both start at Don't change, so KEF Remote leaves the speaker as it is until you pick something.
+Under Speaker defaults in Settings, two choices set the speaker up for you. Both start at Don't change, so KEF Remote leaves the speaker as it is until you pick something.
 
 | Setting | What it does |
 |---|---|
-| When it turns on, switch to | The input the speaker switches to when KEF Remote turns it on: Optical, Wi-Fi, Bluetooth, Aux or USB. It doesn't apply when you turn it on with KEF's own remote, or if it's already on. |
-| Standby | How long the speaker waits with no sound before it goes to standby: 20 min, 60 min or Never. KEF Remote sets it each time it connects. |
+| Input on turn-on | The input the speaker switches to when KEF Remote turns it on: Optical, Wi-Fi, Bluetooth, Aux or USB. It doesn't apply when you turn it on with KEF's own remote, or if it's already on. |
+| Standby | How long the speaker waits with no sound before it goes to standby: 20 min, 60 min or Never. KEF Remote sets it when you choose it, and each time it connects. |
 
 ## Shortcuts
 
@@ -144,13 +144,15 @@ The icon shows whether KEF Remote is connected to the speaker. It checks when it
 | Filled speaker | Connected: the speaker answered |
 | Filled speaker, green dot | Just connected (the dot goes after 4 seconds) |
 | Speaker outline | Checking the speaker answers |
-| Speaker outline, red dot | Needs you: the speaker didn't answer, no speaker is set, or Local Network access is off |
 | Speaker outline, pulsing orange dot | Looking for the speaker |
 | Crossed-out speaker | Paused: not on the home network |
+| Any of these, red dot | Needs you: the speaker didn't answer, no speaker is set, or a permission is off |
 
 The red dot is a shape as well as a colour, so you can see it without colour vision.
 
-The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker". Find speaker looks for the speaker on the network and saves its IP. Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote.
+The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker" or "Volume keys off: allow Accessibility". Find speaker looks for the speaker on the network and saves its IP.
+
+Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote. Permissions… shows a tick when both permissions are allowed. When one is off, it says so, such as "Permissions… (1 needs you)".
 
 ## Known limitations
 
@@ -176,7 +178,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 306 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input and standby choices, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 320 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input and standby choices, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 ## How it works
 

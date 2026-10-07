@@ -8,7 +8,7 @@ import Testing
 struct MenuBarDotTests {
 
     private func dot(_ status: ConnectionStatus, flashing: Bool) -> MenuBarDot {
-        MenuBarPresentation(status: status, speakerName: "LSX", ip: "192.168.1.80", isFlashingConnected: flashing).dot
+        MenuBarPresentation(status: status, accessibility: .granted, speakerName: "LSX", ip: "192.168.1.80", isFlashingConnected: flashing).dot
     }
 
     // MARK: - When the green flash starts

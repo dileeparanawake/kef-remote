@@ -5,12 +5,14 @@ import KEFRemoteCore
 /// What the permissions guide shows: whether KEF Remote has Accessibility
 /// and Local Network, as far as it can tell (see ``PermissionStatus``).
 ///
-/// `AppDelegate` owns it and feeds it the connection status; the guide
-/// window asks it to check Accessibility again while open. Each change
-/// and click is logged once, under `permissions`:
+/// `AppDelegate` owns it and feeds it the connection status. It checks
+/// Accessibility again every few seconds for the menu bar, and every
+/// second while the guide window is open. Each change and click is
+/// logged once, under `permissions`:
 ///
 /// ```
 /// [permissions] accessibility notGranted at launch
+/// [permissions] checking accessibility every 3.0 seconds for the menu bar
 /// [permissions] Accessibility: Open Settings clicked, opened x-apple.systempreferences:…
 /// [permissions] accessibility notGranted -> granted (guide open)
 /// [permissions] local network notCheckedYet -> granted (connection connected)
@@ -27,6 +29,9 @@ final class PermissionsModel: ObservableObject {
     /// The system prompt is shown once a run: after that, macOS adds
     /// nothing new, and the pane is what he needs.
     private var hasAskedForAccessibility = false
+
+    /// The slow check that keeps the menu bar's red dot true.
+    private var accessibilityWatch: Task<Void, Never>?
 
     private let log = AppLogger(subsystem: "com.kef-remote", category: "permissions")
 
@@ -48,6 +53,22 @@ final class PermissionsModel: ObservableObject {
         log.info("accessibility \(old.rawValue) -> \(checked.rawValue) (\(reason))")
         if PermissionStatus.isNewlyGranted(from: old, to: checked) {
             onAccessibilityGranted?()
+        }
+    }
+
+    /// macOS sends no notification when Accessibility changes, so ask
+    /// every ``PermissionsGuide/menuBarRecheckInterval`` while the app
+    /// runs: the menu bar's red dot then follows System Settings even
+    /// with the guide closed. Logs once here; each check logs only a change.
+    func watchAccessibility() {
+        guard accessibilityWatch == nil else { return }
+        log.info("checking accessibility every \(PermissionsGuide.menuBarRecheckInterval) for the menu bar")
+        accessibilityWatch = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: PermissionsGuide.menuBarRecheckInterval)
+                guard !Task.isCancelled else { return }
+                self?.checkAccessibility(reason: "menu bar check")
+            }
         }
     }
 

@@ -3,8 +3,20 @@ import Testing
 
 struct MenuBarPresentationTests {
 
-    private func shown(_ status: ConnectionStatus, name: String? = "LSX", ip: String? = "192.168.1.80") -> MenuBarPresentation {
-        MenuBarPresentation(status: status, speakerName: name, ip: ip)
+    private func shown(
+        _ status: ConnectionStatus,
+        accessibility: PermissionStatus = .granted,
+        name: String? = "LSX",
+        ip: String? = "192.168.1.80",
+        isFlashingConnected: Bool = false
+    ) -> MenuBarPresentation {
+        MenuBarPresentation(
+            status: status,
+            accessibility: accessibility,
+            speakerName: name,
+            ip: ip,
+            isFlashingConnected: isFlashingConnected
+        )
     }
 
     // MARK: - Connected
@@ -129,5 +141,72 @@ struct MenuBarPresentationTests {
     @Test func voiceOverReadsTheAppNameAndBothLines() {
         #expect(shown(.notConnected).accessibilityLabel == "KEF Remote: Can't reach LSX: click Find speaker. No answer at 192.168.1.80")
         #expect(shown(.connected).accessibilityLabel == "KEF Remote: Connected to LSX. 192.168.1.80")
+    }
+
+    // MARK: - Accessibility off
+
+    /// Hand test, 6 Oct: with Accessibility off the volume keys can't
+    /// work, so the icon shows the red dot and the menu says what to do.
+    @Test func withAccessibilityOffAConnectedSpeakerShowsTheRedDotAndSaysWhatToDo() {
+        let keysOff = shown(.connected, accessibility: .notGranted)
+
+        #expect(keysOff.needsAttention)
+        #expect(keysOff.dot == .needsAttention)
+        #expect(keysOff.title == "Volume keys off: allow Accessibility")
+        #expect(keysOff.detail == "Click Permissions… to turn it on")
+    }
+
+    /// The shape still says the connection; the dot says he's needed.
+    @Test func withAccessibilityOffTheIconKeepsTheConnectionShape() {
+        #expect(shown(.connected, accessibility: .notGranted).isConnected)
+        #expect(shown(.connected, accessibility: .notGranted).symbolName == "hifispeaker.fill")
+        #expect(shown(.connecting, accessibility: .notGranted).symbolName == "hifispeaker")
+        #expect(shown(.dormant, accessibility: .notGranted).symbolName == "speaker.slash")
+    }
+
+    /// Checking the speaker and being off the home network sort
+    /// themselves out; Accessibility doesn't, so it takes the lines.
+    @Test func withAccessibilityOffStatesThatSortThemselvesOutSayToAllowIt() {
+        for status in [ConnectionStatus.connecting, .dormant] {
+            let keysOff = shown(status, accessibility: .notGranted)
+            #expect(keysOff.dot == .needsAttention, "\(status)")
+            #expect(keysOff.title == "Volume keys off: allow Accessibility", "\(status)")
+        }
+    }
+
+    /// A connection problem keeps its lines, so Find speaker under them
+    /// still makes sense. The Permissions… item flags Accessibility.
+    @Test func aConnectionThatNeedsHimKeepsItsLinesWhenAccessibilityIsOff() {
+        for status in [ConnectionStatus.noSpeaker, .notConnected, .localNetworkBlocked] {
+            #expect(shown(status, accessibility: .notGranted) == shown(status), "\(status)")
+        }
+    }
+
+    /// He just asked it to look, so the orange pulse shows that it is.
+    /// Once it finds the speaker, the red dot is back.
+    @Test func whileFindingTheSpeakerTheSearchShowsEvenWithAccessibilityOff() {
+        let searching = shown(.searching, accessibility: .notGranted)
+
+        #expect(searching.dot == .searching)
+        #expect(searching.detail == "Looking for the speaker…")
+    }
+
+    @Test func withAccessibilityOffTheGreenFlashGivesWayToTheRedDot() {
+        #expect(shown(.connected, accessibility: .notGranted, isFlashingConnected: true).dot == .needsAttention)
+        #expect(shown(.connected, isFlashingConnected: true).dot == .justConnected)
+    }
+
+    /// "Not checked yet" is a Local Network state; it never asks him
+    /// for anything.
+    @Test func onlyAccessibilityThatIsNotGrantedShowsTheDot() {
+        #expect(!shown(.connected, accessibility: .notCheckedYet).needsAttention)
+        #expect(!shown(.connected, accessibility: .granted).needsAttention)
+    }
+
+    @Test func findSpeakerDoesNotDependOnAccessibility() {
+        let all: [ConnectionStatus] = [.dormant, .noSpeaker, .searching, .connecting, .connected, .notConnected, .localNetworkBlocked]
+        for status in all {
+            #expect(shown(status, accessibility: .notGranted).offersFindSpeaker == shown(status).offersFindSpeaker, "\(status)")
+        }
     }
 }
