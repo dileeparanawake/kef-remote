@@ -74,6 +74,21 @@ struct SpeakerControllerSwapTests {
         #expect(log.messages(at: .info).contains("swap left and right: already on"))
     }
 
+    /// After the Mac slept the app asks for 20-minute standby, and the
+    /// speaker then goes off by itself. Writing the swap then would send
+    /// power off with 20 minutes, which crashes it. Off, it ignores the
+    /// swap anyway, so nothing is sent.
+    @Test func aSpeakerThatIsOffIsOnlyRead() async throws {
+        let offTwenty = SourceByte(isPoweredOn: false, isInversed: false, standby: .twentyMinutes, input: .optical)
+        mock.responses = [Self.reply(offTwenty)]
+        let (controller, _) = recordingController()
+
+        try await controller.setLeftRightSwapped(true)
+
+        #expect(mock.sentCommands == [KEFCommand.getSource()])
+        #expect(log.messages(at: .info).contains("swap left and right: not sent, the speaker is off and ignores it while off"))
+    }
+
     @Test func aFailedReadWritesNothingAndThrows() async {
         mock.errorToThrow = .commandTimeout
         let (controller, _) = recordingController()

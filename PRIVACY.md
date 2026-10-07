@@ -6,7 +6,7 @@ KEF Remote collects nothing about you. It has no analytics, no tracking and no a
 
 ## What stays on your Mac
 
-KEF Remote only talks to devices on your own network. To find your speaker, it sends a search on your local network and reads the description each media device gives back, to pick out the KEF. Then it sends commands to the speaker. The app itself never connects to the internet. Made by Dileepa in the menu opens my website in your browser.
+KEF Remote only talks to devices on your own network. To find your speaker, it sends a search on your local network and reads the description each media device gives back, to pick out the KEF. Then it sends commands to the speaker. The app itself never connects to the internet. Made by Dileepa in the menu opens my website in your browser, and the Privacy link opens this notice on GitHub.
 
 It asks for Accessibility only to catch the volume and mute keys. It doesn't see what you type.
 
@@ -17,7 +17,7 @@ It keeps a few things on your Mac so it can find the speaker again and remember 
 - `~/.kef-remote/logs/kef-remote.previous.log`: the log from the time before, kept so a freeze or a restart doesn't wipe it. It holds the same kinds of data, and each time the app opens it replaces this file with the last log.
 - Your shortcuts and modifier key, in `~/Library/Preferences/com.dileeparanawake.KEFRemote.plist`.
 
-Warnings and errors also go to the macOS system log, which macOS clears on its own. If the app crashes, macOS may offer to send a report to Apple. I don't receive it.
+Each log line also goes to the macOS system log. macOS keeps only the warnings and errors there, and clears them on its own. If the app crashes, macOS may offer to send a report to Apple. I don't receive it.
 
 None of this leaves your Mac unless you send it to me yourself (see below). To remove it all, delete the app, the `~/.kef-remote` folder and the preferences file above.
 

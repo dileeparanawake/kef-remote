@@ -32,7 +32,9 @@ public enum InputSource: UInt8, CaseIterable, Codable, Sendable {
 /// (``StandbyChoice``), and dynamic standby asks for 20 minutes at sleep.
 /// **Warning:** 20-minute standby causes the speaker's control server to crash
 /// on power-off. So `powerOff()` switches 20 to 60 minutes first, and
-/// `applyStandby` never writes 20 minutes to a speaker that is off.
+/// `applyStandby` never writes 20 minutes to a speaker that is off. Any
+/// other write of power off with 20 minutes is refused before it is sent
+/// (``KEFError/wouldCrashSpeaker``).
 ///
 /// Reference: Perl `kefctl` lines 80-85, 167-171.
 public enum StandbyMode: UInt8, CaseIterable, Codable, Sendable {

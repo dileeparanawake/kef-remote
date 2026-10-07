@@ -100,4 +100,25 @@ struct SpeakerControllerStandbyTests {
             on.with(standby: .sixtyMinutes).with(isPoweredOn: false).encode()
         ))
     }
+
+    // MARK: - No write ever sends power off with 20-minute standby
+
+    /// Whatever asks for it, the controller refuses the one write that
+    /// crashes the speaker, and says so.
+    @Test func noWriteSendsPowerOffWithTwentyMinuteStandby() async {
+        let mock = MockSpeakerConnection()
+        let log = MockKEFLog()
+        let off = SourceByte(isPoweredOn: false, isInversed: false, standby: .sixtyMinutes, input: .optical)
+        mock.responses = [Data([0x52, 0x30, 0x81, off.encode(), 0x00])]
+        let controller = SpeakerController(connection: mock, log: log.handler)
+
+        await #expect(throws: KEFError.wouldCrashSpeaker) { try await controller.setStandby(.twentyMinutes) }
+
+        #expect(mock.sentCommands == [KEFCommand.getSource()])
+        #expect(log.messages(at: .error).contains("not writing power=off standby=20min input=optical: it crashes the speaker"))
+    }
+
+    @Test func refusingTheCrashWriteIsNotAConnectionFailure() {
+        #expect(!KEFError.wouldCrashSpeaker.isConnectionFailure)
+    }
 }
