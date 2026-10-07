@@ -8,9 +8,8 @@ import SwiftUI
 /// who made it, Send feedback… (once its address is set), and Quit.
 /// The settings window is a plain `NSWindow` owned by ``AppDelegate``
 /// (see ``SettingsWindowController``), so it can open from the menu and
-/// when the app is launched again while it is running. The permissions
-/// guide is one too (``PermissionsWindowController``), so it can open at
-/// launch.
+/// when the app is launched again while it is running. The setup window
+/// is one too (``OnboardingWindowController``), so it can open at launch.
 ///
 /// Removing the icon from the menu bar (Cmd-drag) quits the app.
 @main

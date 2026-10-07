@@ -13,6 +13,10 @@ public struct AppConfig: Codable, Equatable {
     public var app: AppBehaviourConfig
     /// Auto or Manual. A file from before 0.2.0 has none: that means Auto.
     public var discovery: DiscoveryMode
+    /// Whether he has finished the setup window. Nil in a file from before
+    /// 0.4.0: ``Onboarding/isFinished(saved:speaker:accessibility:)``
+    /// decides, and the app saves its answer.
+    public var onboarding: OnboardingConfig?
 
     public init() {
         self.speaker = nil
@@ -21,6 +25,7 @@ public struct AppConfig: Codable, Equatable {
         self.network = NetworkConfig()
         self.app = AppBehaviourConfig()
         self.discovery = .auto
+        self.onboarding = OnboardingConfig()
     }
 
     public init(from decoder: Decoder) throws {
@@ -35,6 +40,9 @@ public struct AppConfig: Codable, Equatable {
         app = try container.decode(AppBehaviourConfig.self, forKey: .app)
         // Added in 0.2.0: an older file keeps finding the speaker by itself.
         discovery = try container.decodeIfPresent(DiscoveryMode.self, forKey: .discovery) ?? .auto
+        // Added in 0.4.0: left nil, as only the app can tell whether an
+        // older file's owner has set up already (it needs Accessibility).
+        onboarding = try container.decodeIfPresent(OnboardingConfig.self, forKey: .onboarding)
     }
 
     public struct SpeakerConfig: Codable, Equatable, Sendable {
@@ -50,6 +58,15 @@ public struct AppConfig: Codable, Equatable {
             self.model = model
             self.mac = mac
             self.lastKnownIp = lastKnownIp
+        }
+    }
+
+    /// `"onboarding": {"finished": true}` once Done is clicked in setup.
+    public struct OnboardingConfig: Codable, Equatable, Sendable {
+        public var finished: Bool
+
+        public init(finished: Bool = false) {
+            self.finished = finished
         }
     }
 

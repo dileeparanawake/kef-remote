@@ -1,7 +1,9 @@
 import KEFRemoteCore
 import SwiftUI
 
-/// The permissions guide: a row per permission KEF Remote needs.
+/// The permissions guide: a row per permission KEF Remote needs. Step 1
+/// of the setup window (``OnboardingView``), and all of it from
+/// Permissions… in the menu.
 ///
 /// ```
 /// KEF Remote needs two permissions
@@ -13,6 +15,7 @@ import SwiftUI
 ///   So the app can find the speaker.
 ///   Not checked yet: shows once the speaker answers
 ///   In Privacy & Security, click Local Network, then turn on KEF Remote
+/// The volume keys start after a restart.   [Restart KEF Remote]   (only if needed)
 /// ```
 ///
 /// The Accessibility hint names the row as this Mac's System Settings
@@ -22,6 +25,8 @@ import SwiftUI
 /// decided in ``PermissionRow``.
 struct PermissionsView: View {
     @ObservedObject var model: PermissionsModel
+    /// Relaunches the app, when ``PermissionsModel/needsRestart``.
+    let restart: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -32,13 +37,18 @@ struct PermissionsView: View {
                 PermissionRowView(row: row) { model.openSettings(for: row.permission) }
             }
 
+            if model.needsRestart {
+                HStack {
+                    Text("The volume keys start after a restart.")
+                    Spacer()
+                    Button("Restart KEF Remote", action: restart)
+                }
+            }
+
             Text("Open this again any time: menu bar icon > Permissions…")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(20)
-        .frame(width: 460)
-        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
