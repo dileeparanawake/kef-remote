@@ -8,7 +8,7 @@ struct ShortcutActionTests {
     /// user recorded, so they are pinned here.
     @Test func storageNamesAreStable() {
         #expect(ShortcutAction.allCases.map(\.storageName)
-            == ["powerToggle", "volumeUp", "volumeDown", "mute", "quit"])
+            == ["powerToggle", "volumeUp", "volumeDown", "mute", "playPause", "nextTrack", "previousTrack", "quit"])
     }
 
     @Test func storageNamesAreUnique() {
@@ -29,6 +29,12 @@ struct ShortcutActionTests {
             #expect(!action.label.isEmpty)
         }
         #expect(ShortcutAction.powerToggle.label == "Power on/off")
+    }
+
+    @Test func playbackShortcutsAreLabelledPlainly() {
+        #expect(ShortcutAction.playPause.label == "Play/pause")
+        #expect(ShortcutAction.nextTrack.label == "Next")
+        #expect(ShortcutAction.previousTrack.label == "Previous")
     }
 
     // MARK: - No shortcut does two things

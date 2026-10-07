@@ -1,6 +1,6 @@
 # KEF Remote
 
-Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) over TCP. Runs as a background agent (LSUIElement=true) with no Dock icon, except while one of its windows is open (`OpenWindows`), so a window behind another app's can be found again. A menu bar icon shows whether the speaker is connected (it answered the last exchange), with a red dot when something needs the user, a brief green dot on connecting and a pulsing orange dot while it looks for the speaker. It offers Find speaker when it isn't connected, switches the input now (Input ▸, `InputMenu`, ticked from the last source byte), opens Permissions and Settings (plain `NSWindow`s), links to who made it (`MenuLink`; Support stays hidden until its page exists), and offers Send feedback… (`FeedbackEmail`, to Dileepa's Gmail). A setup window (`Onboarding/`: 1 Permissions, 2 Find your speaker, 3 You're set) opens at launch until it's finished (`"onboarding": {"finished": true}` in config.json); after that, only its permissions step opens, at launch while Accessibility is missing and from Permissions…. Until it's finished, the menu's first item is Finish setup…, and the Dock icon opens it too, on the step he left (`SetupWindowOpening`). It intercepts media keys and shows a HUD overlay for volume/source feedback. Menu and settings actions log under the `menubar` and `settings` categories; permission changes under `permissions`; the setup window's steps and clicks under `onboarding`.
+Native macOS app for controlling KEF wireless speakers (LS50 Wireless and LSX) over TCP. Runs as a background agent (LSUIElement=true) with no Dock icon, except while one of its windows is open (`OpenWindows`), so a window behind another app's can be found again. A menu bar icon shows whether the speaker is connected (it answered the last exchange), with a red dot when something needs the user, a brief green dot on connecting and a pulsing orange dot while it looks for the speaker. It offers Find speaker when it isn't connected, switches the input now (Input ▸, `InputMenu`, ticked from the last source byte), opens Permissions and Settings (plain `NSWindow`s), links to who made it (`MenuLink`; Support stays hidden until its page exists), and offers Send feedback… (`FeedbackEmail`, to Dileepa's Gmail). A setup window (`Onboarding/`: 1 Permissions, 2 Find your speaker, 3 You're set) opens at launch until it's finished (`"onboarding": {"finished": true}` in config.json); after that, only its permissions step opens, at launch while Accessibility is missing and from Permissions…. Until it's finished, the menu's first item is Finish setup…, and the Dock icon opens it too, on the step he left (`SetupWindowOpening`). It intercepts media keys (volume, mute, play/pause, next, previous, with the modifier held) and shows a HUD overlay for volume/source/playback feedback. Menu and settings actions log under the `menubar` and `settings` categories; permission changes under `permissions`; the setup window's steps and clicks under `onboarding`.
 
 ## Codebase
 
@@ -30,7 +30,7 @@ Use `make <target>` for common operations. Key targets:
 |--------|---------|
 | `make test` | Run test suite (`swift test --disable-sandbox`) |
 | `make discover` | Find the speaker over SSDP and print every step (`MAC=...` to match one) |
-| `make speaker-check` | Run every speaker command, read each back, put the start back (`INPUTS=1` each input, `DRY_RUN=1` simulated). Changes what's playing: only when Dileepa is away; quit the app first |
+| `make speaker-check` | Run every speaker command, read each back, put the start back (`INPUTS=1` each input, `PLAYBACK=1` play/pause twice on Wi-Fi and Bluetooth, `DRY_RUN=1` simulated). Changes what's playing: only when Dileepa is away; quit the app first |
 | `make app-icon` | Redraw the app icon PNGs from `Design/AppIcon.svg` |
 | `make run` | Launch most recently built debug app |
 | `make test-build` | Quit the running app, build this branch as the one test app (`…KEFRemote.test`, fixed path in `~/Library/Developer/KEFRemoteTest`) and launch it |
@@ -67,7 +67,8 @@ Use `make <target>` for common operations. Key targets:
 
 - **Connection:** TCP on port 50001
 - **Commands:** GET sends 3 bytes, receives 5 bytes; SET sends 4 bytes, receives 3 bytes (ack)
-- **Registers:** 0x25 (volume), 0x30 (source/power/standby)
+- **Registers:** 0x25 (volume), 0x30 (source/power/standby), 0x31 (playback, write only: 81 play/pause, 82 next, 83 previous)
+- **Playback:** only on Wi-Fi and Bluetooth (`InputSource.hasPlayback`); on Optical, Aux and USB nothing is sent and the HUD says where it works
 - **Volume encoding:** 0-100 unmuted, 128-228 muted (byte - 128 = actual volume)
 - **Source byte:** Packed bitfield — bit 7 = power, bit 6 = inverse L/R, bits 5-4 = standby mode, bits 3-0 = input source
 - **Standby management:** Settings' standby time is set on connect, when chosen and in the power-on write. On wake use the chosen time ("never" if Don't change); switch to 20-minute standby before sleep/power-off. Never write 20 minutes to a speaker that is off

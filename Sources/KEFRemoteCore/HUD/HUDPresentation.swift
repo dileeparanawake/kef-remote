@@ -8,6 +8,10 @@ public enum HUDState: Equatable, Sendable {
     case powerOff
     /// The speaker switched to this input.
     case input(InputSource)
+    /// The speaker acked play/pause, next or previous.
+    case playback(PlaybackCommand)
+    /// Not sent: the speaker is on an input it doesn't stream itself.
+    case playbackNotOnThisInput(PlaybackCommand)
     case waking
     case error(String)
 }
@@ -29,6 +33,18 @@ extension HUDState {
         switch result {
         case .switched(let input): return .input(input)
         case .notTaken(let asked, _): return .error("\(asked.label) not available")
+        case .speakerOff: return .error("Speaker is off")
+        }
+    }
+}
+
+extension HUDState {
+    /// The HUD after play/pause, next or previous: the command, where it
+    /// works when the input has nothing to play, or that the speaker is off.
+    public static func afterPlayback(_ command: PlaybackCommand, _ result: PlaybackResult) -> HUDState {
+        switch result {
+        case .sent: return .playback(command)
+        case .notOnThisInput: return .playbackNotOnThisInput(command)
         case .speakerOff: return .error("Speaker is off")
         }
     }
@@ -60,12 +76,35 @@ public struct HUDPresentation: Equatable, Sendable {
         case .input(let input):
             symbolName = "hifispeaker.fill"
             label = input.label
+        case .playback(let command):
+            symbolName = Self.playbackSymbol(command)
+            label = Self.playbackLabel(command)
+        case .playbackNotOnThisInput(let command):
+            // The command's own icon, so it reads as the answer to that press.
+            symbolName = Self.playbackSymbol(command)
+            label = "Works on Wi-Fi and Bluetooth"
         case .waking:
             symbolName = "antenna.radiowaves.left.and.right"
             label = "Waking..."
         case .error(let message):
             symbolName = "exclamationmark.triangle.fill"
             label = message
+        }
+    }
+
+    private static func playbackSymbol(_ command: PlaybackCommand) -> String {
+        switch command {
+        case .playPause: "playpause.fill"
+        case .next: "forward.fill"
+        case .previous: "backward.fill"
+        }
+    }
+
+    private static func playbackLabel(_ command: PlaybackCommand) -> String {
+        switch command {
+        case .playPause: "Play/Pause"
+        case .next: "Next"
+        case .previous: "Previous"
         }
     }
 

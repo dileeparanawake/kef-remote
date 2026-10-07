@@ -26,6 +26,8 @@ import Foundation
 ///   right as it came on; kefctl polling every second saw 45% unmuted.)
 /// - With no USB input (the LSX), a switch to USB keeps the input it is
 ///   on. (Same check: asked for USB, it stayed on Aux.)
+/// - Play/pause, next and previous (register 0x31) are acked like any
+///   write, and nothing reads them back.
 public final class SimulatedSpeaker: SpeakerConnection {
     private var volumeByte: UInt8
     private var sourceByte: UInt8
@@ -46,6 +48,10 @@ public final class SimulatedSpeaker: SpeakerConnection {
 
     /// True once it was sent the write that crashes a real speaker.
     public private(set) var hasCrashed = false
+
+    /// Each play/pause, next and previous it acked, in order. The real
+    /// speaker can't read playback back, so this is only for tests.
+    public private(set) var playbackReceived: [PlaybackCommand] = []
 
     /// What it holds now.
     public var volume: VolumeState { VolumeCoding.decode(volumeByte) }
@@ -103,6 +109,10 @@ public final class SimulatedSpeaker: SpeakerConnection {
         }
         if bytes.count == 4, data == KEFCommand.setSource(bytes[3]) {
             try write(source: SourceByte(byte: bytes[3]))
+            return Self.ack
+        }
+        if bytes.count == 4, let command = PlaybackCommand(rawValue: bytes[3]), data == KEFCommand.setPlayback(command) {
+            playbackReceived.append(command)
             return Self.ack
         }
         throw KEFError.invalidResponse
