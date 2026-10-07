@@ -1,6 +1,8 @@
 # KEF Remote
 
-A small macOS app that puts a KEF LSX speaker on your keyboard. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Cmd+Shift+O turns the speaker on, or off if it's on.
+KEF already has an app, but I built this one to put my speaker on my keyboard. That matters most if you listen over optical for hi-res audio, like I do: the Mac's volume keys can't reach the speaker over optical, so it's back to the clunky remote. If you use AirPlay, the Mac's own volume already works.
+
+KEF Remote is a small macOS app for the KEF LSX. Hold Control and press the volume keys, and the speaker's volume changes instead of the Mac's, with an on-screen display like the one macOS shows for its own volume. Cmd+Shift+O turns the speaker on, or off if it's on, and can switch it to optical as it does.
 
 ![KEF Remote: Control plus the volume up key shows a volume panel at 60% on screen, and the KEF speaker plays louder](docs/images/social-preview.png)
 
@@ -50,30 +52,20 @@ xattr -dr com.apple.quarantine /Applications/KEFRemote.app
 
 You only need to do this once. If it says "No such xattr", the flag is already gone.
 
-### 3. Allow Local Network
+### 3. Allow the two permissions
 
-On macOS 15 and later, macOS asks if KEF Remote can find and connect to devices on your local network. Click Allow. Without it, the app can't find or reach the speaker.
+When it opens, KEF Remote shows a small window with the two permissions it needs. Each has a button that opens System Settings, and gets a tick once it's allowed.
 
-If you missed the prompt, turn on KEF Remote in System Settings > Privacy & Security > Local Network.
+- **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote.
+- **Local Network** (macOS 15 and later), so the app can find the speaker. macOS asks the first time the app looks for the speaker: click Allow. If you missed it, click Open Settings and turn on KEF Remote under Privacy & Security > Local Network. Its tick shows once the speaker answers.
 
-### 4. Allow Accessibility
+To open the window again, click the speaker icon in the menu bar, then Permissions….
 
-macOS also asks to let KEFRemote control this computer. Click Open System Settings, then turn on KEFRemote under Privacy & Security > Accessibility.
-
-The two prompts can show in either order.
-
-### 5. Restart KEF Remote
-
-The app only starts listening for the volume keys when it opens. So quit it and open it again:
-
-1. Click the speaker icon in the menu bar, then click Quit KEF Remote. (Or press Cmd+Shift+Q.)
-2. Open `KEFRemote.app` from Applications.
-
-### 6. Check it's connected
+### 4. Check it's connected
 
 When it opens, KEF Remote looks for the speaker on your network and saves its IP. Click the speaker icon in the menu bar. It should say "Connected to LSX".
 
-Press Cmd+Shift+O to turn the speaker on. Then press Control + volume up. A small panel in the middle of the screen shows the volume.
+Press Cmd+Shift+O to turn the speaker on. Then press Control + volume up. A small panel in the middle of the screen shows the volume. If nothing happens, quit KEF Remote from the menu bar icon and open it again.
 
 If the icon has a red dot, the menu's first line says what's wrong and what to do. Usually it says "click Find speaker". Find speaker is in the same menu.
 
@@ -91,25 +83,41 @@ To find the IP, look in KEF's own app on your phone: it shows the speaker's IP i
 
 The IP and the discovery mode are saved in `~/.kef-remote/config.json`.
 
+### Upgrading from 0.2.0
+
+1. Quit 0.2.0: click the speaker icon in the menu bar, then Quit KEF Remote.
+2. Download the latest release (step 1) and replace `KEFRemote.app` in Applications.
+3. Open it. If macOS blocks it, follow step 2.
+4. If the permissions window shows Accessibility as not allowed while System Settings shows it on, turn KEFRemote off, then on again.
+
+Your settings and config file carry over.
+
 ### Upgrading from 0.1.0
 
 0.1.0 has no menu bar icon, so quit it another way.
 
 1. Quit 0.1.0: press Cmd+Shift+Q, or quit KEFRemote in Activity Monitor.
-2. Download 0.2.0 (step 1) and replace `KEFRemote.app` in Applications.
+2. Download the latest release (step 1) and replace `KEFRemote.app` in Applications.
 3. Open it. If macOS blocks it, follow step 2.
-4. If the volume keys don't respond, open System Settings > Privacy & Security > Accessibility. Turn KEFRemote off, then on again. Then restart KEF Remote (step 5).
+4. If the volume keys don't respond, open System Settings > Privacy & Security > Accessibility. Turn KEFRemote off, then on again. Then quit KEF Remote and open it again.
 
 Your config file from 0.1.0 keeps working, with discovery on Auto.
 
-## What's new in 0.2.0
+## What's new in 0.3.0
 
-- **Finds the speaker by itself**, when it opens and again if the speaker's IP changes. No Terminal step.
-- **Auto or Manual discovery.** Settings shows the speaker it found and its IP. Choose Manual to type the IP yourself.
-- **Menu bar icon.** It shows if it's connected. A red dot means something needs you, and the menu says what to do.
-- **Settings window** for the speaker, the modifier key and your own shortcuts (power, volume up, volume down, mute and quit).
-- **One power shortcut.** Cmd+Shift+O turns the speaker on or off, whichever it isn't.
-- **Also:** an app icon, a plain log file at `~/.kef-remote/logs/kef-remote.log`, and tests up from 97 to 244.
+- **A permissions guide.** The first time it opens, a small window shows the two permissions it needs, opens the right page of System Settings, and ticks each one off.
+- **Input when it turns on.** Choose the input, such as Optical, the speaker switches to when KEF Remote turns it on.
+- **Standby time.** Choose 20 minutes, 60 minutes or never.
+- **Made by Dileepa** in the menu, a link to my site.
+
+## Set the speaker up
+
+Under Speaker in Settings, two choices set the speaker up for you. Both start at Don't change, so KEF Remote leaves the speaker as it is until you pick something.
+
+| Setting | What it does |
+|---|---|
+| When it turns on, switch to | The input the speaker switches to when KEF Remote turns it on: Optical, Wi-Fi, Bluetooth, Aux or USB. It doesn't apply when you turn it on with KEF's own remote, or if it's already on. |
+| Standby | How long the speaker waits with no sound before it goes to standby: 20 min, 60 min or Never. KEF Remote sets it each time it connects. |
 
 ## Shortcuts
 
@@ -142,7 +150,7 @@ The icon shows whether KEF Remote is connected to the speaker. It checks when it
 
 The red dot is a shape as well as a colour, so you can see it without colour vision.
 
-The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker". Find speaker looks for the speaker on the network and saves its IP. Settings… and Quit KEF Remote are below.
+The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker". Find speaker looks for the speaker on the network and saves its IP. Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote.
 
 ## Known limitations
 
@@ -168,7 +176,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 244 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 306 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input and standby choices, the permissions guide's rows, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states, the shortcuts and the log file. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 ## How it works
 
