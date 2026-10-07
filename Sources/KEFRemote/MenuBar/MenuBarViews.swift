@@ -95,7 +95,7 @@ struct MenuBarMenu: View {
         Divider()
 
         let inputMenu = model.inputMenu
-        Menu(InputMenu.title) {
+        Menu(inputMenu.title) {
             ForEach(inputMenu.items, id: \.input) { item in
                 // A Toggle is how a SwiftUI menu item gets a tick. Picking
                 // the ticked one switches again, which only shows the HUD.

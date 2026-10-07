@@ -70,6 +70,11 @@ public enum Permission: String, CaseIterable, Sendable {
     /// macOS 27; Apple's DTS points only to the published schemes,
     /// https://developer.apple.com/forums/thread/763476), so Local Network
     /// opens Privacy & Security and ``settingsHint`` says what to click.
+    /// Three links tried on his Mac in the round 4 hand test each opened
+    /// Privacy & Security, not the Local Network list:
+    /// `x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_LocalNetwork`,
+    /// `x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork` and
+    /// `x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension.privacy-localnetwork`.
     public var settingsURL: URL {
         switch self {
         case .accessibility: return Self.privacyPaneURL(anchor: "Privacy_Accessibility")

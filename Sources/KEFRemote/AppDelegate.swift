@@ -78,7 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actions: SettingsActions(
             saveSpeakerIP: { [weak self] ip in self?.saveSpeakerIP(ip) },
             discoverSpeaker: { [weak self] in
-                await self?.runDiscovery(trigger: "Discover in settings") ?? .failed("app is closing")
+                await self?.runDiscovery(trigger: .discoverInSettings) ?? .failed("app is closing")
             },
             applyModifier: { [weak self] choice in
                 self?.mediaKeys.modifier = choice.eventFlags
@@ -104,7 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar: menuBar,
         actions: OnboardingActions(
             findSpeaker: { [weak self] in
-                await self?.runDiscovery(trigger: "Find speaker in setup") ?? .failed("app is closing")
+                await self?.runDiscovery(trigger: .findSpeakerInSetup) ?? .failed("app is closing")
             },
             finish: { [weak self] in self?.finishOnboarding() },
             restart: { [weak self] in
@@ -223,7 +223,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Run discovery from "Find speaker" in the menu. A HUD says if it
     /// finds nothing; the menu bar shows the rest.
     func findSpeaker() {
-        discoverInBackground(trigger: "Find speaker in menu")
+        discoverInBackground(trigger: .findSpeakerInMenu)
     }
 
     /// Open the settings window and bring it to the front.
@@ -312,7 +312,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             logger.debug("Local Network still blocked; asking again in \(LocalNetworkRetry.interval)")
         case .rediscover:
             logger.info("Local Network probe: \(result); looking for the speaker again")
-            Task { _ = await runDiscovery(trigger: "Local Network allowed") }
+            Task { _ = await runDiscovery(trigger: .localNetworkAllowed) }
         case .reconnect:
             logger.info("Local Network probe: \(result); checking the saved IP again")
             reconnect(.savedIP, reason: "Local Network allowed")
@@ -442,7 +442,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             logger.warning("No speaker IP configured — attempting discovery")
-            discoverInBackground(trigger: "no IP saved")
+            discoverInBackground(trigger: .noIPSaved)
             return
         }
 
@@ -487,7 +487,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func rediscover(reason: String) {
         disconnectSpeaker()
         logger.info("Could not reach the speaker (\(reason)) — rediscovering")
-        discoverInBackground(trigger: "speaker unreachable")
+        discoverInBackground(trigger: .speakerUnreachable)
     }
 
     /// Show whether the speaker answered, unless the reply came from a
@@ -540,8 +540,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// then connect, or keep the connection if it is already on that IP.
     /// Runs when no IP is saved, when a command can't reach the speaker
     /// (it may have a new IP), from Discover in settings and from Find
-    /// speaker in the menu.
-    private func runDiscovery(trigger: String) async -> DiscoveryOutcome {
+    /// speaker in the menu. A run the app started by itself searches
+    /// again after a miss (``SearchAgain``), and stays on Searching till
+    /// the last search answers.
+    private func runDiscovery(trigger: DiscoveryTrigger) async -> DiscoveryOutcome {
         guard !isDiscovering else {
             logger.info("Discovery already running")
             return .alreadyRunning
@@ -552,7 +554,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menuBar.set(.searching, reason: "discovery started: \(trigger)")
 
         do {
-            guard let updated = try await finder.rediscover(config.speaker) else {
+            guard let updated = try await finder.rediscover(config.speaker, trigger: trigger) else {
                 recheckSavedSpeaker(reason: "discovery found nothing")
                 return .notFound
             }
@@ -595,7 +597,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Run discovery without waiting, and show a HUD if it finds nothing.
-    private func discoverInBackground(trigger: String) {
+    private func discoverInBackground(trigger: DiscoveryTrigger) {
         Task {
             switch await runDiscovery(trigger: trigger) {
             case .notFound: HUDOverlay.show(.error("Speaker not found"))
@@ -621,7 +623,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         config.discovery = mode
         saveConfig(what: "discovery mode \(mode.rawValue)")
         if mode.searchesBySelf, isActive, menuBar.status != .connected {
-            discoverInBackground(trigger: "switched to Auto discovery")
+            discoverInBackground(trigger: .switchedToAuto)
         }
     }
 

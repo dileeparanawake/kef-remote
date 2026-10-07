@@ -59,7 +59,7 @@ When it opens, KEF Remote shows a setup window with three steps.
 1. **Permissions.** Each permission has a button that opens System Settings, and gets a tick once it's allowed. Click Continue when both are ticked, or Skip for now.
    - **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote. On macOS 27 this list is called Device Control and Data Access. If the window then shows Restart KEF Remote, click it: the volume keys start once it opens again.
    - **Local Network** (macOS 15 and later), so the app can find the speaker. macOS asks the first time the app looks for the speaker: click Allow. If you missed it, click Open Settings, then Local Network, and turn on KEF Remote. Its tick shows within a few seconds of allowing it.
-2. **Find your speaker.** Leave it on Auto and click Find speaker. It says "Found LSX at" and the speaker's IP. If it has found the speaker already, it says so straight away. If it says "Not found", check the speaker is on and on the same network, or click Enter the IP instead (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). Click Continue once it's found.
+2. **Find your speaker.** Leave it on Auto and click Find speaker. It says "Looking for the speaker…", then "Found LSX at" the speaker's IP, "Connecting…" and then "Connected." Before any search it says "Not found yet". If it has found the speaker already, it says so straight away. If it says "Not found", check the speaker is on and on the same network, or click Enter the IP instead (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). Click Continue once it's found.
 3. **You're set.** It shows the keys to use. Click Done. The Privacy link under them opens the privacy notice: KEF Remote collects nothing.
 
 If the window goes behind another app's, click Finish setup… at the top of the menu bar icon's menu, or KEF Remote's icon in the Dock. It goes back to the step you were on.
@@ -160,7 +160,7 @@ Until you finish the setup window, the menu starts with Finish setup…, which o
 
 The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker" or "Volume keys off: allow Accessibility". Find speaker looks for the speaker on the network and saves its IP.
 
-Input ▸ comes next. It ticks the input the speaker is on. Pick another and the speaker switches straight away, and the input it's now on shows on screen. If it didn't switch, the screen says so, such as "USB not available". If the speaker is off, the screen says so, as it ignores a new input then. It's greyed out while KEF Remote isn't connected. On an LSX it lists no USB, as the LSX has none.
+Input ▸ comes next. Its title names the input the speaker is on, such as "Input: Optical", and it ticks that input. Pick another and the speaker switches straight away, and the input it's now on shows on screen. If it didn't switch, the screen says so, such as "USB not available". If the speaker is off, the screen says so, as it ignores a new input then. It's greyed out while KEF Remote isn't connected. On an LSX it lists no USB, as the LSX has none.
 
 Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote. Permissions… shows a tick when both permissions are allowed. When one is off, it says so, such as "Permissions… (1 needs you)".
 
@@ -171,6 +171,7 @@ Send feedback… opens an email to me, with the log attached if you agree.
 | Limitation | What to do for now |
 |---|---|
 | Finding the speaker needs the Mac and the speaker on the same network, with local network access allowed. | Set the IP in Settings (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). |
+| Open Settings for Local Network opens Privacy & Security, not the Local Network list (macOS has no link to it). | Click Local Network, then turn on KEF Remote. |
 | It doesn't start at login. | Add it in System Settings > General > Login Items. |
 | Fast repeated key presses can get lost. After an error, presses are ignored for about two seconds while it reconnects. | Press the keys one at a time. |
 | After the Mac sleeps, the icon can still say connected until the next key press. | Press a volume key; the icon updates. |
@@ -190,7 +191,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 562 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, the Dock icon while a window is open, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network), the connection check, the menu bar's states and its Input menu, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 574 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, the Dock icon while a window is open, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network, and searches again by itself after a miss), the connection check, the menu bar's states and its Input menu, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening. It takes a few minutes, as it waits for the speaker to power on and off.
 
@@ -200,7 +201,7 @@ To check a real speaker end to end, quit the app and run `make speaker-check` (a
 
 The app talks to the speaker over TCP on port 50001, the protocol the KEF Control app uses. Volume and mute live in one register, and power, input and standby are packed into the bits of another.
 
-To find the speaker, it sends an SSDP search (the same one UPnP devices answer) and reads each reply's description to pick out the KEF. It saves the IP, and searches again if the speaker stops answering there.
+To find the speaker, it sends an SSDP search (the same one UPnP devices answer) and reads each reply's description to pick out the KEF. It saves the IP, and searches again if the speaker stops answering there. A search it starts by itself tries twice more, 3 seconds apart, before saying no speaker, as a speaker in standby can miss the first.
 
 The code is a Swift package with four targets:
 

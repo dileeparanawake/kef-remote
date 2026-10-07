@@ -65,7 +65,24 @@ struct InputMenuTests {
         #expect(menu.items.filter(\.isTicked).map(\.title) == ["Wi-Fi"])
     }
 
-    @Test func theSubmenuIsCalledInput() {
-        #expect(InputMenu.title == "Input")
+    /// The menu shows the input without opening the submenu.
+    @Test func theSubmenuTitleNamesTheInputItIsOn() {
+        let menu = InputMenu(speakerSource: on(.optical), isConnected: true, inputs: SpeakerModel.other.inputs)
+        #expect(menu.title == "Input: Optical")
+    }
+
+    @Test func bluetoothWithNothingPairedIsNamedBluetooth() {
+        let menu = InputMenu(speakerSource: on(.bluetoothUnpaired), isConnected: true, inputs: SpeakerModel.other.inputs)
+        #expect(menu.title == "Input: Bluetooth")
+    }
+
+    @Test func beforeTheFirstReadTheSubmenuIsJustInput() {
+        let menu = InputMenu(speakerSource: nil, isConnected: true, inputs: SpeakerModel.other.inputs)
+        #expect(menu.title == "Input")
+    }
+
+    @Test func whenNotConnectedTheSubmenuIsJustInput() {
+        let menu = InputMenu(speakerSource: on(.optical), isConnected: false, inputs: SpeakerModel.other.inputs)
+        #expect(menu.title == "Input")
     }
 }

@@ -18,22 +18,39 @@ struct SpeakerSearchLineTests {
 
     /// The app may have found and connected to the speaker by itself
     /// before he reaches step 2: it shows as found straight away.
-    @Test func aConnectedSpeakerShowsAsFound() {
+    @Test func aConnectedSpeakerShowsAsFoundAndConnected() {
         let shown = line(.connected, speaker: lsx)
 
-        #expect(shown == .found(name: "LSX", ip: "192.168.1.80"))
-        #expect(shown.text == "Found LSX at 192.168.1.80")
+        #expect(shown == .connected(name: "LSX", ip: "192.168.1.80"))
+        #expect(shown.text == "Found LSX at 192.168.1.80. Connected.")
         #expect(!shown.isBusy)
         #expect(!shown.offersManual)
     }
 
-    @Test func aSpeakerWithNoNameIsTheSpeaker() {
-        #expect(line(.connected, speaker: .init(lastKnownIp: "10.0.0.5")).text == "Found the speaker at 10.0.0.5")
+    /// Hand test round 4: just after Find speaker, the line read
+    /// "Checking the speaker at 192.168.1.80 answers…", as if that IP had
+    /// been saved before. It says it was found, and is connecting.
+    @Test func aSpeakerJustFoundSaysFoundAndConnecting() {
+        let shown = line(.connecting, speaker: lsx)
+
+        #expect(shown == .connecting(name: "LSX", ip: "192.168.1.80"))
+        #expect(shown.text == "Found LSX at 192.168.1.80. Connecting…")
+        #expect(shown.isBusy)
+        #expect(!shown.offersManual)
+    }
+
+    /// Discovery always saves a name, so a speaker with none had its IP
+    /// typed: it wasn't found, so the line doesn't say so.
+    @Test func aTypedIPIsNotCalledFound() {
+        let typed = AppConfig.SpeakerConfig(lastKnownIp: "10.0.0.5")
+
+        #expect(line(.connecting, speaker: typed).text == "Connecting to the speaker at 10.0.0.5…")
+        #expect(line(.connected, speaker: typed).text == "Connected to the speaker at 10.0.0.5.")
     }
 
     /// Found wins over an earlier search that found nothing.
     @Test func connectedWinsOverAnEarlierMiss() {
-        #expect(line(.connected, speaker: lsx, searchFoundNothing: true) == .found(name: "LSX", ip: "192.168.1.80"))
+        #expect(line(.connected, speaker: lsx, searchFoundNothing: true) == .connected(name: "LSX", ip: "192.168.1.80"))
     }
 
     // MARK: - Looking
@@ -43,14 +60,6 @@ struct SpeakerSearchLineTests {
 
         #expect(shown == .searching)
         #expect(shown.text == "Looking for the speaker…")
-        #expect(shown.isBusy)
-    }
-
-    @Test func checkingAnIPShowsASpinner() {
-        let shown = line(.connecting, speaker: lsx)
-
-        #expect(shown == .checking(ip: "192.168.1.80"))
-        #expect(shown.text == "Checking the speaker at 192.168.1.80 answers…")
         #expect(shown.isBusy)
     }
 
@@ -89,11 +98,12 @@ struct SpeakerSearchLineTests {
     // MARK: - Not started
 
     @Test(arguments: [ConnectionStatus.noSpeaker, .dormant])
-    func nothingShowsBeforeASearch(connection: ConnectionStatus) {
+    func beforeASearchItSaysNotFoundYet(connection: ConnectionStatus) {
         let shown = line(connection)
 
         #expect(shown == .notStarted)
-        #expect(shown.text == nil)
+        #expect(shown.text == "Not found yet")
         #expect(!shown.isBusy)
+        #expect(!shown.offersManual)
     }
 }
