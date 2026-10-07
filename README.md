@@ -1,6 +1,6 @@
 # KEF Remote
 
-I built KEF Remote to control my KEF LSX from my keyboard and the menu bar. It's a big convenience upgrade on KEF's app, which has no keyboard control. That matters most if you listen over optical for hi-res audio, like I do: the Mac's volume keys can't reach the speaker over optical. If you use AirPlay, the Mac's own volume already works.
+I built KEF Remote to control my KEF LSX from my keyboard and the menu bar. It's a big convenience upgrade on KEF's app, which has no keyboard control. That matters most if you listen over optical for hi-res audio, like I do: the Mac's volume keys can't reach the speaker over optical.
 
 I wrote up how I built it: [KEF Remote](https://www.dileeparanawake.com/writing/kef-remote).
 
