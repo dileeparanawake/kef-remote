@@ -43,6 +43,11 @@ public class SpeakerController {
     private let onSourceByte: (SourceByte) -> Void
     private let clock: SpeakerClock
     private var powerOnMuteGuard = PowerOnMuteGuard()
+    /// One power toggle at a time, and none straight after another. The
+    /// lock is there because presses that come together call
+    /// ``togglePower(applying:)`` from several tasks at once.
+    private var powerToggleGuard = PowerToggleGuard()
+    private let powerToggleLock = NSLock()
     /// The source byte last read, or written and acked: play/pause uses
     /// it to skip a read when it shows the speaker on Wi-Fi or Bluetooth.
     private var lastSourceByte: SourceByte?
@@ -274,17 +279,24 @@ public class SpeakerController {
     /// side keeps the 20-minute standby workaround. Turning on applies
     /// `settings` in the same write, as ``powerOn(applying:)`` does.
     ///
-    /// - Returns: Whether the speaker is now on.
+    /// Sends nothing while another toggle is in flight, or straight after
+    /// one (``PowerToggleGuard``): a burst of presses is one toggle.
     @discardableResult
-    public func togglePower(applying settings: SpeakerSettings = SpeakerSettings()) async throws -> Bool {
+    public func togglePower(applying settings: SpeakerSettings = SpeakerSettings()) async throws -> PowerToggleResult {
+        if let refusal = powerToggleLock.withLock({ powerToggleGuard.start(at: clock.now) }) {
+            log(.info, "togglePower: ignored, \(refusal.reason)")
+            return .ignored(refusal)
+        }
+        defer { powerToggleLock.withLock { powerToggleGuard.finish(at: clock.now) } }
+
         let source = try await getSourceByte()
         log(.info, "togglePower: \(source.isPoweredOn ? "on → off" : "off → on")")
         if source.isPoweredOn {
             try await writePowerOff(from: source)
-            return false
+            return .turnedOff
         }
         try await writePowerOn(from: source, applying: settings)
-        return true
+        return .turnedOn
     }
 
     private func writePowerOn(from source: SourceByte, applying settings: SpeakerSettings) async throws {

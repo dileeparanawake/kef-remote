@@ -8,7 +8,8 @@ public enum HUDState: Equatable, Sendable {
     case powerOff
     /// The speaker switched to this input.
     case input(InputSource)
-    /// The speaker acked play/pause, next or previous.
+    /// The speaker acked play/pause, next or previous. Not proof it acted:
+    /// nothing reads playback back.
     case playback(PlaybackCommand)
     /// Not sent: the speaker is on an input it doesn't stream itself.
     case playbackNotOnThisInput(PlaybackCommand)
@@ -23,6 +24,18 @@ extension HUDState {
     public static func failure(_ error: Error, otherwise message: String) -> HUDState {
         let isUnreachable = (error as? KEFError)?.isConnectionFailure ?? false
         return .error(isUnreachable ? "Can't reach the speaker" : message)
+    }
+}
+
+extension HUDState {
+    /// The HUD after a power toggle: which way it went. Nil when the
+    /// toggle was ignored as a repeat: the one it repeated shows the HUD.
+    public static func afterPowerToggle(_ result: PowerToggleResult) -> HUDState? {
+        switch result {
+        case .turnedOn: return .powerOn
+        case .turnedOff: return .powerOff
+        case .ignored: return nil
+        }
     }
 }
 
@@ -100,11 +113,13 @@ public struct HUDPresentation: Equatable, Sendable {
         }
     }
 
+    /// Says the command was sent, not that it worked: the speaker acks
+    /// it, but can't pause a stream the Mac sends it over AirPlay.
     private static func playbackLabel(_ command: PlaybackCommand) -> String {
         switch command {
-        case .playPause: "Play/Pause"
-        case .next: "Next"
-        case .previous: "Previous"
+        case .playPause: "Play/Pause sent"
+        case .next: "Next sent"
+        case .previous: "Previous sent"
         }
     }
 

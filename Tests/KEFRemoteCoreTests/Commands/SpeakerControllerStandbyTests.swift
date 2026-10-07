@@ -92,8 +92,8 @@ struct SpeakerControllerStandbyTests {
     @Test func chosenTwentyMinutesStillPowersOffViaSixty() async throws {
         let on = SourceByte(isPoweredOn: true, isInversed: false, standby: .twentyMinutes, input: .optical)
         mock.responses = [Data([0x52, 0x30, 0x81, on.encode(), 0x00]), Self.ack, Self.ack]
-        let isOn = try await controller.togglePower(applying: SpeakerSettings(standby: .twentyMinutes))
-        #expect(!isOn)
+        let result = try await controller.togglePower(applying: SpeakerSettings(standby: .twentyMinutes))
+        #expect(result == .turnedOff)
         #expect(mock.sentCommands.count == 3)
         #expect(mock.sentCommands[1] == KEFCommand.setSource(on.with(standby: .sixtyMinutes).encode()))
         #expect(mock.sentCommands[2] == KEFCommand.setSource(

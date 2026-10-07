@@ -113,7 +113,7 @@ Your config file from 0.1.0 keeps working, with discovery on Auto.
 - **Input when it turns on.** Choose the input, such as Optical, the speaker switches to when KEF Remote turns it on.
 - **Standby time.** Choose 20 minutes, 60 minutes or never.
 - **Swap left and right** in Settings, if your speakers are the other way round.
-- **Play, pause and skip.** Control + Play/Pause, Next or Previous controls what the speaker is playing over Wi-Fi (AirPlay, Spotify Connect) or Bluetooth. On Optical or Aux there's nothing for the speaker to play, so the panel says it works on Wi-Fi and Bluetooth.
+- **Play, pause and skip.** Control + Play/Pause, Next or Previous controls what the speaker is playing over Wi-Fi (AirPlay, Spotify Connect) or Bluetooth, and the panel says what it sent. On Optical or Aux there's nothing for the speaker to play, so the panel says it works on Wi-Fi and Bluetooth. On AirPlay from your Mac, see [Known limitations](#known-limitations).
 - **Made by Dileepa** in the menu, a link to my site.
 
 ## Set the speaker up
@@ -177,6 +177,7 @@ Send feedback… opens an email to me, with the log attached if you agree.
 | Finding the speaker needs the Mac and the speaker on the same network, with local network access allowed. | Set the IP in Settings (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). |
 | Open Settings for Local Network opens Privacy & Security, not the Local Network list (macOS has no link to it). | Click Local Network, then turn on KEF Remote. |
 | It doesn't start at login. | Add it in System Settings > General > Login Items. |
+| On AirPlay from your Mac, Control + Play/Pause, Next and Previous may do nothing. | Use the Mac's own play key (without Control): the speaker can't pause a stream your Mac is sending. |
 | Fast repeated key presses can get lost. After an error, presses are ignored for about two seconds while it reconnects. | Press the keys one at a time. |
 | After the Mac sleeps, the icon can still say connected until the next key press. | Press a volume key; the icon updates. |
 | Turning the speaker on at wake and off at sleep is in the code, but off by default and untested. | Leave `powerOnWake` and `powerOffSleep` set to `false` in the config file. |
@@ -195,7 +196,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 604 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, the Dock icon while a window is open, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network, and searches again by itself after a miss), the connection check, the menu bar's states and its Input menu, play/pause and which inputs it works on, the media keys, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 631 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, the Dock icon while a window is open, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network, and searches again by itself after a miss), the connection check, the menu bar's states and its Input menu, play/pause and which inputs it works on, the media keys, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening. It takes a few minutes, as it waits for the speaker to power on and off.
 

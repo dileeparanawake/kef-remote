@@ -61,10 +61,17 @@ extension ShortcutAction {
 /// A shortcut recorded in Settings applies straight away: the library
 /// swaps the hot key, and the listener looks the name up on each press.
 ///
+/// While one of the app's menus is open, the library fires the listener
+/// again for the same key-up on every run-loop turn (176 times for one
+/// press in the 6 Oct hand test). ``ShortcutRepeatFilter`` turns that
+/// back into one press.
+///
 /// Logged under `shortcuts`:
 /// ```
 /// shortcut listening: Power on/off = ⇧⌘O
 /// shortcut fired: Power on/off (⇧⌘O)
+/// shortcut repeat dropped: Power on/off (same press, within 100 ms)
+/// shortcut fired: Power on/off (⇧⌘O), after dropping 175 repeats of the last press
 /// shortcuts on (on home network)
 /// ```
 @MainActor
@@ -74,6 +81,9 @@ final class GlobalShortcuts {
     var onAction: ((ShortcutAction) -> Void)?
 
     private var isListening = false
+    private var repeatFilter = ShortcutRepeatFilter()
+    /// The filter's clock starts here; only the time between fires matters.
+    private let startedAt = ContinuousClock.now
     private let log = AppLogger(subsystem: "com.kef-remote", category: "shortcuts")
 
     /// Add a listener for every action. Call once, after setting ``onAction``.
@@ -94,8 +104,19 @@ final class GlobalShortcuts {
         log.info("shortcuts \(isEnabled ? "on" : "off") (\(reason))")
     }
 
+    /// Run the action once per press. Of a burst's repeats only the first
+    /// is logged, and the next press says how many there were.
     private func fire(_ action: ShortcutAction) {
-        log.info("shortcut fired: \(action.label) (\(action.shortcutText))")
-        onAction?(action)
+        switch repeatFilter.verdict(for: action, at: ContinuousClock.now - startedAt) {
+        case .repeatOfLastPress(let count):
+            if count == 1 {
+                let window = ShortcutRepeatFilter.samePressWithin / .milliseconds(1)
+                log.warning("shortcut repeat dropped: \(action.label) (same press, within \(Int(window)) ms)")
+            }
+        case .fire(let repeatsDropped):
+            let dropped = repeatsDropped > 0 ? ", after dropping \(repeatsDropped) repeats of the last press" : ""
+            log.info("shortcut fired: \(action.label) (\(action.shortcutText))\(dropped)")
+            onAction?(action)
+        }
     }
 }

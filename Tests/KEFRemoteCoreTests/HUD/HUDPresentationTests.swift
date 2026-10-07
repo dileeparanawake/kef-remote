@@ -87,12 +87,27 @@ struct HUDPresentationTests {
         struct Other: Error {}
         #expect(HUDState.failure(Other(), otherwise: "Command failed") == .error("Command failed"))
     }
+    // MARK: - Power toggle
+
+    @Test func aPowerToggleShowsWhichWayItWent() {
+        #expect(HUDState.afterPowerToggle(.turnedOn) == .powerOn)
+        #expect(HUDState.afterPowerToggle(.turnedOff) == .powerOff)
+    }
+
+    /// A repeat the guard ignored shows nothing: the toggle it repeated
+    /// shows the HUD, so a burst doesn't flash it 175 more times.
+    @Test func anIgnoredPowerToggleShowsNothing() {
+        #expect(HUDState.afterPowerToggle(.ignored(.inFlight)) == nil)
+    }
+
     // MARK: - Play/pause, next and previous
 
-    @Test func playbackShowsItsSymbolAndName() {
+    /// It says what was sent, not that it worked: the speaker acks the
+    /// command, but on AirPlay from the Mac it can't pause the stream.
+    @Test func playbackShowsItsSymbolAndThatItWasSent() {
         let shown = [PlaybackCommand.playPause, .next, .previous].map { HUDPresentation(.playback($0)) }
         #expect(shown.map(\.symbolName) == ["playpause.fill", "forward.fill", "backward.fill"])
-        #expect(shown.map(\.label) == ["Play/Pause", "Next", "Previous"])
+        #expect(shown.map(\.label) == ["Play/Pause sent", "Next sent", "Previous sent"])
     }
 
     @Test func aSentPlaybackCommandShowsIt() {

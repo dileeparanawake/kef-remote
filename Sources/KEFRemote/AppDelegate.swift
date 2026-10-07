@@ -778,14 +778,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Read whether the speaker is on, then flip it. The HUD shows which
-    /// way it went.
+    /// way it went; a toggle ignored as a repeat shows nothing.
     private func togglePower() {
         guard let controller = controller(for: "power toggle") else { return }
 
         Task {
             do {
-                let isOn = try await controller.togglePower(applying: config.speakerSettings)
-                HUDOverlay.show(isOn ? .powerOn : .powerOff)
+                let result = try await controller.togglePower(applying: config.speakerSettings)
+                if let state = HUDState.afterPowerToggle(result) { HUDOverlay.show(state) }
             } catch {
                 logger.error("Power toggle failed: \(error.localizedDescription)")
                 HUDOverlay.show(.failure(error, otherwise: "Power failed"))
