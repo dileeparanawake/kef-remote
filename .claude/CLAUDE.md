@@ -30,7 +30,7 @@ Use `make <target>` for common operations. Key targets:
 |--------|---------|
 | `make test` | Run test suite (`swift test --disable-sandbox`) |
 | `make discover` | Find the speaker over SSDP and print every step (`MAC=...` to match one) |
-| `make speaker-check` | Run every speaker command, read each back, put the start back (`INPUTS=1` each input, `DRY_RUN=1` simulated). Changes what's playing: only when Dileepa is away; quit the app first |
+| `make speaker-check` | Run every speaker command, read each back, put the start back (`INPUTS=1` each input, `DRY_RUN=1` simulated, `BURST=1` quick presses together). Changes what's playing: only when Dileepa is away; quit the app first |
 | `make app-icon` | Redraw the app icon PNGs from `Design/AppIcon.svg` |
 | `make run` | Launch most recently built debug app |
 | `make test-build` | Quit the running app, build this branch as the one test app (`…KEFRemote.test`, fixed path in `~/Library/Developer/KEFRemoteTest`) and launch it |
@@ -42,7 +42,6 @@ Use `make <target>` for common operations. Key targets:
 | `make logs-recent` | Last 200 lines from log file (quick agent snapshot) |
 | `make logs-previous` | The run before this one (each launch moves the last run's log to `kef-remote.previous.log`) |
 | `make logs-tail` | Live stream from log file |
-| `make logs-previous` | The run before this one (`kef-remote.previous.log`) |
 | `make logs-errors` | Errors only, from the log file |
 | `make logs-warnings` | Warnings and errors, from the log file |
 | `make logs-debug` | Debug lines (bytes on the wire), from the log file |

@@ -23,7 +23,7 @@ speaker-check:
 		echo "KEF Remote is running and holds the speaker's one connection. Quit it first (make kill)."; \
 		exit 1; \
 	fi
-	swift run --disable-sandbox kef-check $(if $(INPUTS),--inputs) $(if $(DRY_RUN),--dry-run)
+	swift run --disable-sandbox kef-check $(if $(INPUTS),--inputs) $(if $(DRY_RUN),--dry-run) $(if $(BURST),--burst)
 
 # Redraw the app icon's PNGs from Design/AppIcon.svg (commit the results)
 APP_ICON_SET = Sources/KEFRemote/Assets.xcassets/AppIcon.appiconset

@@ -7,20 +7,22 @@ import KEFRemoteCore
 //   make speaker-check             # volume, mute, power, standby, left/right
 //   make speaker-check INPUTS=1    # also each input in turn
 //   make speaker-check DRY_RUN=1   # a simulated speaker: nothing is sent
+//   make speaker-check BURST=1     # also quick volume presses together
 //
 // It changes what the speaker plays: run it only when nobody is listening.
 // Quit KEF Remote first: the speaker takes one connection at a time.
 // Real runs log under [check] in ~/.kef-remote/logs/kef-remote.log.
 
-let usage = "Usage: kef-check [--inputs] [--dry-run]"
+let usage = "Usage: kef-check [--inputs] [--dry-run] [--burst]"
 let arguments = Set(CommandLine.arguments.dropFirst())
-let unknown = arguments.subtracting(["--inputs", "--dry-run"])
+let unknown = arguments.subtracting(["--inputs", "--dry-run", "--burst"])
 guard unknown.isEmpty else {
     print("Unknown option: \(unknown.sorted().joined(separator: " "))\n\(usage)")
     exit(2)
 }
 let includingInputs = arguments.contains("--inputs")
 let isDryRun = arguments.contains("--dry-run")
+let includingBurst = arguments.contains("--burst")
 
 let connection: SpeakerConnection
 let log: KEFLog
@@ -31,6 +33,8 @@ if isDryRun {
     print("Dry run: a simulated speaker on simulated time, nothing is sent and nothing is logged")
     // Like the real runs: an LSX (no USB input) that starts off, is slow
     // to power on and off, and reads muted for a moment as it comes on.
+    // Like the real one, exchanges on top of each other or a burst of
+    // them crash it (see SimulatedSpeaker), and the check fails.
     let simulatedClock = SimulatedClock()
     connection = SimulatedSpeaker(
         volume: VolumeState(level: 30, isMuted: false),
@@ -72,5 +76,5 @@ if includingInputs {
     log.info("kef-check: speaker \(model.label)")
 }
 let check = SpeakerCheck(connection: connection, log: log, clock: clock, onLine: { print($0) })
-let report = await check.run(includingInputs: includingInputs, model: model)
+let report = await check.run(includingInputs: includingInputs, includingBurst: includingBurst, model: model)
 exit(report.passed ? 0 : 1)

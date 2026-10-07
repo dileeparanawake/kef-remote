@@ -9,13 +9,52 @@ struct SpeakerCheckTests {
     /// Runs the check and keeps every line it shows. Pass the speaker's
     /// clock when its timing matters.
     private func run(
-        _ connection: SpeakerConnection, includingInputs: Bool = false, model: SpeakerModel = .other,
-        log: KEFLog = MockKEFLog(), clock: SpeakerClock = SimulatedClock()
+        _ connection: SpeakerConnection, includingInputs: Bool = false, includingBurst: Bool = false,
+        model: SpeakerModel = .other, log: KEFLog = MockKEFLog(), clock: SpeakerClock = SimulatedClock()
     ) async -> (report: CheckReport, lines: [String]) {
         var lines: [String] = []
         let check = SpeakerCheck(connection: connection, log: log, clock: clock, onLine: { lines.append($0) })
-        let report = await check.run(includingInputs: includingInputs, model: model)
+        let report = await check.run(includingInputs: includingInputs, includingBurst: includingBurst, model: model)
         return (report, lines)
+    }
+
+    // MARK: - The burst
+
+    /// Quick presses together go through the controller's queue and add
+    /// up, so the speaker, which falls over when exchanges overlap,
+    /// stays up and ends where it started.
+    @Test func theBurstPassesWhenTheSpeakerStaysUpAndEndsWhereItStarted() async {
+        let speaker = SimulatedSpeaker(volume: forty, source: wifiOn)
+
+        let (report, lines) = await run(speaker, includingBurst: true)
+
+        let burst = "burst: 10 quick volume up, then 10 down"
+        #expect(verdict(of: burst, in: report) == .pass)
+        #expect(detail(of: burst, in: report)?.hasPrefix("expected 40%, read 40%; 20 presses took ") == true)
+        #expect(detail(of: burst, in: report)?.hasSuffix(" writes, and the speaker still answers") == true)
+        #expect(lines.last == "Done: 17 passed, 0 failed. Starting state put back.")
+        #expect(!speaker.hasCrashed)
+        #expect(speaker.mostExchangesAtOnce == 1)
+        #expect(speaker.volume == forty)
+    }
+
+    /// A speaker that stops answering partway fails the step and the
+    /// check, with the reason.
+    @Test func theBurstFailsWhenTheSpeakerStopsAnswering() async {
+        let speaker = SimulatedSpeaker(volume: forty, source: wifiOn)
+        let faulty = FaultySpeaker(speaker)
+        // Only the burst takes it above 42% (the volume up step's level).
+        faulty.failsSend = { data in
+            data.count == 4 && data[0] == 0x53 && data[1] == KEFCommand.volumeRegister
+                && VolumeCoding.decode(data[3]).level > 42
+        }
+
+        let (report, _) = await run(faulty, includingBurst: true)
+
+        let burst = "burst: 10 quick volume up, then 10 down"
+        #expect(verdict(of: burst, in: report) == .fail)
+        #expect(detail(of: burst, in: report)?.hasPrefix("no answer") == true)
+        #expect(!report.passed)
     }
 
     private func verdict(of name: String, in report: CheckReport) -> CheckStepResult.Verdict? {

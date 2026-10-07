@@ -76,8 +76,9 @@ public final class SpeakerCheck {
     }
 
     /// Run the check. With `includingInputs`, also switch to each input
-    /// `model` has and repeat the volume and mute steps there.
-    public func run(includingInputs: Bool, model: SpeakerModel = .other) async -> CheckReport {
+    /// `model` has and repeat the volume and mute steps there. With
+    /// `includingBurst`, end with quick volume presses together.
+    public func run(includingInputs: Bool, includingBurst: Bool = false, model: SpeakerModel = .other) async -> CheckReport {
         let start: SpeakerStatus
         do {
             start = try await controller.getState()
@@ -96,7 +97,8 @@ public final class SpeakerCheck {
         }
 
         var results: [CheckStepResult] = []
-        for step in CheckStep.plan(from: start, includingInputs: includingInputs, model: model) {
+        let plan = CheckStep.plan(from: start, includingInputs: includingInputs, includingBurst: includingBurst, model: model)
+        for step in plan {
             var (result, answered) = await perform(step)
             results.append(result)
             show(result)
@@ -128,12 +130,17 @@ public final class SpeakerCheck {
             if case .raiseVolumeRightAfterPowerOn = step.action {
                 return (try await pressAsPowerComesOn(step, before: before, since: mark), true)
             }
+            if case .volumeBurst(let presses, _, _) = step.action {
+                return (try await burst(step, presses: presses, before: before, since: mark), true)
+            }
             let expectation = step.action.expectation(before: before)
             if step.action.changesPower { await restBeforePowerChange() }
             try await send(step.action)
             let (comparison, waited) = try await readBack(expectation, within: step.action.readBackLimit)
             if step.action.changesPower { lastPowerChange = clock.now }
-            let showsWait = step.action.changesPower || waited > .zero
+            // The read itself takes a moment: only a wait for a second
+            // read is worth showing.
+            let showsWait = step.action.changesPower || waited >= Self.pollInterval
             let detail = comparison.line(waited: showsWait ? waited : nil)
             return (result(step.name, comparison.passed ? .pass : .fail, detail, since: mark), true)
         } catch {
@@ -155,6 +162,34 @@ public final class SpeakerCheck {
         case .setStandby(let mode): try await controller.setStandby(mode)
         case .setInput(let input): try await controller.setInput(input)
         case .setLeftRightSwapped(let isSwapped): try await controller.setLeftRightSwapped(isSwapped)
+        case .volumeBurst(let presses, let amount, let upFirst):
+            try await pressTogether(upFirst ? .up : .down, presses, by: amount)
+            try await pressTogether(upFirst ? .down : .up, presses, by: amount)
+        }
+    }
+
+    /// The burst step: quick presses one way, then as many back, as a held
+    /// key sends them. They go through the controller's one-at-a-time
+    /// queue and add up into few writes (``VolumePresses``), the path that
+    /// keeps a burst from knocking the speaker's control server over (hand
+    /// test, 6 Oct 2026). Passes when the speaker still answers and the
+    /// level ends where it started; says how many writes the presses took.
+    private func burst(_ step: CheckStep, presses: Int, before: SpeakerStatus, since mark: Int) async throws -> CheckStepResult {
+        try await send(step.action)
+        let writes = recorder.writeCount(since: mark)
+        let comparison = step.action.expectation(before: before).compare(.volume(try await controller.getVolumeState()))
+        let detail = "\(comparison.detail); \(presses * 2) presses took \(writes) writes, and the speaker still answers"
+        return result(step.name, comparison.passed ? .pass : .fail, detail, since: mark)
+    }
+
+    /// Fire `presses` presses of `command` together, and wait for them all.
+    private func pressTogether(_ command: VolumeCommand, _ presses: Int, by amount: Int) async throws {
+        let controller = controller
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for _ in 0..<presses {
+                group.addTask { _ = try await controller.press(command, step: amount) }
+            }
+            try await group.waitForAll()
         }
     }
 

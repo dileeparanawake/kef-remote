@@ -24,12 +24,18 @@ public final class RealSpeakerClock: SpeakerClock {
 }
 
 /// Time that moves only when something sleeps, and at once.
-public final class SimulatedClock: SpeakerClock {
-    public private(set) var now: Duration = .zero
+///
+/// Locked: in the burst tests many tasks read it while the simulated
+/// speaker moves it on for each reply.
+public final class SimulatedClock: SpeakerClock, @unchecked Sendable {
+    private let lock = NSLock()
+    private var elapsed: Duration = .zero
 
     public init() {}
 
+    public var now: Duration { lock.withLock { elapsed } }
+
     public func sleep(for duration: Duration) async {
-        now += duration
+        lock.withLock { elapsed += duration }
     }
 }

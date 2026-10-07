@@ -20,6 +20,10 @@ public enum CheckAction: Equatable {
     case setStandby(StandbyMode)
     case setInput(InputSource)
     case setLeftRightSwapped(Bool)
+    /// `presses` quick volume presses one way, then as many back, each
+    /// set fired together as a held key sends them
+    /// through the controller, as the app does.
+    case volumeBurst(presses: Int, by: Int, upFirst: Bool)
 }
 
 /// A named step of the check: send one action, read it back, compare.
@@ -34,10 +38,13 @@ public struct CheckStep: Equatable {
 
     /// How far each volume step moves. Small, so it is barely heard.
     public static let volumeStep = 2
+    /// Presses each way in the burst step: a key held for about a second.
+    public static let burstPresses = 10
 
     /// Every step, in order, for a speaker that starts as `start`. With
     /// `includingInputs`, it visits each input `model` has (the Input
-    /// menu's), in its order.
+    /// menu's), in its order. With `includingBurst`, it ends with quick
+    /// volume presses together, as a held key sends them.
     ///
     /// A speaker that starts off is turned on first: it ignores input,
     /// standby and left/right while off, so every other step runs with it
@@ -46,7 +53,9 @@ public struct CheckStep: Equatable {
     /// in it, then switches back. Putting everything back is not a step:
     /// ``SpeakerCheck`` does that even when a step fails, and turns a
     /// speaker that started off back off at the very end.
-    public static func plan(from start: SpeakerStatus, includingInputs: Bool, model: SpeakerModel) -> [CheckStep] {
+    public static func plan(
+        from start: SpeakerStatus, includingInputs: Bool, includingBurst: Bool = false, model: SpeakerModel
+    ) -> [CheckStep] {
         var steps: [CheckStep] = []
         if !start.isPoweredOn {
             steps.append(CheckStep(name: "power on (it was off)", action: .powerOn))
@@ -74,7 +83,22 @@ public struct CheckStep: Equatable {
             }
             steps.append(CheckStep(name: "input back to \(start.input.label)", action: .setInput(start.input.codeToSelect)))
         }
+        if includingBurst {
+            steps.append(burst(from: start.volume))
+        }
         return steps
+    }
+
+    /// Quick presses up then down, ending where it started. Near the top,
+    /// up would stop at 100 and not come back to the start: down first.
+    static func burst(from volume: VolumeState) -> CheckStep {
+        let presses = burstPresses
+        let upFirst = volume.level + presses * volumeStep <= 100
+        let order = upFirst ? "up, then \(presses) down" : "down, then \(presses) up"
+        return CheckStep(
+            name: "burst: \(presses) quick volume \(order)",
+            action: .volumeBurst(presses: presses, by: volumeStep, upFirst: upFirst)
+        )
     }
 
     /// The input the power-on step asks for: one the speaker isn't on, so
@@ -126,6 +150,9 @@ extension CheckAction {
             return .input(input)
         case .setLeftRightSwapped(let isSwapped):
             return .leftRightSwapped(isSwapped)
+        case .volumeBurst:
+            // As many up as down: back where it started.
+            return .volume(volume)
         }
     }
 
@@ -164,7 +191,7 @@ extension CheckAction {
         switch self {
         case .powerOn, .powerOff, .powerOnApplying: return SpeakerCheck.powerChangeLimit
         case .setStandby, .setInput, .setLeftRightSwapped: return SpeakerCheck.sourceWriteLimit
-        case .raiseVolume, .raiseVolumeRightAfterPowerOn, .lowerVolume, .mute, .unmute: return .zero
+        case .raiseVolume, .raiseVolumeRightAfterPowerOn, .lowerVolume, .mute, .unmute, .volumeBurst: return .zero
         }
     }
 }
