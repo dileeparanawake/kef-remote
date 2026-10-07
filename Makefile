@@ -43,95 +43,51 @@ run:
 # Build this checkout's branch and launch it, ready for a hand test.
 # Quits any running KEF Remote first. No Xcode needed. Run it from the
 # checkout or worktree that holds the branch under test.
-TEST_BUILD_DIR = .build/test-build
+#
+# Every hand test builds ONE test app: bundle ID …KEFRemote.test, at one
+# fixed path shared by every worktree. macOS keeps a Local Network row per
+# app path and can't remove rows (Apple TN3179), so one ID at one path
+# means one row, ever, and the real app's rows are never touched.
+BUNDLE_ID = com.dileeparanawake.KEFRemote
+TEST_BUNDLE_ID = $(BUNDLE_ID).test
+TEST_BUILD_DIR = $(HOME)/Library/Developer/KEFRemoteTest
 TEST_APP = $(TEST_BUILD_DIR)/Build/Products/Debug/KEFRemote.app
 test-build: kill
-	@echo "Building branch: $$(git branch --show-current) ($$(git rev-parse --short HEAD))"
-	xcodebuild -project KEFRemote.xcodeproj -scheme KEFRemote -configuration Debug -derivedDataPath $(TEST_BUILD_DIR) build -quiet $(XCODE_ARGS)
+	@echo "Building branch: $$(git branch --show-current) ($$(git rev-parse --short HEAD)) as $(TEST_BUNDLE_ID)"
+	xcodebuild -project KEFRemote.xcodeproj -scheme KEFRemote -configuration Debug -derivedDataPath "$(TEST_BUILD_DIR)" build -quiet PRODUCT_BUNDLE_IDENTIFIER=$(TEST_BUNDLE_ID)
 	open "$(TEST_APP)"
 	@echo "Running: $(TEST_APP)"
 	@echo "Watch the log with: make logs-tail"
 
 # Start a hand test from a clean slate, like a stranger's first run:
-# saves your config.json aside, clears the test identity's preferences,
-# then builds this branch under the test bundle ID and launches it.
-#
-#   make test-fresh           one fixed ID, …KEFRemote.test: one entry
-#                             in each Privacy & Security list, reused
-#   make test-fresh NEW_ID=1  a new ID (…KEFRemote.test1, .test2, …):
-#                             macOS should ask for Local Network again
-#
-# Each test ID builds in its own folder, .build/test-fresh/<ID>. macOS
-# tells apps apart for Local Network by at least four things: the bundle
-# ID, the app's path, its code signature and its main executable's UUID
-# (Apple DTS, developer.apple.com/forums/thread/766270). Before, every
-# test ID and `make test-build` (the real ID) built to the same path, so
-# a never-used ID could look like one macOS had already allowed (round 3:
-# …KEFRemote.test showed Allowed at once). A new UUID alone doesn't make
-# it ask again, so there's no option for that.
-#
-# The fixed ID keeps its Local Network and Accessibility answers. Local
-# Network can't be reset on a Mac (TN3179), so a new ID is the way to see
-# its prompt again; each leaves one more Local Network entry. test-fresh
-# changes no privacy setting itself: it prints the tccutil line that
-# resets Accessibility, for you to run. `make test-restore` puts your
-# config back; `make test-clean` lists how to remove each test ID.
-BUNDLE_ID = com.dileeparanawake.KEFRemote
-TEST_BUNDLE_ID = $(BUNDLE_ID).test
-TEST_FRESH_DIR = .build/test-fresh
+# saves your config.json aside, clears the test app's preferences, then
+# runs test-build. It changes no privacy setting. To see each permission
+# step again, before it launches (setup step 0):
+#   Accessibility: tccutil reset Accessibility …KEFRemote.test
+#                  (or select the test KEFRemote and click −)
+#   Local Network: switch the test KEFRemote row off in System Settings
+#                  (macOS asks only once per app; off shows "Blocked")
+# `make test-restore` puts your config back.
 CONFIG_FILE = $(HOME)/.kef-remote/config.json
 CONFIG_BACKUP = $(HOME)/.kef-remote/config.before-test.json
 PREFS_BACKUP = $(HOME)/.kef-remote/preferences.before-test.plist
-# The last NEW_ID number. Kept in ~/.kef-remote, so every worktree counts
-# on from the same number.
-TEST_RUN_FILE = $(HOME)/.kef-remote/test-run-number
-# Before that, each checkout kept its own count in .build/test-build. The
-# highest of all of them is the last number macOS has seen.
-LAST_TEST_RUN = $(shell { cat "$(TEST_RUN_FILE)" 2>/dev/null; \
-	git worktree list --porcelain | sed -n 's/^worktree //p' | \
-	while read -r dir; do cat "$$dir/.build/test-build/test-run-number" 2>/dev/null; done; \
-	echo 0; } | sort -n | tail -1)
 
 test-fresh: kill
 	@# A second run keeps the first backup: that one is the real setup.
 	@if [ -f "$(CONFIG_BACKUP)" ]; then rm -f "$(CONFIG_FILE)"; echo "Backup already there; removed the test config"; \
 	elif [ -f "$(CONFIG_FILE)" ]; then mv "$(CONFIG_FILE)" "$(CONFIG_BACKUP)"; echo "Saved config.json to $(CONFIG_BACKUP)"; fi
-	@if [ -n "$(NEW_ID)" ]; then \
-		N=$$(( $(LAST_TEST_RUN) + 1 )); mkdir -p "$$(dirname "$(TEST_RUN_FILE)")"; echo $$N > "$(TEST_RUN_FILE)"; \
-		ID=$(TEST_BUNDLE_ID)$$N; \
-		echo "Test identity: $$ID (new to macOS: it should ask for both permissions)"; \
-	else \
-		ID=$(TEST_BUNDLE_ID); \
-		echo "Test identity: $$ID (macOS remembers its permissions)"; \
-	fi; \
-	defaults delete $$ID 2>/dev/null && echo "Cleared $$ID's preferences"; \
-	$(MAKE) test-build TEST_BUILD_DIR="$(TEST_FRESH_DIR)/$$ID" XCODE_ARGS="PRODUCT_BUNDLE_IDENTIFIER=$$ID" && \
-	if [ -z "$(NEW_ID)" ]; then \
-		echo ""; \
-		echo "To see the Accessibility step again, run this, then quit and reopen the app:"; \
-		echo "  tccutil reset Accessibility $$ID"; \
-		echo "To see the Local Network prompt again: make test-fresh NEW_ID=1"; \
-		echo "(adds one more Local Network entry; they can't be removed by hand)"; \
-	fi
+	@defaults delete $(TEST_BUNDLE_ID) 2>/dev/null && echo "Cleared $(TEST_BUNDLE_ID)'s preferences" || true
+	@$(MAKE) test-build
 
-# Lists (doesn't run) how to remove every test ID's privacy entries: the
-# fixed …KEFRemote.test and each NEW_ID one.
+# Lists (doesn't run) how to remove the test app's privacy entries.
 test-clean:
-	@echo "Accessibility: run these, or select each test KEFRemote and click −"
-	@echo "under Privacy & Security > Device Control and Data Access (macOS 27)"
-	@echo "or Privacy & Security > Accessibility (macOS 26 and before)."
+	@echo "Accessibility: run this before deleting the test app (tccutil needs it on disk),"
+	@echo "or select the test KEFRemote and click − under Privacy & Security >"
+	@echo "Device Control and Data Access (macOS 27) or Accessibility (before):"
 	@echo "  tccutil reset Accessibility $(TEST_BUNDLE_ID)"
-	@N=$(LAST_TEST_RUN); I=1; while [ $$I -le $$N ]; do \
-		echo "  tccutil reset Accessibility $(TEST_BUNDLE_ID)$$I"; I=$$((I + 1)); \
-	done
 	@echo ""
-	@echo "Local Network: there's no supported way to remove an entry on a Mac."
-	@echo "tccutil doesn't manage it and System Settings has no − button for it"
-	@echo "(Apple TN3179). Developers report an entry goes once the app is"
-	@echo "deleted and the Mac restarts. To try that, delete the test builds:"
-	@echo "  rm -rf $(TEST_FRESH_DIR)"
-	@echo "then restart the Mac. Apple's own advice is to test in a new user"
-	@echo "account or a virtual machine instead."
+	@echo "Local Network: rows can't be removed on a Mac (Apple TN3179). The test"
+	@echo "app has one row, reused by every hand test. Switch it off to test Blocked."
 # Put back the config test-fresh saved, and any preferences an older
 # test-fresh cleared from the real app.
 test-restore: kill
