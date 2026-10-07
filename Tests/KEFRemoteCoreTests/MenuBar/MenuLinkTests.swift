@@ -4,8 +4,8 @@ import Testing
 
 struct MenuLinkTests {
 
-    @Test func madeByOpensThePortfolio() {
-        #expect(MenuLink.madeBy.url?.absoluteString == "https://dileeparanawake.github.io/")
+    @Test func madeByOpensHisSite() {
+        #expect(MenuLink.madeBy.url?.absoluteString == "https://www.dileeparanawake.com")
         #expect(MenuLink.madeBy.title == "Made by Dileepa ↗")
     }
 

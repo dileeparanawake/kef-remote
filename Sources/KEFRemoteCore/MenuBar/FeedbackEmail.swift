@@ -92,8 +92,9 @@ public struct FeedbackEmail: Equatable, Sendable {
 ///
 /// ```
 /// Attach the log?
-/// It helps find what went wrong. It holds your
-/// speaker's IP address and serial number.
+/// It helps find what went wrong. It holds your speaker's
+/// name, IP address and serial number, and the addresses
+/// of other devices on your network.
 ///      [Cancel]  [Don't attach]  [Attach]
 /// ```
 public enum FeedbackLogChoice: CaseIterable, Equatable, Sendable {
@@ -102,8 +103,10 @@ public enum FeedbackLogChoice: CaseIterable, Equatable, Sendable {
     case cancel
 
     public static let question = "Attach the log?"
-    /// Says what's in the log, so they choose knowing.
-    public static let detail = "It helps find what went wrong. It holds your speaker's IP address and serial number."
+    /// Says everything personal in the log, so they choose knowing:
+    /// discovery logs each device that answers on the network, not only
+    /// the speaker.
+    public static let detail = "It helps find what went wrong. It holds your speaker's name, IP address and serial number, and the addresses of other devices on your network."
 
     /// The buttons, added in ``allCases`` order: Attach is the default.
     public var title: String {

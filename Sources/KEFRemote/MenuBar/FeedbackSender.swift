@@ -37,7 +37,7 @@ struct FeedbackSender {
         let logFile = LogFileWriter.defaultFileURL
         let logExists = FileManager.default.fileExists(atPath: logFile.path)
         if choice == .attach && !logExists {
-            log.warning("feedback: no log file at \(logFile.path), so the email goes without it")
+            log.warning("feedback: no log file at \(LogPath.abbreviated(logFile)), so the email goes without it")
         }
         compose(email, attaching: choice.attachment(logFile: logFile, logExists: logExists))
     }

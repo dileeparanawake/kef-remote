@@ -1,17 +1,22 @@
 import AppKit
+import KEFRemoteCore
 
-/// Brings one of the app's own windows to the front, and tidies up when
-/// it closes. Used by the settings window and the permissions guide.
+/// Makes and shows the app's own windows (settings, setup), and tidies
+/// up when they close.
 ///
-/// An agent app (no Dock icon) can be refused activation, so its window
-/// opens behind others. If that happens, the app shows a Dock icon
-/// (regular policy) while the window is open, and tries again.
+/// KEF Remote runs without a Dock icon. While any of these windows is
+/// open it shows one (``OpenWindows``): then a window that goes behind
+/// another app's can be found again in the Dock, Cmd-Tab and Mission
+/// Control, like any app's window. Without it, the window seemed to
+/// vanish (hand test round 3). A regular app is also refused activation
+/// less often than an agent, so the window comes to the front.
 ///
 /// Logged under the caller's category:
 /// ```
-/// settings shown: visible=true key=true appActive=true policy=accessory
-/// app did not come to the front: policy accessory -> regular
-/// policy regular -> accessory      (on close)
+/// setup opened: Dock icon on (policy accessory -> regular)
+/// setup shown: visible=true key=true appActive=true policy=regular
+/// setup not in front: trying again
+/// setup closed: Dock icon off (policy regular -> accessory)
 /// ```
 @MainActor
 struct AgentWindowPresenter {
@@ -19,29 +24,48 @@ struct AgentWindowPresenter {
     let name: String
     let log: AppLogger
 
+    /// Shared by every presenter: the Dock icon stays while any is open.
+    private static var openWindows = OpenWindows()
+
     /// Activation is asynchronous: long enough for it to land.
     private static let activationCheckDelay: TimeInterval = 0.3
 
+    /// A plain window around `content`, centred on the screen.
+    static func makeWindow(_ content: NSViewController, delegate: NSWindowDelegate) -> NSWindow {
+        let window = NSWindow(contentViewController: content)
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        window.delegate = delegate
+        // SwiftUI sizes its content on the first layout. Centre after
+        // that, or the window grows from a corner placed for a smaller
+        // size and opens off to one side (hand test round 3).
+        window.layoutIfNeeded()
+        window.setContentSize(content.view.fittingSize)
+        window.center()
+        return window
+    }
+
     func show(_ window: NSWindow) {
+        if Self.openWindows.opened(name) == .show {
+            NSApp.setActivationPolicy(.regular)
+            log.info("\(name) opened: Dock icon on (policy accessory -> regular)")
+        }
         bringToFront(window)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.activationCheckDelay) {
             logShown(window)
-            guard !NSApp.isActive, NSApp.activationPolicy() == .accessory else { return }
-            log.info("app did not come to the front: policy accessory -> regular")
-            NSApp.setActivationPolicy(.regular)
+            guard !NSApp.isActive, window.isVisible else { return }
+            log.info("\(name) not in front: trying again")
             bringToFront(window)
-            DispatchQueue.main.asyncAfter(deadline: .now() + Self.activationCheckDelay) {
-                logShown(window)
-            }
         }
     }
 
-    /// Call from `windowWillClose`: takes the Dock icon away again.
+    /// Call from `windowWillClose`: takes the Dock icon away once no
+    /// window is left open.
     func windowClosed() {
-        if NSApp.activationPolicy() == .regular {
+        if Self.openWindows.closed(name) == .hide {
             NSApp.setActivationPolicy(.accessory)
-            log.info("policy regular -> accessory")
+            log.info("\(name) closed: Dock icon off (policy regular -> accessory)")
         }
     }
 

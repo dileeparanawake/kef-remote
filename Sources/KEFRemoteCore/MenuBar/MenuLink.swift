@@ -13,7 +13,7 @@ import Foundation
 public enum MenuLink: CaseIterable, Equatable, Sendable {
     /// The pay-what-you-want page.
     case support
-    /// Dileepa's portfolio.
+    /// Dileepa's site.
     case madeBy
 
     /// The Gumroad page. Nil until Dileepa makes it; set it here and the
@@ -30,7 +30,7 @@ public enum MenuLink: CaseIterable, Equatable, Sendable {
     public var url: URL? {
         switch self {
         case .support: Self.supportURL
-        case .madeBy: URL(string: "https://dileeparanawake.github.io/")
+        case .madeBy: URL(string: "https://www.dileeparanawake.com")
         }
     }
 

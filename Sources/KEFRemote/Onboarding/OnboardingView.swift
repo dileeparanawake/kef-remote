@@ -8,7 +8,7 @@ import SwiftUI
 ///
 /// [step 1: PermissionsView]                Skip for now  [Continue]
 /// [step 2: Auto | Manual, Find speaker]    Back          [Continue]
-/// [step 3: what works now]                               [Done]
+/// [step 3: what works now, Privacy link]                [Done]
 /// ```
 ///
 /// What unlocks Continue and what each line says are decided in
@@ -19,6 +19,8 @@ struct OnboardingView: View {
     @ObservedObject var permissions: PermissionsModel
     @ObservedObject var settings: SettingsModel
     @ObservedObject var menuBar: MenuBarModel
+
+    private let log = AppLogger(subsystem: "com.kef-remote", category: "onboarding")
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -71,6 +73,7 @@ struct OnboardingView: View {
             ForEach(model.youreSetLines, id: \.self) { line in
                 Text(line)
             }
+            PrivacyLink(title: PrivacyNotice.setupTitle, log: log)
         }
     }
 

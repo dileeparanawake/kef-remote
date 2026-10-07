@@ -6,7 +6,7 @@ KEF Remote is a small macOS app for the KEF LSX. Hold Control and press the volu
 
 ![KEF Remote: Control plus the volume up key shows a volume panel at 60% on screen, and the KEF speaker plays louder](docs/images/social-preview.png)
 
-It runs in the background with no Dock icon. A small speaker icon in the menu bar shows whether it's connected to the speaker, and opens Settings.
+It runs in the background with no Dock icon, except while one of its windows is open. A small speaker icon in the menu bar shows whether it's connected to the speaker, and opens Settings.
 
 This is an early release with real rough edges. Read [Known limitations](#known-limitations) before you install it.
 
@@ -60,9 +60,11 @@ When it opens, KEF Remote shows a setup window with three steps.
    - **Accessibility**, so the volume keys reach the speaker. Click Open Settings, then turn on KEFRemote. On macOS 27 this list is called Device Control and Data Access. If the window then shows Restart KEF Remote, click it: the volume keys start once it opens again.
    - **Local Network** (macOS 15 and later), so the app can find the speaker. macOS asks the first time the app looks for the speaker: click Allow. If you missed it, click Open Settings, then Local Network, and turn on KEF Remote. Its tick shows within a few seconds of allowing it.
 2. **Find your speaker.** Leave it on Auto and click Find speaker. It says "Found LSX at" and the speaker's IP. If it has found the speaker already, it says so straight away. If it says "Not found", check the speaker is on and on the same network, or click Enter the IP instead (see [If it can't find the speaker](#if-it-cant-find-the-speaker)). Click Continue once it's found.
-3. **You're set.** It shows the keys to use. Click Done.
+3. **You're set.** It shows the keys to use. Click Done. The Privacy link under them opens the privacy notice: KEF Remote collects nothing.
 
-It only opens once. To check the permissions again, click the speaker icon in the menu bar, then Permissions….
+If the window goes behind another app's, click Finish setup… at the top of the menu bar icon's menu, or KEF Remote's icon in the Dock. It goes back to the step you were on.
+
+Once you click Done it doesn't open again. To check the permissions later, click the speaker icon in the menu bar, then Permissions….
 
 ### 4. Try it
 
@@ -154,6 +156,8 @@ The icon shows whether KEF Remote is connected to the speaker. It checks when it
 
 The red dot is a shape as well as a colour, so you can see it without colour vision.
 
+Until you finish the setup window, the menu starts with Finish setup…, which opens it again.
+
 The menu's first line says "Connected to LSX", with the IP under it. With a red dot it says what's wrong and what to do, such as "Can't reach LSX: click Find speaker" or "Volume keys off: allow Accessibility". Find speaker looks for the speaker on the network and saves its IP.
 
 Input ▸ comes next. It ticks the input the speaker is on. Pick another and the speaker switches straight away, and the input it's now on shows on screen. If it didn't switch, the screen says so, such as "USB not available". If the speaker is off, the screen says so, as it ignores a new input then. It's greyed out while KEF Remote isn't connected. On an LSX it lists no USB, as the LSX has none.
@@ -186,7 +190,7 @@ Run the tests with:
 swift test --disable-sandbox
 ```
 
-There are 532 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when it opens, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket, the connection check, the menu bar's states and its Input menu, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
+There are 562 unit tests. They cover the protocol encoding, the volume and source bytes, the config file, the speaker commands against a mock connection, the input, standby and swap settings, the setup window's steps and when and where it opens, the Dock icon while a window is open, the permissions guide's rows and links, trying again while Local Network is blocked, the reply timeout, discovery against a mock socket (and that it only fetches from addresses on your network), the connection check, the menu bar's states and its Input menu, the feedback email, the inputs each speaker has, volume presses as the speaker turns on, the shortcuts, the log file and the speaker check against a simulated speaker. Everything that touches the real speaker, the keys or the display was tested by hand.
 
 To check a real speaker end to end, quit the app and run `make speaker-check` (add `INPUTS=1` for each input, or `DRY_RUN=1` to try it without the speaker): it runs every command, reads each back, and puts the speaker back as it was. It changes what's playing, so run it when nobody is listening. It takes a few minutes, as it waits for the speaker to power on and off.
 

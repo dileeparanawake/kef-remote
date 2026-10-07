@@ -45,7 +45,7 @@ struct FeedbackEmailTests {
 
     @Test func theQuestionSaysWhatTheLogHolds() {
         #expect(FeedbackLogChoice.question == "Attach the log?")
-        #expect(FeedbackLogChoice.detail == "It helps find what went wrong. It holds your speaker's IP address and serial number.")
+        #expect(FeedbackLogChoice.detail == "It helps find what went wrong. It holds your speaker's name, IP address and serial number, and the addresses of other devices on your network.")
     }
 
     @Test func theButtonsAreAttachDontAttachCancelInThatOrder() {

@@ -45,6 +45,17 @@ final class MenuBarModel: ObservableObject {
         self.accessibility = accessibility
     }
 
+    /// Until setup is finished, the menu's first item is Finish setup…
+    /// (``Onboarding/finishSetupItem(isFinished:)``). True until config.json
+    /// is read, so the item never flashes up for someone set up already.
+    @Published private(set) var isSetupFinished = true
+
+    func showSetupFinished(_ finished: Bool) {
+        guard finished != isSetupFinished else { return }
+        isSetupFinished = finished
+        log.info("setup finished: \(finished), Finish setup… \(finished ? "hidden" : "shown") in the menu")
+    }
+
     var presentation: MenuBarPresentation {
         MenuBarPresentation(
             status: status,

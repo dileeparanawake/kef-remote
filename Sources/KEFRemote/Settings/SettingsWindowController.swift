@@ -11,10 +11,11 @@ import SwiftUI
 /// ```
 /// settings open requested (source: menu)
 /// settings window created            (once per run)
-/// settings shown: visible=true key=true appActive=true policy=accessory
+/// settings opened: Dock icon on (policy accessory -> regular)
+/// settings shown: visible=true key=true appActive=true policy=regular
 /// ```
-/// If `appActive` is false after the first try, the app shows a Dock
-/// icon while the window is open, and logs `policy accessory -> regular`.
+/// The app shows a Dock icon while the window is open, so it can be
+/// found again behind other apps' windows.
 @MainActor
 final class SettingsWindowController: NSObject, NSWindowDelegate {
 
@@ -42,12 +43,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     }
 
     private func makeWindow() -> NSWindow {
-        let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(model: model, menuBar: menuBar)))
+        let window = AgentWindowPresenter.makeWindow(
+            NSHostingController(rootView: SettingsView(model: model, menuBar: menuBar)),
+            delegate: self
+        )
         window.title = "KEF Remote Settings"
-        window.styleMask = [.titled, .closable]
-        window.isReleasedWhenClosed = false
-        window.delegate = self
-        window.center()
         self.window = window
         log.info("settings window created")
         return window

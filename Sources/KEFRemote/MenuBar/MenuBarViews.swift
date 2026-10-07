@@ -47,6 +47,8 @@ struct MenuBarIcon: View {
 /// Quit KEF Remote  ⌘Q       Quit KEF Remote  ⌘Q
 /// ```
 ///
+/// Until setup is finished, Finish setup… sits above the two lines and
+/// opens the setup window where he left it (``SetupWindowOpening``).
 /// Find speaker shows under the first two lines when the speaker isn't
 /// connected (``MenuBarPresentation/offersFindSpeaker``). The
 /// Permissions… item says whether any permission needs him
@@ -59,6 +61,7 @@ struct MenuBarIcon: View {
 struct MenuBarMenu: View {
     @ObservedObject var model: MenuBarModel
     @ObservedObject var permissions: PermissionsModel
+    let resumeSetup: () -> Void
     let findSpeaker: () -> Void
     let switchInput: (InputSource) -> Void
     let openPermissions: () -> Void
@@ -69,6 +72,15 @@ struct MenuBarMenu: View {
 
     var body: some View {
         let shown = model.presentation
+
+        // First, above the status lines: the way back to a setup window
+        // that went behind another app's (hand test round 3).
+        if let finishSetup = Onboarding.finishSetupItem(isFinished: model.isSetupFinished) {
+            Button(finishSetup) {
+                log.info("menu: \(finishSetup) clicked")
+                resumeSetup()
+            }
+        }
 
         Text(shown.title)
         Text(shown.detail)
