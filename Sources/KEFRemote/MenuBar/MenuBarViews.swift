@@ -62,8 +62,8 @@ struct MenuBarIcon: View {
 /// Settings…, a greyed-out line says the shortcuts are paused while the
 /// menu is open (``MenuTrackingShortcuts/menuLine(status:)``), on the
 /// home network only.
-/// Support KEF Remote…
-/// joins the links once its page exists (``MenuLink``), and Send feedback…
+/// Buy me a coffee… (Ko-fi)
+/// joins the links while its page is set (``MenuLink``), and Send feedback…
 /// once its address is set (``FeedbackEmail``).
 struct MenuBarMenu: View {
     @ObservedObject var model: MenuBarModel

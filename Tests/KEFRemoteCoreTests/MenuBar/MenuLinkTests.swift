@@ -10,7 +10,7 @@ struct MenuLinkTests {
     }
 
     @Test func supportHasATitleThatSaysItOpensMore() {
-        #expect(MenuLink.support.title == "Support KEF Remote…")
+        #expect(MenuLink.support.title == "Buy me a coffee…")
     }
 
     @Test func aLinkWithAPageIsShown() {
@@ -21,9 +21,8 @@ struct MenuLinkTests {
         #expect(MenuLink.shown(supportURL: nil) == [.madeBy])
     }
 
-    @Test func todaySupportHasNoPage() {
-        // Dileepa hasn't made the Gumroad page yet (6 Oct 2026).
-        #expect(MenuLink.support.url == nil)
-        #expect(MenuLink.shown == [.madeBy])
+    @Test func supportOpensHisKoFiPage() {
+        #expect(MenuLink.support.url?.absoluteString == "https://ko-fi.com/dileepabuilds")
+        #expect(MenuLink.shown == [.support, .madeBy])
     }
 }

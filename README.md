@@ -170,7 +170,7 @@ Input ▸ is under it. Its title names the input the speaker is on, such as "Inp
 
 Each time you open the menu, KEF Remote reads the speaker again, so the input and the on or off are current even when the speaker changed by itself, such as AirPlay switching it to Wi-Fi. It skips the read if it read the speaker in the last 3 seconds, or while another command is talking to it.
 
-Below that are Permissions…, Settings…, a link to my site (Made by Dileepa) and Quit KEF Remote. Permissions… shows a tick when both permissions are allowed. When one is off, it says so, such as "Permissions… (1 needs you)". On your home network, a greyed-out line under Settings… says "Shortcuts paused while this menu is open": shortcuts do nothing until you close the menu.
+Below that are Permissions…, Settings…, Buy me a coffee… (my Ko-fi page), a link to my site (Made by Dileepa) and Quit KEF Remote. Permissions… shows a tick when both permissions are allowed. When one is off, it says so, such as "Permissions… (1 needs you)". On your home network, a greyed-out line under Settings… says "Shortcuts paused while this menu is open": shortcuts do nothing until you close the menu.
 
 Send feedback… opens an email to me, with the log attached if you agree.
 
@@ -180,7 +180,7 @@ Settings… has three tabs, so it fits a 13-inch screen:
 |---|---|
 | Speaker | Connection: Discovery (Auto or Manual) and the speaker it found. Speaker: Input on turn-on, Standby and Swap left and right |
 | Keys | The modifier for the media keys, and the shortcuts |
-| About | The version, Made by Dileepa, Send feedback… and the privacy notice |
+| About | The version, Buy me a coffee…, Made by Dileepa, Send feedback… and the privacy notice |
 
 ## Known limitations
 
@@ -229,6 +229,14 @@ The code is a Swift package with four targets:
 - **KEFRemote**: the macOS app, with volume key interception, the on-screen display, the menu bar, settings and the shortcuts.
 - **kef-discover**: runs discovery once and prints each step (`make discover`).
 - **kef-check**: runs every speaker command, reads each back and puts the speaker back as it was (`make speaker-check`).
+
+## Support
+
+KEF Remote is free. If it saves you time, chip in or buy me a coffee.
+
+[![Buy me a coffee on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/dileepabuilds)
+
+It's also in the menu bar menu and Settings' About tab, as Buy me a coffee….
 
 ## Credits
 
