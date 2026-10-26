@@ -5,24 +5,23 @@ import Foundation
 /// ```
 /// Settings…              ⌘,
 /// ─────────────
-/// Support KEF Remote…        only once its page exists
+/// Buy me a coffee…          only once its page exists
 /// Made by Dileepa ↗
 /// ─────────────
 /// Quit KEF Remote        ⌘Q
 /// ```
 public enum MenuLink: CaseIterable, Equatable, Sendable {
-    /// The pay-what-you-want page.
+    /// The pay-what-you-want page (Ko-fi).
     case support
     /// Dileepa's site.
     case madeBy
 
-    /// The Gumroad page. Nil until Dileepa makes it; set it here and the
-    /// Support item shows.
-    static let supportURL: URL? = nil
+    /// Dileepa's Ko-fi page. Set to nil and the Support item hides.
+    static let supportURL: URL? = URL(string: "https://ko-fi.com/dileepabuilds")
 
     public var title: String {
         switch self {
-        case .support: "Support KEF Remote…"
+        case .support: "Buy me a coffee…"
         case .madeBy: "Made by Dileepa ↗"
         }
     }
