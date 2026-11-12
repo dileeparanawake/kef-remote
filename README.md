@@ -230,6 +230,39 @@ The code is a Swift package with four targets:
 - **kef-discover**: runs discovery once and prints each step (`make discover`).
 - **kef-check**: runs every speaker command, reads each back and puts the speaker back as it was (`make speaker-check`).
 
+### The app, by type
+
+For contributors: what the app does, and the type or folder that owns each part.
+
+- **Background agent** (`LSUIElement=true`): no Dock icon, except while one of its windows is open (`OpenWindows`), so a window behind another app's can be found again.
+- **Menu bar icon**: shows whether the speaker is connected (it answered the last exchange), with a red dot when something needs you, a brief green dot on connecting and a pulsing orange dot while it looks for the speaker.
+- **Menu**:
+  - Find speaker, when it isn't connected.
+  - Turn speaker on or off as its label says, with the turn-on defaults (`PowerMenuItem` → `PowerMenuAction`).
+  - Input ▸ switches the input now (`InputMenu`, ticked from the last source byte). The byte is read again as the menu or Settings opens (`SourceByteRefresh`, `MenuOpenWatcher`).
+  - Permissions… and Settings… (plain `NSWindow`s). Settings has Speaker, Keys and About tabs (`SettingsTab`); its Speaker rows show what the speaker has now (`SpeakerNow`).
+  - Links to who made it and to Buy me a coffee… on Ko-fi (`MenuLink`, also in Settings' About tab), and Send feedback… (`FeedbackEmail`).
+- **Setup window** (`Onboarding/`: 1 Permissions, 2 Find your speaker, 3 You're set): opens at launch until it's finished (`"onboarding": {"finished": true}` in config.json). After that, only its permissions step opens, at launch while Accessibility is missing and from Permissions…. Until it's finished, the menu's first item is Finish setup…, and the Dock icon opens it too, on the step you left (`SetupWindowOpening`).
+- **Keys and HUD**: intercepts the volume keys (volume up, down and mute, with the modifier held; play/pause, next and previous stay the Mac's) and shows a HUD overlay for volume and source.
+- **Log categories**: menu and settings actions under `menubar` and `settings`; permission changes under `permissions`; the setup window's steps and clicks under `onboarding`.
+
+KEFRemoteCore folders:
+
+- `Protocol/`: byte encoding.
+- `Commands/`: `SpeakerController`, one command at a time through `SpeakerExchangeQueue`, the connection check.
+- `Connection/`: TCP, reply timeout, one reconnect at a time after an error, with back-off (`SpeakerReconnector`).
+- `Config/`: `config.json`, Auto or Manual discovery.
+- `Discovery/`: SSDP.
+- `MenuBar/` and `HUD/`: what the icon, menu and HUD show.
+- `Settings/`: the Settings tabs, the app version.
+- `Network/`: the home-network rule, Local Network permission, its retry while blocked and its checks while setup is open.
+- `Permissions/`: each permission's row in the guide, its System Settings URL, the volume keys line (ready, restart, or starts on the home network).
+- `Onboarding/`: the setup steps, what unlocks Continue, the finished flag, what opens at launch and from the menu and Dock, step 2's search line, and that the app's own searches wait for step 2.
+- `Windows/`: which windows are open (so whether the Dock icon shows), and how one comes to the front, held back after the macOS prompt.
+- `Shortcuts/`: what each global shortcut does, quick volume presses adding up into one write (`VolumePresses`), and that they pause while any of the app's menus is open.
+- `Check/`: the speaker check (each step, read-back, putting the start back) and a simulated speaker for its dry run and tests.
+- `Logging/`, `Utilities/`.
+
 ## Support
 
 KEF Remote is free. If it saves you time, chip in or buy me a coffee.
